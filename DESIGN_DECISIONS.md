@@ -33,3 +33,12 @@
 3. Ampliar contenido procedural (bosques, puertos, aeronaves, puentes y objetivos especiales).
 4. Añadir panel de ajustes, reducir espera de vuelos extremos y sincronizar progreso opcional.
 5. Solo después de métricas de retención reales, conectar proveedor de monetización respetuosa.
+
+## v0.2: interfaz de resultados y bonificación de habilidades
+
+- El resultado es una tarjeta compacta en el tercio superior, sin oscurecer el mundo ni interponerse entre el usuario y la progresión.
+- Las habilidades son la acción principal: dorado cuando son comprables, apagado únicamente cuando no hay monedas y verde cuando existe un bonus.
+- Tras cada 4 **compras pagadas** se genera 1 crédito de habilidad extra que el usuario elige. El crédito no caduca y se guarda localmente. No cuenta como compra pagada al canjearlo.
+- Alfa sin proveedor publicitario: se regala la mejora de forma transparente y se indica «BONO ALFA · SIN ANUNCIO», en lugar de simular que se ha visto un anuncio.
+- Adaptador para futuros anuncios recompensados en `src/rewarded.js`, que solo concede el premio tras respuesta `{rewarded:true}`.
+- En la migración de partidas anteriores, las mejoras ya obtenidas cuentan para desbloquear el primer bonus.

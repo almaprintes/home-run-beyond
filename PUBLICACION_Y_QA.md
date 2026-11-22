@@ -17,12 +17,22 @@
 - Limitación del navegador de pruebas: no admite WebGL2 por políticas del entorno; se comprobó la reserva 2D. **La ruta gráfica WebGL2 aún no puede marcarse validada en un iPhone físico.**
 - Audio y vibración: codificados, pero deben probarse en Safari real. No se atribuyen métricas FPS al iPhone.
 
-## Publicación GitHub
+## Pendiente de publicación
 
-Repositorio independiente creado y código inicial subido a https://github.com/almaprintes/home-run-beyond . Los tests de GitHub Actions pasan. La fase de Pages todavía necesita confirmar la publicación correcta; en la primera ejecución GitHub reportó un retraso en la disponibilidad del artefacto, y se añadió una espera de sincronización antes de publicar.
+La conexión GitHub utilizada permite leer y modificar repositorios existentes, pero **no ofrece crear uno nuevo**. Por seguridad no se ha mezclado el juego en los repositorios de CraftRace o SlotRace.
 
-Dirección prevista una vez publicada: https://almaprintes.github.io/home-run-beyond/ . No se usa Vercel.
+**Acción necesaria:** crear repositorio vacío `almaprintes/home-run-beyond` con `main` como rama principal, y conceder acceso a la conexión GitHub actual si la instalación está limitada a repos concretos. Después se sube el código y se habilita GitHub Pages, origen **GitHub Actions**. La dirección esperada, si la publicación tiene éxito, sería `https://almaprintes.github.io/home-run-beyond/`; no es un enlace verificado aún.
+
+No se ha usado Vercel. El código y la configuración están listos para un despliegue por GitHub Actions en cuanto exista el nuevo repositorio.
 
 ## Limitaciones de alfa
 
 Esta versión **no** contiene anuncios reales, tienda de dinero, servidores multijugador, sincronización entre teléfonos, clasificación online ni medición de retención. La compra de cosméticos usa monedas conseguidas dentro del juego. Es una prueba de jugabilidad, no una app monetizada lista para publicar en las tiendas.
+
+## v0.2: revisión visual y de economía
+
+- Resultado comprimido en tarjeta flotante; se eliminó el oscurecimiento de toda la pantalla.
+- Probado en navegador simulado a 390×844 y 375×667 sin errores de JavaScript; las mejoras y el bonus se pudieron pulsar.
+- Se añadieron pruebas de migración de guardado, compra exitosa/fallida, bonificación y canje único.
+- La verificación real en WebGL2 del iPhone debe continuar; el emulador utilizó renderizador de reserva.
+- Próxima integración comercial: proveedor externo de vídeos recompensados, sin vídeo simulado ni atribución falsa.

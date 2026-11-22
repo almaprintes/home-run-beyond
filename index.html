@@ -37,22 +37,22 @@
   <div id="aim" class="layer aim" hidden><div class="aim-ring"><span>✦</span></div></div>
   <section class="layer result" id="result" hidden>
     <div class="result-panel">
-      <div class="result-eyebrow">RESULTADO DEL GOLPE</div>
-      <div id="result-quality" class="result-quality">¡EXCELENTE!</div>
-      <div class="result-distance"><span id="result-meters">0</span><small> METROS</small></div>
-      <div id="best-label" class="best-label">MEJOR MARCA: 0 M</div>
-      <div class="reward-row"><div><span class="coin">✦</span> <strong id="result-coins">0</strong> monedas</div><span id="reward-note">Recompensa obtenida</span></div>
-      <button id="again" class="main-button">OTRO BATAZO <span>➜</span></button>
-      <div class="result-note">Mejora tus habilidades para llegar todavía más lejos</div>
+      <div class="result-topline"><span class="result-eyebrow">ÚLTIMO BATAZO</span><span id="reward-note" class="result-record">RECOMPENSA</span></div>
+      <div class="result-summary">
+        <div class="result-shot"><div id="result-quality" class="result-quality">¡EXCELENTE!</div><div class="result-distance"><span id="result-meters">0</span><small>m</small></div></div>
+        <div class="result-reward"><span class="coin">✦</span> <strong id="result-coins">0</strong><small>MONEDAS</small></div>
+      </div>
+      <div class="result-bottom"><span id="best-label" class="best-label">RÉCORD: 0 M</span><button id="again" class="main-button">OTRO BATAZO <span>➜</span></button></div>
     </div>
   </section>
   <div class="layer upgrades" id="upgrades">
-    <div class="upgrades-top"><div><strong>ENTRENA A TU BATEADOR</strong><span>Mejora las tres habilidades</span></div><button id="sound" aria-label="Activar o desactivar sonido" class="audio">♫</button></div>
+    <div class="upgrades-top"><div><strong>ENTRENA A TU BATEADOR</strong><span>Pulsa las tarjetas doradas para mejorar</span></div><button id="sound" aria-label="Activar o desactivar sonido" class="audio">♫</button></div>
     <div class="upgrade-grid">
-      <button class="upgrade" id="up-power"><span class="upgrade-icon">💪</span><span class="upgrade-name">POTENCIA</span><span class="upgrade-level" id="level-power">NIV. 1</span><span class="upgrade-cost"><span class="coin">✦</span> <span id="cost-power">80</span></span></button>
-      <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-cost"><span class="coin">✦</span> <span id="cost-swing">85</span></span></button>
-      <button class="upgrade" id="up-reflex"><span class="upgrade-icon">🎯</span><span class="upgrade-name">REFLEJOS</span><span class="upgrade-level" id="level-reflex">NIV. 1</span><span class="upgrade-cost"><span class="coin">✦</span> <span id="cost-reflex">70</span></span></button>
+      <button class="upgrade" id="up-power"><span class="upgrade-icon">💪</span><span class="upgrade-name">POTENCIA</span><span class="upgrade-level" id="level-power">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-power">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-power">80</span></span></span></button>
+      <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-swing">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-swing">85</span></span></span></button>
+      <button class="upgrade" id="up-reflex"><span class="upgrade-icon">🎯</span><span class="upgrade-name">REFLEJOS</span><span class="upgrade-level" id="level-reflex">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-reflex">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-reflex">70</span></span></span></button>
     </div>
+    <div id="bonus-track" class="bonus-track"><span class="bonus-icon">🎁</span><span id="bonus-text" class="bonus-text">MEJORA EXTRA CADA 4 COMPRAS</span><strong id="bonus-progress">0/4</strong></div>
     <div class="footer-stats"><div>RÉCORD <strong id="best-hud">0 m</strong></div><div>GOLPES <strong id="shots-hud">0</strong></div><div>REGIÓN <strong id="region-hud">ESTADIO</strong></div></div>
   </div>
   <section class="layer modal-shell" id="shop" hidden>
@@ -60,7 +60,7 @@
       <div class="modal-head"><div><small>EL VESTUARIO</small><h2>Personaliza tu estilo</h2></div><button class="x" id="shop-close" aria-label="Cerrar">×</button></div>
       <div class="modal-intro">Cosméticos sin ventajas competitivas. Desbloquea colores y estelas con las monedas de tus batazos.</div>
       <div id="shop-items" class="shop-items"></div>
-      <div class="foot-note">Versión 0.1 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
+      <div class="foot-note">Versión 0.2 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>

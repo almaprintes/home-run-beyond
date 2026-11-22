@@ -1,10 +1,11 @@
 import {Renderer,CanvasRenderer,lerp} from './engine.js';
 import {drawWorld,groundAt,roadAt,riverAt,areaAt,collideBuilding} from './world.js';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,calculateShot,batSpeedMs,settleShot,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
 import {GameAudio} from './audio.js';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
- constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.camera=[11,16,-35];this.target=[0,2,32];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();
+ constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.camera=[11,16,-35];this.target=[0,2,32];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
  try{this.save=sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY)))}catch{this.save=initialSave()}
  this.audio.enabled=this.save.sound;this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
  try{this.renderer=new Renderer(el('world'))}catch(e){console.warn('WebGL2 no disponible; utilizando reserva gráfica 2D',e);this.renderer=new CanvasRenderer(el('world'))}this.renderer.game=this;
@@ -24,9 +25,43 @@ export class BaseballGame{
  closeShop(){el('shop').hidden=true;this.drawUI()}
  openShop(){if(this.state==='pitching'||this.state==='swinging'||this.state==='flight')return;el('shop').hidden=false;this.renderShop()}
  renderShop(){el('shop-items').replaceChildren();for(const item of COSMETICS){const owned=this.save.owned.includes(item.id),equipped=this.save.equipped===item.id;const row=document.createElement('div');row.className='shop-item';const preview=document.createElement('div');preview.className='shop-preview';preview.style.color=item.color;preview.textContent=item.emoji;const detail=document.createElement('div');detail.className='shop-detail';const strong=document.createElement('strong');strong.textContent=item.name;const small=document.createElement('small');small.textContent=item.description;detail.append(strong,small);const btn=document.createElement('button');btn.className='shop-buy';btn.textContent=equipped?'EQUIPADO':owned?'EQUIPAR':`✦ ${formatInt(item.price)}`;btn.disabled=equipped||(!owned&&this.save.coins<item.price);btn.addEventListener('click',()=>{if(!owned&&this.save.coins<item.price)return;if(!owned){this.save.coins-=item.price;this.save.owned.push(item.id);this.audio.cash()}this.save.equipped=item.id;this.batColor=item.color;this.persist();this.renderShop();this.drawUI()});row.append(preview,detail,btn);el('shop-items').append(row)}}
- buyUpgrade(key){if(this.state==='pitching'||this.state==='swinging'||this.state==='flight')return;if(upgrade(this.save,key)){this.audio.cash();this.persist();this.drawUI();this.toast({power:'¡MÁS POTENCIA!',swing:'¡SWING MÁS RÁPIDO!',reflex:'¡REFLEJOS MEJORADOS!'}[key]);}else this.toast('TE FALTAN MONEDAS')}
- drawUI(){el('money').textContent=formatInt(this.save.coins);el('best-hud').textContent=formatInt(this.save.best)+' m';el('shots-hud').textContent=formatInt(this.save.shots);el('region-hud').textContent=areaAt(Math.max(this.save.best,0));
- el('sound').textContent=this.save.sound?'♫':'♩';for(const key of ['power','swing','reflex']){el('level-'+key).textContent='NIV. '+formatInt(this.save.levels[key]);el('cost-'+key).textContent=formatInt(upgradeCost(this.save.levels[key],key));el('up-'+key).disabled=this.save.coins<upgradeCost(this.save.levels[key],key)}
+ buyUpgrade(key){
+  if(this.state==='pitching'||this.state==='swinging'||this.state==='flight'||this.rewardPending)return;
+  if(bonusCredits(this.save)>0){
+   if(hasRewardedAds()){
+    this.rewardPending=true;this.drawUI();
+    showRewardedAd().then(rewarded=>{if(rewarded)this.applyBonus(key);else this.toast('VÍDEO NO COMPLETADO · CONSERVAS EL BONO')})
+     .finally(()=>{this.rewardPending=false;this.drawUI()});
+   }else this.applyBonus(key);
+   return;
+  }
+  if(upgrade(this.save,key)){
+   this.audio.cash();this.persist();this.drawUI();
+   if(bonusCredits(this.save)>0)this.toast('🎁 ¡BONUS EXTRA DESBLOQUEADO!');
+   else this.toast({power:'¡MÁS POTENCIA!',swing:'¡SWING MÁS RÁPIDO!',reflex:'¡REFLEJOS MEJORADOS!'}[key]);
+  }else this.toast('TE FALTAN MONEDAS');
+ }
+ applyBonus(key){if(claimBonus(this.save,key)){this.audio.cash();this.persist();this.drawUI();this.toast('🎁 +1 NIVEL EXTRA · ¡GRATIS!')}}
+ drawUI(){
+  el('money').textContent=formatInt(this.save.coins);el('best-hud').textContent=formatInt(this.save.best)+' m';
+  el('shots-hud').textContent=formatInt(this.save.shots);el('region-hud').textContent=areaAt(Math.max(this.save.best,0));
+  el('sound').textContent=this.save.sound?'♫':'♩';
+  const bonus=bonusCredits(this.save)>0,hasAds=hasRewardedAds(),progress=bonusProgress(this.save);
+  el('bonus-track').classList.toggle('ready',bonus);
+  el('bonus-text').textContent=bonus?(hasAds?'MEJORA EXTRA CON VÍDEO':'BONO ALFA · SIN ANUNCIO'):'MEJORA EXTRA CADA 4 COMPRAS';
+  el('bonus-progress').textContent=bonus?'ELIGE SKILL':progress+'/'+BONUS_EVERY;
+  for(const key of ['power','swing','reflex']){
+   const lvl=this.save.levels[key],cost=upgradeCost(lvl,key),affordable=cost<=this.save.coins;
+   const button=el('up-'+key),free=bonus&&!this.rewardPending;
+   el('level-'+key).textContent='NIV. '+formatInt(lvl);
+   el('cost-'+key).textContent=free?'+1 NIVEL':formatInt(cost);
+   el('buy-label-'+key).textContent=this.rewardPending?'ESPERA':free?(hasAds?'VER VÍDEO':'BONO GRATIS'):affordable?'MEJORAR':'SIN MONEDAS';
+   button.classList.toggle('is-affordable',!bonus&&affordable&&!this.rewardPending);
+   button.classList.toggle('is-bonus',free);
+   button.classList.toggle('is-locked',!free&&!affordable);
+   button.disabled=this.rewardPending||(!bonus&&!affordable);
+   button.setAttribute('aria-label',key+' nivel '+lvl+', '+(free?'mejora extra '+(hasAds?'con vídeo':'gratis en alfa'):affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
+  }
  }
  toast(s){el('toast').textContent=s;el('toast').classList.add('show');this.toastTimer=1.85;this.toastText=s}
  onAction(){if(!el('welcome').hidden||!el('shop').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.swingBat(false);}

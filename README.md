@@ -31,15 +31,15 @@ npm run check
 npm test
 ```
 
-## Publicación mediante GitHub Actions
+## Publicar en GitHub Pages
 
-Repositorio: https://github.com/almaprintes/home-run-beyond
+1. Crea un repositorio nuevo (nombre recomendado: `home-run-beyond`, separado de otros juegos).
+2. Sube **todo el contenido de esta carpeta a la raíz de `main`**, incluida `.github/workflows/pages.yml`.
+3. En GitHub → Settings → Pages → Build and deployment, elige **GitHub Actions** como origen.
+4. Verifica en **Actions** que pasan los trabajos `validate` y `publish`.
+5. Abre `https://<usuario>.github.io/home-run-beyond/` desde el iPhone y añade el sitio a la pantalla de inicio.
 
-Cada nuevo commit en `main` inicia el workflow `.github/workflows/pages.yml`, que comprueba el código y publica la PWA con GitHub Pages. Para la primera publicación, configura **Settings → Pages → Build and deployment → Source: GitHub Actions** si aún no está seleccionada. Verifica el estado de cada ejecución en https://github.com/almaprintes/home-run-beyond/actions.
-
-Cuando el trabajo `publish` termine correctamente, la dirección será https://almaprintes.github.io/home-run-beyond/ . Para instalar en iPhone, usa Safari → Compartir → Añadir a pantalla de inicio.
-
-No se usa Vercel en este proyecto.
+No se usa Vercel; el flujo de publicación principal es GitHub Actions.
 
 ## Arquitectura
 
@@ -63,3 +63,9 @@ No se usa Vercel en este proyecto.
 ## Privacidad
 
 Sin trackers, cookies de analítica, servidor de cuentas ni SDK publicitario. Los progresos se conservan solamente en el navegador. Borra los datos del sitio para reiniciar. No necesita cámara, micrófono ni localización.
+
+## Mejoras y recompensas (alfa 0.2)
+
+El panel de resultado se presenta en una tarjeta compacta, sin oscurecer la pantalla de forma invasiva. Las tres tarjetas de habilidades destacan con borde dorado si son comprables, gris si no hay monedas y verde al estar disponible un bonus extra. Cada **cuatro mejoras pagadas** se desbloquea una **mejora adicional** en la habilidad que elija el jugador, y se conserva en el guardado local. Los jugadores de la versión anterior reciben el bonus que les corresponda por sus niveles ya adquiridos.
+
+**Publicidad recompensada:** el juego está preparado para conectar el adaptador `src/rewarded.js` con un proveedor. Cuando ese adaptador existe se debe comprobar la confirmación `rewarded:true` antes de aplicar el beneficio. Mientras no haya proveedor publicitario, se muestra claramente «BONO ALFA · SIN ANUNCIO» y se regala el nivel. No hay anuncios simulados, SDKs ni seguimiento comercial en esta versión.

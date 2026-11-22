@@ -5,10 +5,10 @@ root=Path(__file__).resolve().parents[1]
 html=(root/'index.html').read_text()
 css=(root/'style.css').read_text()
 js=''
-for name in ['engine','world','logic','audio','game']:
+for name in ['engine','world','logic','audio','rewarded','game']:
  source=(root/'src'/f'{name}.js').read_text()
  source=re.sub(r'^import .*?;\s*$', '', source, flags=re.M)
- source=re.sub(r'\bexport (const|class|function)\b',r'\1',source)
+ source=re.sub(r'\bexport (async function|const|class|function)\b',r'\1',source)
  js+='\n'+source
 js+='\nconst game = new BaseballGame();window.hrbDebug={game,renderer:game.renderer};'
 # La edición de un solo archivo no registra un SW inexistente ni exige conexión.

@@ -31,3 +31,14 @@ test('panel táctil de mejoras por delante de la capa de resultados',()=>{
   assert.match(upgrades,/pointer-events:\s*auto/);
   assert.match(button,/touch-action:\s*manipulation/);
 });
+
+test('resultados compactos y los botones comprables se destacan',()=>{
+  const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(css,/\.result\{top:calc\(105px/);
+  assert.match(css,/\.result\{[^}]*pointer-events:none/);
+  assert.match(css,/\.upgrade\.is-affordable\{/);
+  assert.match(css,/\.upgrade\.is-bonus\{/);
+  assert.match(html,/id="bonus-track"/);
+  assert.match(html,/id="buy-label-reflex"/);
+});
