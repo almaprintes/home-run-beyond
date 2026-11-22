@@ -84,6 +84,6 @@ test('el juego actualiza el giro una vez por fotograma, y la alternativa 3D tamb
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  assert.match(game,/initBallSpin\(b\)/);
  assert.match(game,/onSpinImpact\(b,n,mat\)/);
- assert.match(game,/advanceBallSpin\(this\.ball,dt,!!this\.ball\.spinContact\)/);
+ assert.match(game,/integratePhysicalSpin\(b,prev,dt,touching/);
  assert.match(world,/drawBaseball\(r,b\.x,b\.y,b\.z,b\.spin\?\.angle\|\|0\)/);
 });

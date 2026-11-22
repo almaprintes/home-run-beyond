@@ -64,7 +64,7 @@ test('control de pulsación larga y liberación con captura táctil',()=>{
  assert.match(html,/id="aim-feedback"/);
  assert.match(html,/id="pitch-touch-label"/);
  assert.match(css,/\.pitch-surface\{touch-action:none\}/);
- assert.match(game,/setPointerCapture\(e.pointerId\)/);
+ assert.match(game,/setPointerCapture\?\.\(e.pointerId\)/);
  assert.match(game,/window.addEventListener\('pointerup',release\)/);
 });
 

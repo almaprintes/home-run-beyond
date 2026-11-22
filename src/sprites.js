@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.17.0';
-import {surfaceBelowBall} from './world.js?v=0.17.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.17.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.18.0';
+import {surfaceBelowBall} from './world.js?v=0.18.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.18.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -39,6 +39,32 @@ export function projectToScreen(camera,target,point,width,height,fov=62){
  if(!Number.isFinite(p[3])||p[3]<=.01)return null;
  const nx=p[0]/p[3],ny=p[1]/p[3];
  return {x:(nx+1)*.5*width,y:(1-ny)*.5*height,w:p[3]};
+}
+
+// The approved 2D baseball art is projected in small curved bands while rolling.
+// This moves the stitches over the round silhouette instead of rotating a flat coin.
+// Only one small sprite is processed; no added downloads or 3D asset substitution.
+export function drawSpinningBaseball(ctx,image,size,spin){
+ const angle=spin?.angle??0,radius=size*.5;
+ const width=image?.naturalWidth||0,height=image?.naturalHeight||0;
+ if(!spin?.contact||!ctx.clip||!width||!height){
+  ctx.rotate(angle);ctx.drawImage(image,-radius,-radius,size,size);
+  return;
+ }
+ const lines=20,strip=size/lines;
+ ctx.save();
+ ctx.rotate(Number.isFinite(spin.rollHeading)?spin.rollHeading:0);
+ ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.clip();
+ ctx.fillStyle='#fffdf5';ctx.fillRect(-radius,-radius,size,size);
+ for(let i=0;i<lines;i++){
+  const u=Math.max(-.98,Math.min(.98,(i+.5)/lines*2-1));
+  const latitude=Math.asin(u);
+  // Rotation around the axis perpendicular to ground movement.
+  const ySample=.5+.45*Math.sin(latitude-(spin.rollAngle??angle));
+  const srcY=Math.max(0,Math.min(height-3,Math.floor(ySample*(height-2))));
+  ctx.drawImage(image,0,srcY,width,3,-radius,-radius+strip*i,size,strip+1);
+ }
+ ctx.restore();
 }
 
 export class BatterSprites{
@@ -145,10 +171,7 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
-    // Giro físico real: costuras visibles en vuelo, rebote, retroceso y rodadura.
-    // Conservamos exactamente el arte de la pelota aprobado.
-    ctx.rotate(b.spin?.angle??0);
-    ctx.drawImage(this.images.ball,-size*.5,-size*.5,size,size);
+    drawSpinningBaseball(ctx,this.images.ball,size,b.spin);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);
     if(impact>0&&typeof ctx.stroke==='function'){
