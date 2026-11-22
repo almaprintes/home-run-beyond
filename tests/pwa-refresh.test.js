@@ -13,10 +13,10 @@ test('la versión 0.13 evita cachear CSS y JavaScript viejos bajo la misma URL',
  for(const src of ['game.js','world.js','sprites.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.23.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.24.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v23-20261122-single-aim-arrow/);
+ assert.match(sw,/hrb-v24-20261122-fixed-arrow-rolling/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.doesNotMatch(sw,/caches\.match\(e\.request\)\.then\(c=>c\|\|fetch/);
  assert.match(sw,/caches\.match\(request\)/);

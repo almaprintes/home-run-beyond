@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BALL_RADIUS,initBallSpin,integratePhysicalSpin,onSpinImpact,rotateQuaternion,spinQuaternion,advanceVisualSpin,SPIN_GRIP} from '../src/ball-spin.js';
 import {drawSpinningBaseball,shadeRollingSurface,BALL_SURFACE_SIZE} from '../src/sprites.js';
-import {BaseballGame} from '../src/game.js';
+import {BaseballGame,groundRollRetention} from '../src/game.js';
 import {groundAt} from '../src/world.js';
 
 test('el giro de rodadura mide metros recorridos y radio real, no fotogramas',()=>{
@@ -281,4 +281,16 @@ test('un único dedo puede pulsar y soltar desde toda la superficie, incluso si 
   if(priorWindow===undefined)delete globalThis.window;else globalThis.window=priorWindow;
   if(priorLocation===undefined)delete globalThis.location;else globalThis.location=priorLocation;
  }
+});
+
+test('la rodadura final es un poco más larga y el rozamiento es independiente de los FPS',()=>{
+ const grass=groundRollRetention('grass',1);
+ const road=groundRollRetention('road',1);
+ assert.ok(grass>Math.exp(-2.8),'la nueva hierba debe frenar menos que la versión anterior');
+ assert.ok(road>Math.exp(-1.2),'el asfalto también debe permitir algo más de recorrido');
+ assert.ok(road>grass,'el asfalto sigue siendo más deslizante que la hierba');
+ assert.ok(grass>0&&grass<1&&road<1,'hay frenada real, no aceleración infinita');
+ assert.ok(Math.abs(groundRollRetention('grass',.02)**50-grass)<1e-12,
+  'el rozamiento no puede variar con los subpasos físicos');
+ assert.equal(groundRollRetention('grass',0),1);
 });

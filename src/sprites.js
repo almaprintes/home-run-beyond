@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.23.0';
-import {surfaceBelowBall} from './world.js?v=0.23.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.23.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.24.0';
+import {surfaceBelowBall} from './world.js?v=0.24.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.24.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -112,6 +112,21 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
  ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
 }
 
+// La escala se toma de una dirección de referencia FIJA, no de la punta móvil.
+// Así la flecha solo rota y no crece/encoge por la perspectiva del campo.
+export function aimArrowProjection(camera,target,width,height,zoom,angle=0){
+ const base=projectToScreen(camera,target,[-4.5,2.5,-4.7],width,height,zoom);
+ const reference=projectToScreen(camera,target,[-4.5,2.5,26.3],width,height,zoom);
+ const heading=Number.isFinite(angle)?angle:0;
+ const tip=projectToScreen(camera,target,
+  [-4.5+Math.sin(heading)*31,2.5,-4.7+Math.cos(heading)*31],width,height,zoom);
+ if(!base||!reference||!tip)return null;
+ const dx=tip.x-base.x,dy=tip.y-base.y;
+ const fixedLength=Math.hypot(reference.x-base.x,reference.y-base.y);
+ return {x:base.x,y:base.y,rotation:Math.atan2(dx,-dy),
+  heightPx:Math.max(150,Math.min(height*.39,fixedLength*1.45))};
+}
+
 export class BatterSprites{
  constructor(canvas){
   this.canvas=canvas;
@@ -181,21 +196,14 @@ export class BatterSprites{
     ctx.restore();
    }
   }
-  // Una sola flecha azul aprobada, no tres recortes estáticos ni brújula.
-  // Su BASE permanece en el punto de bateo; únicamente la punta oscila.
+  // Una sola flecha azul que gira en torno a una base fija sin cambiar de tamaño.
   if(game.state==='aiming'&&this.images['aim-center']){
-   const base=projectToScreen(camera,target,[-4.5,2.5,-4.7],width,height,zoom);
-   const angle=Number.isFinite(game.aimAngle)?game.aimAngle:0;
-   const tip=projectToScreen(camera,target,
-    [-4.5+Math.sin(angle)*31,2.5,-4.7+Math.cos(angle)*31],width,height,zoom);
-   if(base&&tip){
-    const dx=tip.x-base.x,dy=tip.y-base.y;
-    const rotation=Math.atan2(dx,-dy);
+   const pose=aimArrowProjection(camera,target,width,height,zoom,game.aimAngle);
+   if(pose){
     const image=this.images['aim-center'];
-    const heightPx=Math.max(150,Math.min(height*.39,Math.hypot(dx,dy)*1.45));
-    const widthPx=heightPx*(image.naturalWidth/image.naturalHeight);
-    ctx.save();ctx.translate(base.x,base.y);ctx.rotate(rotation);
-    ctx.drawImage(image,-widthPx*.5,-heightPx,widthPx,heightPx);ctx.restore();
+    const widthPx=pose.heightPx*(image.naturalWidth/image.naturalHeight);
+    ctx.save();ctx.translate(pose.x,pose.y);ctx.rotate(pose.rotation);
+    ctx.drawImage(image,-widthPx*.5,-pose.heightPx,widthPx,pose.heightPx);ctx.restore();
    }
   }
   game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);

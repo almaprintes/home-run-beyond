@@ -1,13 +1,19 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.23.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.23.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.23.0';
-import {GameAudio} from './audio.js?v=0.23.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.23.0';
-import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.23.0';
-import {BatterSprites} from './sprites.js?v=0.23.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.23.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.23.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.24.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.24.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.24.0';
+import {GameAudio} from './audio.js?v=0.24.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.24.0';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.24.0';
+import {BatterSprites} from './sprites.js?v=0.24.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.24.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.24.0';
 const el=id=>document.getElementById(id);
+// Rozamiento continuo por segundo: una cola de rodadura algo más larga,
+// independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
+export function groundRollRetention(type,dt){
+ const friction=type==='road'?1.05:2.05;
+ return Math.exp(-friction*Math.max(0,Number(dt)||0));
+}
 export class BaseballGame{
  constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.impactFX=new ImpactEffects();this.contactHold=0;this.visualSwingElapsed=0;this.fxCamera=null;this.rewardPending=false;
  try{this.save=sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY)))}catch{this.save=initialSave()}
@@ -226,7 +232,7 @@ export class BaseballGame{
      this.emitCollision(type,{x:b.x,y:b.y,z:b.z},normalImpact,{x:0,y:1,z:0});
     }else{
      b.vy=0;
-     const drag=Math.exp(-(type==='road'?1.2:2.8)*dt);
+     const drag=groundRollRetention(type,dt);
      b.vz*=drag;b.vx*=drag;
      touching=true;
     }

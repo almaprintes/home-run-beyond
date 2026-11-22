@@ -4,6 +4,7 @@ import {aimSweep,redirectShot,aimDegrees} from '../src/aiming.js';
 import {calculateShot} from '../src/logic.js';
 import {drawAimArrow} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
+import {aimArrowProjection} from '../src/sprites.js';
 import {readFileSync} from 'node:fs';
 
 test('flecha oscila de izquierda a derecha continuamente',()=>{
@@ -99,4 +100,18 @@ test('el encuadre queda detrás y a la izquierda del bateador',()=>{
  assert.match(game,/desiredTarget=\[-\.8,3\.5,12\]/);
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  assert.match(world,/const tip=\[x\+1\.5-1\.75\*s,8\.10-3\.4\*s/);
+});
+
+test('la flecha conserva escala y pivote al barrer todo su recorrido',()=>{
+ const camera=[-6.7,7.5,-20.5],target=[-.8,3.5,12];
+ const poses=[-.85,-.45,0,.45,.85].map(angle=>
+  aimArrowProjection(camera,target,430,930,62,angle));
+ assert.ok(poses.every(Boolean),'la flecha debe poder proyectarse en todo el barrido');
+ for(const pose of poses){
+  assert.equal(pose.x,poses[0].x,'el pivote horizontal no puede desplazarse');
+  assert.equal(pose.y,poses[0].y,'el pivote vertical no puede desplazarse');
+  assert.equal(pose.heightPx,poses[0].heightPx,'el tamaño no depende del ángulo');
+ }
+ assert.ok(new Set(poses.map(p=>p.rotation.toFixed(4))).size>2,
+  'el indicador sigue rotando mientras mantiene su escala');
 });
