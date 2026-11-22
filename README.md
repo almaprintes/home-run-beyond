@@ -77,3 +77,9 @@ La cámara de bateo está detrás del bateador a altura próxima a la de su cabe
 ## Visibilidad y pelota 0.9
 
 Los edificios, árboles y estructuras cuya caja espacial corte la línea de visión entre la cámara y la pelota se dibujan translúcidos durante el vuelo. El motor tiene tres capas: geometría opaca, obstáculos semitransparentes y una pasada final de profundidad reservada al béisbol, por lo que el balón no desaparece aunque la cámara quede dentro de un edificio. La pelota se genera con una esfera 3D de mayor resolución, costuras curvas rojas y puntadas procedurales (sin texturas ni archivos externos). Los obstáculos conservan sus colisiones originales. La caché de la PWA cambia de versión sin alterar el guardado local.
+
+## Arte aprobado del bateador (v0.11)
+
+Se han integrado recortes **de las láminas aprobadas por el creador**, sin generar otro personaje. Se dibujan como sprites con transparencia y proyección sobre el campo 3D (representación **2.5D**, no se presentan falsamente como archivos de modelos 3D esqueléticos). El movimiento selecciona ocho poses: ready, watch, loaded, aim-left, aim-center, aim-right, contact y follow. La pelota y las tres flechas usan también sus recortes del tablero original. Las láminas completas de personaje, animación y recursos permanecen en `assets/reference/` para la futura producción de mallas animadas.
+
+La cámara y la posición de los sprites se proyectan usando las mismas matrices que el mundo WebGL; el impacto y la bola del pitcher comparten el punto de contacto real (aprox. x=0, z=-4.7). La ruta alternativa de primitivas procedurales se mantiene únicamente si los recortes gráficos no cargan. La caché de la PWA incorpora todos los sprites y el guardado de monedas/niveles no se toca.

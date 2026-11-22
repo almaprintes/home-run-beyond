@@ -4,12 +4,15 @@ import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCre
 import {GameAudio} from './audio.js';
 import {hasRewardedAds,showRewardedAd} from './rewarded.js';
 import {aimSweep,redirectShot,aimDegrees} from './aiming.js';
+import {BatterSprites} from './sprites.js';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
  constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
  try{this.save=sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY)))}catch{this.save=initialSave()}
  this.audio.enabled=this.save.sound;this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
  try{this.renderer=new Renderer(el('world'))}catch(e){console.warn('WebGL2 no disponible; utilizando reserva gráfica 2D',e);this.renderer=new CanvasRenderer(el('world'))}this.renderer.game=this;
+ this.spriteReady=false;this.sprites=new BatterSprites(el('character-overlay'));
+ this.sprites.load().then(ok=>{this.spriteReady=ok}).catch(err=>console.warn('Bateador 2.5D no disponible',err));
  this.initUI();this.drawUI();this.showIntro();requestAnimationFrame(now=>this.frame(now));}
  persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(this.save))}catch(e){if(e?.name!=='SecurityError')console.warn('No se pudo guardar el progreso',e)}}
  initUI(){const click=(id,fn)=>el(id).addEventListener('click',e=>{e.preventDefault();fn(e)});
@@ -111,7 +114,7 @@ export class BaseballGame{
   this.state='aiming';this.aimElapsed=0;this.aimAngle=0;this.swing=.42;
   el('app').classList.add('aiming');el('aim-feedback').hidden=false;
   el('locked-quality').textContent=qualityNames[this.pendingShot.quality];
-  el('aim-heading').textContent='0°';el('aim-compass').hidden=false;el('aim-vector').textContent='RECTO';el('aim-pointer').style.left='50%';el('aim-pointer').style.transform='translate(-50%,-50%) rotate(-90deg)';
+  el('aim-heading').textContent='0°';el('aim-compass').hidden=false;el('aim-vector').textContent='RECTO';el('aim-pointer').style.left='50%';el('aim-pointer').src='./assets/aim-center.webp';el('aim-pointer').style.transform='translate(-50%,-50%)';
   el('pitch-touch-label').textContent='SUELTA PARA FIJAR DIRECCIÓN';
   el('aim').hidden=true;el('region').textContent='DIRECCIÓN DEL BATAZO';
  }
@@ -125,7 +128,7 @@ export class BaseballGame{
   el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;
   this.audio.swing();
  }
- launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-2.3,y:2.2,z:0,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:0,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  simulateStep(dt){
   const b=this.ball;
@@ -227,7 +230,10 @@ export class BaseballGame{
    el('aim-heading').textContent=aimDegrees(this.aimAngle);
    const value=this.aimAngle*180/Math.PI;
    el('aim-pointer').style.left=(50-value/52*45)+'%';
-   el('aim-pointer').style.transform='translate(-50%,-50%) rotate('+(-90-value).toFixed(2)+'deg)';
+   const direction=value>8?'left':value< -8?'right':'center';
+   const asset='./assets/aim-'+direction+'.webp';
+   if(el('aim-pointer').getAttribute('src')!==asset)el('aim-pointer').setAttribute('src',asset);
+   el('aim-pointer').style.transform='translate(-50%,-50%)';
    el('aim-vector').textContent=Math.abs(value)<5?'RECTO':value>0?'HACIA LA IZQUIERDA':'HACIA LA DERECHA';
  }
  if(this.state==='swinging'){this.swingElapsed+=dt;this.swing=.42+.58*clamp(this.swingElapsed/.17,0,1);if(this.swingElapsed>=.12)this.launch()}
@@ -249,7 +255,7 @@ export class BaseballGame{
   }
  }
  const smooth=1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
- this.renderer.fogDistance=flight&&this.camera[1]>350?1700:580;drawWorld(this.renderer,this.camera,this);if(this.shake>0){this.shake=Math.max(0,this.shake-dt);const j=this.shake*5;this.camera[0]+=Math.sin(this.clock*93)*j;this.camera[1]+=Math.cos(this.clock*111)*j*.44;}this.renderer.render(this.camera,this.target,zoom);
+ this.renderer.fogDistance=flight&&this.camera[1]>350?1700:580;drawWorld(this.renderer,this.camera,this);if(this.shake>0){this.shake=Math.max(0,this.shake-dt);const j=this.shake*5;this.camera[0]+=Math.sin(this.clock*93)*j;this.camera[1]+=Math.cos(this.clock*111)*j*.44;}this.renderer.render(this.camera,this.target,zoom);this.sprites?.draw(this,zoom);
  }
  frame(now){if(this.stopped){this.last=now;requestAnimationFrame(t=>this.frame(t));return}const dt=this.last?clamp((now-this.last)/1000,0,.048):.016;this.last=now;this.frames++;this.fpsClock+=dt;this.qualityClock+=dt;
  if(this.fpsClock>1.4){this.fps=Math.round(this.frames/this.fpsClock);el('fps').textContent=this.fps+' FPS';this.fpsClock=0;this.frames=0}

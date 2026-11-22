@@ -17,9 +17,10 @@
 <body>
 <div id="app">
   <canvas id="world" aria-label="Escenario 3D de béisbol con estadio y ciudad"></canvas>
+  <canvas id="character-overlay" aria-hidden="true"></canvas>
   <div id="vignette"></div>
   <header id="hud" class="layer">
-    <div class="brand"><span class="brand-mark">⚾</span><span>HOME RUN<small>BEYOND</small></span></div>
+    <div class="brand"><span class="brand-mark"><img class="brand-baseball" src="./assets/baseball.webp" alt=""/></span><span>HOME RUN<small>BEYOND</small></span></div>
     <div class="cash"><span class="coin">✦</span><span id="money">0</span><button id="shop-open" class="plus" aria-label="Tienda">＋</button></div>
   </header>
   <div class="layer run-info" id="run-info">
@@ -46,7 +47,7 @@
       <span class="aim-edge">↖</span>
       <span class="aim-straight">RECTO</span>
       <span class="aim-edge">↗</span>
-      <span id="aim-pointer" class="aim-pointer">➤</span>
+      <img id="aim-pointer" class="aim-pointer" src="./assets/aim-center.webp" alt=""/>
     </div>
     <strong id="aim-vector">RECTO</strong>
   </div>

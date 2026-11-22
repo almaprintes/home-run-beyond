@@ -259,8 +259,8 @@ export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
  r.ball(tip[0],tip[1],tip[2],.71,batColor);
  r.box(hand[0],hand[1]-.13,hand[2],.46,.19,.46,'#d8b484');
 }
-export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e'){
- drawBatter(r,-2.3,-5,swingProgress,batColor);
+export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',hideBatter=false){
+ if(!hideBatter)drawBatter(r,-2.3,-5,swingProgress,batColor);
  person(r,0,21,'pitcher',throwProgress*3,false);
  if(throwProgress>0 && throwProgress<1){
   const t=throwProgress,z=20.5-25.4*t,y=2.5+.35*Math.sin(t*PI);
@@ -316,12 +316,12 @@ export function drawBaseball(r,x,y,z,spin=0){
 export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
- drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor);
- if(game.state==='aiming'||game.state==='swinging')drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
+ drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor,!!game.spriteReady);
+ if((game.state==='aiming'||game.state==='swinging')&&!game.spriteReady)drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}
   for(let i=6;i>=1;i--){let q=(i/6)*.07;const xx=b.x-b.vx*q,yy=b.y-b.vy*q+.5*9.81*q*q,zz=b.z-b.vz*q;const ss=1.5*(1-i/8);r.ball(xx,Math.max(.4,yy),zz,ss,i>3?'#ffc58e':'#fcead2')}
-  drawBaseball(r,b.x,b.y,b.z,(game.clock||0)*2.5);
+  if(!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,(game.clock||0)*2.5);
  }
 }

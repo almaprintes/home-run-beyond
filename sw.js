@@ -1,5 +1,11 @@
-const CACHE='hrb-v10-20261122-batter-camera-visible-direction';
-const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/engine.js','./src/world.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='hrb-v11-20261122-approved-art-sprites';
+const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/engine.js','./src/world.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js',
+ './assets/baseball.webp','./assets/aim-left.webp','./assets/aim-center.webp','./assets/aim-right.webp',
+ './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
+ './assets/batter/ready.webp','./assets/batter/watch.webp','./assets/batter/loaded.webp',
+ './assets/batter/aim-left.webp','./assets/batter/aim-center.webp','./assets/batter/aim-right.webp',
+ './assets/batter/contact.webp','./assets/batter/follow.webp',
+ './icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 // Las navegaciones usan la red primero para no dejar una versión antigua instalada en iOS.
