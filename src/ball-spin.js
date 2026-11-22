@@ -2,6 +2,26 @@
 // Se integra una vez por fotograma real, no en los subpasos acelerados del vuelo.
 const TAU=Math.PI*2;
 export const BALL_RADIUS=1.45;
+export function rotateQuaternion(q,v){
+ const [x,y,z,w]=q;
+ const tx=2*(y*v[2]-z*v[1]),ty=2*(z*v[0]-x*v[2]),tz=2*(x*v[1]-y*v[0]);
+ return [v[0]+w*tx+y*tz-z*ty,v[1]+w*ty+z*tx-x*tz,v[2]+w*tz+x*ty-y*tx];
+}
+export function spinQuaternion(spin,axis,angle){
+ if(!spin||!Number.isFinite(angle)||Math.abs(angle)<1e-12)return;
+ const n=Math.hypot(...axis);if(n<1e-9)return;
+ const half=angle*.5,s=Math.sin(half)/n,c=Math.cos(half);
+ const [ax,ay,az]=axis,q=spin.orientation||[0,0,0,1];
+ // The rotation axis belongs to the WORLD; pre-multiplication is required.
+ const dx=ax*s,dy=ay*s,dz=az*s;
+ const x=c*q[0]+dx*q[3]+dy*q[2]-dz*q[1];
+ const y=c*q[1]-dx*q[2]+dy*q[3]+dz*q[0];
+ const z=c*q[2]+dx*q[1]-dy*q[0]+dz*q[3];
+ const w=c*q[3]-dx*q[0]-dy*q[1]-dz*q[2];
+ const d=Math.hypot(x,y,z,w)||1;
+ spin.orientation=[x/d,y/d,z/d,w/d];
+}
+
 export function spinTarget(ball,contact=false){
  const vx=Number(ball?.vx)||0,vz=Number(ball?.vz)||0;
  const planar=Math.hypot(vx,vz);
@@ -15,7 +35,7 @@ export function spinTarget(ball,contact=false){
 export function initBallSpin(ball){
  if(!ball)return null;
  const rate=spinTarget(ball,false);
- ball.spin={angle:0,tilt:0,rate,contact:false,impacts:0};
+ ball.spin={angle:0,tilt:0,rate,contact:false,impacts:0,orientation:[0,0,0,1]};
  return ball.spin;
 }
 export function onSpinImpact(ball,normal={x:0,y:1,z:0},material='solid'){
@@ -44,6 +64,9 @@ export function advanceBallSpin(ball,dt,contact=false){
  spin.rate+=(target-spin.rate)*(1-Math.exp(-step*responsiveness));
  // Siempre avanza con tiempo real, incluso con simulación acelerada 22×.
  spin.angle=(spin.angle+spin.rate*step)%TAU;
+ // Airborne backspin about the horizontal axis perpendicular to travel.
+ const vx=Number(ball.vx)||0,vz=Number(ball.vz)||0;
+ spinQuaternion(spin,[vz,0,-vx],-Math.abs(spin.rate)*step);
  spin.tilt=(spin.tilt+Math.min(4,Math.abs(spin.rate)*.24)*step)%TAU;
  spin.contact=!!contact;
  return spin;
@@ -73,6 +96,9 @@ export function integratePhysicalSpin(ball,previous,dt,contact=false,material='g
  spin.contact=true;
  spin.rollAngle=(spin.rollAngle||0)+delta;
  spin.rollHeading=Math.atan2(dx,dz);
+ // Actual contact with the ground: world axis = up × displacement.
+ // A forward roll therefore goes over the top; sideways travel rolls sideways.
+ spinQuaternion(spin,[dz,0,-dx],distance*traction/radius);
  spin.tilt=(spin.tilt+.15*delta)%(2*Math.PI);
  return spin;
 }

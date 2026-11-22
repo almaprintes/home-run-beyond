@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.18.0';
-import {surfaceBelowBall} from './world.js?v=0.18.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.18.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.19.0';
+import {surfaceBelowBall} from './world.js?v=0.19.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.19.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -41,30 +41,75 @@ export function projectToScreen(camera,target,point,width,height,fov=62){
  return {x:(nx+1)*.5*width,y:(1-ny)*.5*height,w:p[3]};
 }
 
-// The approved 2D baseball art is projected in small curved bands while rolling.
-// This moves the stitches over the round silhouette instead of rotating a flat coin.
-// Only one small sprite is processed; no added downloads or 3D asset substitution.
-export function drawSpinningBaseball(ctx,image,size,spin){
- const angle=spin?.angle??0,radius=size*.5;
- const width=image?.naturalWidth||0,height=image?.naturalHeight||0;
- if(!spin?.contact||!ctx.clip||!width||!height){
-  ctx.rotate(angle);ctx.drawImage(image,-radius,-radius,size,size);
-  return;
+// Inverse projection of the original approved baseball image onto a rotating
+// sphere. Rolling uses the WORLD axis (up × ground motion), projected into the
+// CURRENT camera: a forward roll cannot look like a sideways coin spin.
+export const BALL_SURFACE_SIZE=64;
+export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE){
+ const view=lookAt(camera,target),qu=spin?.orientation||[0,0,0,1];
+ const qx=-qu[0],qy=-qu[1],qz=-qu[2],qw=qu[3];
+ const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
+       xt=view[2],yt=view[6],zt=view[10];
+ for(let row=0;row<size;row++){
+  const screenY=1-2*(row+.5)/size;
+  for(let col=0;col<size;col++){
+   const screenX=2*(col+.5)/size;
+   const rr=screenX*screenX+screenY*screenY;
+   const dest=(row*size+col)*4;
+   if(rr>=1){output[dest+3]=0;continue}
+   const screenZ=Math.sqrt(1-rr);
+   const wx=xr*screenX+xu*screenY+xt*screenZ,
+         wy=yr*screenX+yu*screenY+yt*screenZ,
+         wz=zr*screenX+zu*screenY+zt*screenZ;
+   // Inverse quaternion rotates the visible world-facing normal to the
+   // baseball's original pose (no allocations in the per-pixel loop).
+   const cx=2*(qy*wz-qz*wy),cy=2*(qz*wx-qx*wz),cz=2*(qx*wy-qy*wx);
+   const ox=wx+qw*cx+qy*cz-qz*cy;
+   const oy=wy+qw*cy+qz*cx-qx*cz;
+   const oz=wz+qw*cz+qx*cy-qy*cx;
+   // Original 2D baseball supplied by the creator forms the visible half;
+   // mirror it for the hidden half, keeping the approved seams/colour.
+   const u=.5+.47*ox*(oz<0?-1:1);
+   const v=.5-.47*oy;
+   const ix=Math.max(0,Math.min(w-1,Math.round(u*(w-1))));
+   const iy=Math.max(0,Math.min(h-1,Math.round(v*(h-1))));
+   const src=(iy*w+ix)*4;
+   output[dest]=source[src];output[dest+1]=source[src+1];
+   output[dest+2]=source[src+2];
+   output[dest+3]=source[src+3]*Math.min(1,(1-rr)*45);
+  }
  }
- const lines=20,strip=size/lines;
- ctx.save();
- ctx.rotate(Number.isFinite(spin.rollHeading)?spin.rollHeading:0);
- ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.clip();
- ctx.fillStyle='#fffdf5';ctx.fillRect(-radius,-radius,size,size);
- for(let i=0;i<lines;i++){
-  const u=Math.max(-.98,Math.min(.98,(i+.5)/lines*2-1));
-  const latitude=Math.asin(u);
-  // Rotation around the axis perpendicular to ground movement.
-  const ySample=.5+.45*Math.sin(latitude-(spin.rollAngle??angle));
-  const srcY=Math.max(0,Math.min(height-3,Math.floor(ySample*(height-2))));
-  ctx.drawImage(image,0,srcY,width,3,-radius,-radius+strip*i,size,strip+1);
+ return output;
+}
+
+export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null,cache=null){
+ const radius=size*.5;
+ if(spin?.orientation&&camera&&target&&cache&&typeof document!=='undefined'&&
+    typeof image?.naturalWidth==='number'&&image.naturalWidth>0){
+  try{
+   if(cache.image!==image){
+    const srcCanvas=document.createElement('canvas');
+    srcCanvas.width=image.naturalWidth;srcCanvas.height=image.naturalHeight;
+    const srcCtx=srcCanvas.getContext('2d',{willReadFrequently:true});
+    srcCtx.drawImage(image,0,0);
+    const outCanvas=document.createElement('canvas');
+    outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
+    const outCtx=outCanvas.getContext('2d');
+    cache.image=image;cache.source=srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.canvas=outCanvas;cache.context=outCtx;
+    cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
+   }
+   shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
+    spin,camera,target,cache.frame.data);
+   cache.context.putImageData(cache.frame,0,0);
+   ctx.drawImage(cache.canvas,-radius,-radius,size,size);
+   return;
+  }catch(error){
+   // Unsupported/read-protected canvas still shows the original baseball.
+   if(!cache.warned){console.warn('Sprite esférico no disponible',error);cache.warned=true}
+  }
  }
- ctx.restore();
+ ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
 }
 
 export class BatterSprites{
@@ -72,7 +117,7 @@ export class BatterSprites{
   this.canvas=canvas;
   this.ctx=canvas?.getContext?.('2d',{alpha:true})||null;
   this.images={};this.ready=false;this.ballLoaded=false;
-  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;
+  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};
  }
  load(){
   if(!this.ctx||typeof Image==='undefined')return Promise.resolve(false);
@@ -171,7 +216,7 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
-    drawSpinningBaseball(ctx,this.images.ball,size,b.spin);
+    drawSpinningBaseball(ctx,this.images.ball,size,b.spin,camera,target,this.ballSurfaceCache);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);
     if(impact>0&&typeof ctx.stroke==='function'){

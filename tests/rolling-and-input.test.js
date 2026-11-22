@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {BALL_RADIUS,initBallSpin,integratePhysicalSpin,onSpinImpact} from '../src/ball-spin.js';
-import {drawSpinningBaseball} from '../src/sprites.js';
+import {BALL_RADIUS,initBallSpin,integratePhysicalSpin,onSpinImpact,rotateQuaternion,spinQuaternion} from '../src/ball-spin.js';
+import {drawSpinningBaseball,shadeRollingSurface,BALL_SURFACE_SIZE} from '../src/sprites.js';
 import {BaseballGame} from '../src/game.js';
 import {groundAt} from '../src/world.js';
 
@@ -52,21 +52,76 @@ test('agua amortigua el giro y las correcciones de choque no crean giros gigante
  assert.ok(b.spin.rollAngle<.6,'no debe sumar teleport como distancia rodada');
 });
 
-test('la pelota aprobada enseña costuras desplazándose sobre esfera sin aplanarla',()=>{
- const srcRows=[];
- const ctx={save(){},restore(){},beginPath(){},arc(){},clip(){},fillRect(){},rotate(){},
-  drawImage(...args){srcRows.push(args)}};
- const image={naturalWidth:300,naturalHeight:300};
- const b={contact:true,rollAngle:0,angle:0,rollHeading:0};
- drawSpinningBaseball(ctx,image,40,b);
- assert.equal(srcRows.length,20);
- const original=srcRows.map(args=>args[2]);
- srcRows.length=0;
- b.angle=1.3;b.rollAngle=1.3;
- drawSpinningBaseball(ctx,image,40,b);
- assert.equal(srcRows.length,20);
- assert.ok(srcRows.some((args,i)=>args[2]!==original[i]));
- assert.ok(srcRows.every(args=>args[7]>=2&&args[8]>0));
+test('avanzar por +Z rueda sobre el eje horizontal X y no como moneda lateral',()=>{
+ const b={x:0,y:BALL_RADIUS,z:0,vx:0,vy:0,vz:8};
+ initBallSpin(b);
+ b.z=Math.PI*BALL_RADIUS/2;
+ integratePhysicalSpin(b,{x:0,z:0},Math.PI*BALL_RADIUS/16,true,'grass');
+ const top=rotateQuaternion(b.spin.orientation,[0,1,0]);
+ const right=rotateQuaternion(b.spin.orientation,[1,0,0]);
+ assert.ok(top[2]>.999,'el polo superior debe rodar HACIA delante (Z)');
+ assert.ok(Math.abs(top[0])<1e-8,'un avance recto no produce giro lateral');
+ assert.ok(Math.abs(right[0]-1)<1e-8,'el eje transversal se mantiene fijo');
+});
+
+test('desplazamiento lateral X rueda sobre Z, y marcha atrás deshace exactamente el giro',()=>{
+ const b={x:0,y:BALL_RADIUS,z:0,vx:8,vy:0,vz:0};
+ initBallSpin(b);
+ b.x=Math.PI*BALL_RADIUS/2;
+ integratePhysicalSpin(b,{x:0,z:0},Math.PI*BALL_RADIUS/16,true,'grass');
+ const top=rotateQuaternion(b.spin.orientation,[0,1,0]);
+ assert.ok(top[0]>.999,'solo al moverse lateralmente rueda hacia el lado');
+ b.vx=-8;b.x=0;
+ integratePhysicalSpin(b,{x:Math.PI*BALL_RADIUS/2,z:0},Math.PI*BALL_RADIUS/16,true,'grass');
+ const home=rotateQuaternion(b.spin.orientation,[0,1,0]);
+ assert.ok(Math.abs(home[1]-1)<1e-8,'retroceder la misma distancia vuelve a su orientación');
+});
+
+test('el sprite aprobado gira como esfera y conserva sus colores, sin franjas de moneda',()=>{
+ const w=32,h=32,source=new Uint8ClampedArray(w*h*4);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const i=(y*w+x)*4;
+  source[i]=x*7;source[i+1]=y*7;source[i+2]=120;source[i+3]=255;
+ }
+ const cache=new Uint8ClampedArray(BALL_SURFACE_SIZE*BALL_SURFACE_SIZE*4);
+ const b={orientation:[0,0,0,1]};
+ shadeRollingSurface(source,w,h,b,[0,8,-18],[0,3,25],cache);
+ const original=new Uint8ClampedArray(cache);
+ spinQuaternion(b,[1,0,0],Math.PI/2);
+ shadeRollingSurface(source,w,h,b,[0,8,-18],[0,3,25],cache);
+ assert.ok(cache.some((v,i)=>v!==original[i]),'costuras deben cambiar con el giro hacia delante');
+ assert.equal(cache[0+3],0,'imagen esférica tiene fondo transparente');
+ const center=(BALL_SURFACE_SIZE*BALL_SURFACE_SIZE/2+BALL_SURFACE_SIZE/2)*4;
+ assert.equal(cache[center+3],255,'la pelota sigue opaca en su centro');
+});
+
+test('el lienzo iOS usa reproyección esférica 64px con la pelota aprobada',()=>{
+ const before=globalThis.document;
+ const color=new Uint8ClampedArray(16*16*4);
+ color.fill(255);
+ let created=0,uploaded=0,drawn=0,rotated=0;
+ globalThis.document={createElement(){
+  const n=++created;
+  return {width:0,height:0,getContext(){
+   return n===1?{drawImage(){},getImageData:()=>({width:16,height:16,data:color})}:
+   {createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),putImageData(){uploaded++}};
+  }};
+ }};
+ const ctx={drawImage(){drawn++},rotate(){rotated++}};
+ const img={naturalWidth:16,naturalHeight:16};
+ const b={orientation:[0,0,0,1],angle:0};
+ const cache={};
+ try{
+  drawSpinningBaseball(ctx,img,40,b,[0,8,-18],[0,3,25],cache);
+  spinQuaternion(b,[1,0,0],.3);
+  drawSpinningBaseball(ctx,img,40,b,[0,8,-18],[0,3,25],cache);
+  assert.equal(created,2,'caché 2D se crea una sola vez');
+  assert.equal(uploaded,2,'la textura se actualiza con el giro');
+  assert.equal(drawn,2,'una única esfera por fotograma');
+  assert.equal(rotated,0,'no se gira la imagen plana hacia un costado');
+ }finally{
+  if(before===undefined)delete globalThis.document;else globalThis.document=before;
+ }
 });
 
 test('el juego calcula el spin en subpasos físicos, no tras acelerar 22 veces',()=>{
