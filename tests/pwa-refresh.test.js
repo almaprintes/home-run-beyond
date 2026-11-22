@@ -13,7 +13,7 @@ test('la versión 0.13 evita cachear CSS y JavaScript viejos bajo la misma URL',
  for(const src of ['game.js','world.js','sprites.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.22.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.23.0'),src+' importa módulo sin versión: '+path);
   }
  }
  assert.match(sw,/hrb-v23-20261122-single-aim-arrow/);
