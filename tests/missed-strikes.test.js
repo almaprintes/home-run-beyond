@@ -70,37 +70,66 @@ test('contacto bien sincronizado conserva el batazo',()=>withDOM(()=>{
  assert.equal(g.state,'flight');assert.equal(hit(),1);
 }));
 
-test('voz de Strike en inglés, respetando modo silencio',()=>{
- const prevSynth=globalThis.speechSynthesis,prevSpeech=globalThis.SpeechSynthesisUtterance;
- const heard=[],synth={getVoices:()=>[{lang:'en-US'}],cancel(){},speak:call=>heard.push(call)};
- globalThis.speechSynthesis=synth;
- globalThis.SpeechSynthesisUtterance=class{constructor(text){this.text=text}};
+
+test('archivo de voz Strike incluido, legible y MP3 local',()=>{
+ const clip=readFileSync(new URL('../assets/strike.mp3',import.meta.url));
+ assert.equal(clip.toString('ascii',0,3),'ID3');
+ assert.ok(clip.length>1200,'el clip de voz no puede estar vacío');
+ const audio=readFileSync(new URL('../src/audio.js',import.meta.url),'utf8');
+ assert.doesNotMatch(audio,/speechSynthesis|SpeechSynthesisUtterance/);
+ assert.match(audio,/assets\\/strike\\.mp3\\?v=0\\.27\\.0/);
+});
+
+test('preparar voz carga y decodifica una vez, y Strike reproduce el audio con WebAudio',async()=>{
+ const originalFetch=globalThis.fetch;
+ const fetched=[],played=[],decoded=[];
+ globalThis.fetch=async url=>{
+  fetched.push(url);
+  return {ok:true,arrayBuffer:async()=>new ArrayBuffer(400)};
+ };
  try{
-  const audio=new GameAudio();audio.strike();
-  assert.equal(heard.length,1);assert.equal(heard[0].text,'Strike!');
-  assert.equal(heard[0].lang,'en-US');
-  audio.enabled=false;audio.strike();assert.equal(heard.length,1);
+  const audio=new GameAudio();
+  audio.ctx={
+   state:'running',destination:{},
+   decodeAudioData:async data=>{decoded.push(data.byteLength);return {duration:.55}},
+   createBufferSource:()=>({connect(){return this},start(){played.push('strike')}}),
+   createGain:()=>({gain:{value:0},connect(){return this}})
+  };
+  assert.equal(await audio.prepareStrike(),true);
+  assert.equal(await audio.prepareStrike(),true);
+  assert.equal(fetched.length,1);
+  assert.ok(fetched[0].includes('strike.mp3'));
+  assert.equal(decoded.length,1);
+  audio.strike();
+  assert.deepEqual(played,['strike']);
+  audio.enabled=false;audio.strike();
+  assert.deepEqual(played,['strike'],'el silencio del jugador se respeta');
  }finally{
-  if(prevSynth===undefined)delete globalThis.speechSynthesis;else globalThis.speechSynthesis=prevSynth;
-  if(prevSpeech===undefined)delete globalThis.SpeechSynthesisUtterance;else globalThis.SpeechSynthesisUtterance=prevSpeech;
+  if(originalFetch===undefined)delete globalThis.fetch;else globalThis.fetch=originalFetch;
  }
 });
 
-test('el primer gesto prepara la voz iOS de manera muda; luego se pronuncia Strike',()=>{
- const oldSynth=globalThis.speechSynthesis,oldSpeech=globalThis.SpeechSynthesisUtterance;
- const heard=[];
- globalThis.speechSynthesis={getVoices:()=>[],speak:p=>heard.push(p),cancel(){}};
- globalThis.SpeechSynthesisUtterance=class{constructor(text){this.text=text}};
+test('si la voz se carga tarde, el strike pendiente suena tras la decodificación',async()=>{
+ const oldFetch=globalThis.fetch;
+ let finishFetch;
+ globalThis.fetch=()=>new Promise(resolve=>{finishFetch=resolve});
  try{
-  const a=new GameAudio();
-  a.unlockSpeech();a.unlockSpeech();
-  assert.equal(heard.length,1,'el desbloqueo debe ejecutarse una sola vez');
-  assert.equal(heard[0].text,'');
-  assert.equal(heard[0].volume,0);
-  a.strike();
-  assert.equal(heard[1].text,'Strike!');
+  const played=[];
+  const audio=new GameAudio();
+  audio.ctx={
+   state:'running',destination:{},
+   decodeAudioData:async()=>({duration:.55}),
+   createBufferSource:()=>({connect(){return this},start(){played.push(1)}}),
+   createGain:()=>({gain:{value:0},connect(){return this}})
+  };
+  audio.strike();
+  assert.equal(audio.pendingStrike,true);
+  assert.equal(played.length,0);
+  finishFetch({ok:true,arrayBuffer:async()=>new ArrayBuffer(20)});
+  await audio.strikeLoad;
+  assert.deepEqual(played,[1],'debe decir Strike incluso con carga tardía');
+  assert.equal(audio.pendingStrike,false);
  }finally{
-  if(oldSynth===undefined)delete globalThis.speechSynthesis;else globalThis.speechSynthesis=oldSynth;
-  if(oldSpeech===undefined)delete globalThis.SpeechSynthesisUtterance;else globalThis.SpeechSynthesisUtterance=oldSpeech;
+  if(oldFetch===undefined)delete globalThis.fetch;else globalThis.fetch=oldFetch;
  }
 });

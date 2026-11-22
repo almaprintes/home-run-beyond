@@ -1,12 +1,12 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.26.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.26.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.26.0';
-import {GameAudio} from './audio.js?v=0.26.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.26.0';
-import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.26.0';
-import {BatterSprites} from './sprites.js?v=0.26.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.26.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.26.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.27.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.27.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.27.0';
+import {GameAudio} from './audio.js?v=0.27.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.27.0';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.27.0';
+import {BatterSprites} from './sprites.js?v=0.27.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.27.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.27.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -105,7 +105,7 @@ export class BaseballGame{
  onAction(){if(!el('welcome').hidden||!el('shop').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false);}
 
  startPitch(){
-  this.audio?.unlockSpeech?.();
+  this.audio?.prepareStrike?.();
   this.state='pitching';this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;
   this.strikeCalled=false;this.swingElapsed=0;this.visualSwingElapsed=0;
   el('app').classList.remove('resting','aiming');el('again').hidden=true;

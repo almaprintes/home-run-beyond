@@ -1,4 +1,4 @@
-import {BaseballGame} from './game.js?v=0.26.0';
+import {BaseballGame} from './game.js?v=0.27.0';
 const game=new BaseballGame();
 // Exponer diagnóstico en ?debug=1 para pruebas, sin contaminar el modo jugador.
 if(new URLSearchParams(location.search).has('debug'))window.hrbDebug={game,shot:()=>game.onAction(),levels:game.save.levels,renderer:game.renderer};

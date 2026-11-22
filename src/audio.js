@@ -55,7 +55,10 @@ export function synthImpulse(kind='bat',rate=22050){
  return a;
 }
 export class GameAudio{
- constructor(){this.ctx=null;this.enabled=true;this.buffers=new Map();this.lastImpactAt=-1e9;this.variant=0}
+ constructor(){
+  this.ctx=null;this.enabled=true;this.buffers=new Map();this.lastImpactAt=-1e9;this.variant=0;
+  this.strikeBuffer=null;this.strikeLoad=null;this.pendingStrike=false;
+ }
  init(){if(!this.enabled)return;try{this.ctx??=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume()}catch{}}
  tone(hz,duration=.15,type='sine',volume=.14,offset=0,slide=0){
   if(!this.enabled)return;this.init();if(!this.ctx)return;
@@ -86,34 +89,57 @@ export class GameAudio{
  hit(q){this.sound('bat',q==='perfect'?.38:q==='excellent'?.32:q==='good'?.26:.16)}
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  miss(){this.sound('swing',.09)}
- unlockSpeech(){
-  // Safari iOS exige que la primera locución se solicite desde un gesto.
-  // Una locución vacía y muda prepara el narrador durante el toque inicial.
-  if(!this.enabled||this.speechUnlocked)return;
+ // Voz grabada localmente: en iOS no dependemos de speechSynthesis.
+ // Comparte AudioContext con los efectos del bate, y se precarga al tocar jugar.
+ prepareStrike(){
+  if(!this.enabled)return Promise.resolve(false);
+  this.init();
+  if(this.strikeBuffer)return Promise.resolve(true);
+  if(this.strikeLoad)return this.strikeLoad;
+  const ctx=this.ctx;
+  if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
+   return Promise.resolve(false);
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.27.0')
+   .then(response=>{
+    if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
+    return response.arrayBuffer();
+   })
+   .then(data=>ctx.decodeAudioData(data))
+   .then(buffer=>{
+    this.strikeBuffer=buffer;
+    if(this.pendingStrike&&this.enabled){
+     this.pendingStrike=false;
+     this.playStrike();
+    }
+    return true;
+   })
+   .catch(error=>{
+    console.warn('No se pudo cargar la voz del árbitro',error);
+    this.pendingStrike=false;
+    return false;
+   })
+   .finally(()=>{this.strikeLoad=null});
+  return this.strikeLoad;
+ }
+ playStrike(){
+  const ctx=this.ctx;
+  if(!this.enabled||!ctx||!this.strikeBuffer)return false;
   try{
-   const synth=globalThis.speechSynthesis,Speech=globalThis.SpeechSynthesisUtterance;
-   if(!synth||!Speech)return;
-   const primer=new Speech('');
-   primer.lang='en-US';primer.volume=0;
-   this.speechPrimer=primer;
-   synth.speak(primer);
-   this.speechUnlocked=true;
-  }catch(error){console.warn('Activación de voz no disponible',error)}
+   const source=ctx.createBufferSource(),gain=ctx.createGain();
+   source.buffer=this.strikeBuffer;
+   gain.gain.value=.85;
+   source.connect(gain).connect(ctx.destination);
+   source.start(0);
+   return true;
+  }catch(error){console.warn('No se pudo reproducir Strike',error);return false}
  }
  strike(){
   if(!this.enabled)return;
-  // Voz nativa del dispositivo: sin descargar voces ni depender de conexión.
-  try{
-   const synth=globalThis.speechSynthesis;
-   const Speech=globalThis.SpeechSynthesisUtterance;
-   if(!synth||!Speech)return;
-   const call=new Speech('Strike!');
-   call.lang='en-US';call.rate=.88;call.pitch=.87;call.volume=1;
-   const voice=synth.getVoices?.().find(v=>/^en(-|_)/i.test(v.lang||''));
-   if(voice)call.voice=voice;
-   this.strikeUtterance=call;
-   synth.cancel?.();synth.speak(call);
-  }catch(error){console.warn('Voz de strike no disponible',error)}
+  this.init();
+  if(this.strikeBuffer){this.playStrike();return;}
+  this.pendingStrike=true;
+  // Si la red tarda al primer lanzamiento, se emite al acabar la decodificación.
+  void this.prepareStrike();
  }
  impact(material='concrete',strength=20){
   if(!this.enabled)return;

@@ -1,7 +1,7 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.26.0';
-import {surfaceBelowBall} from './world.js?v=0.26.0';
-import {SWEEP_MAX_RAD} from './aiming.js?v=0.26.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.26.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.27.0';
+import {surfaceBelowBall} from './world.js?v=0.27.0';
+import {SWEEP_MAX_RAD} from './aiming.js?v=0.27.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.27.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
