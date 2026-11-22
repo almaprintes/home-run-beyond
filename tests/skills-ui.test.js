@@ -7,7 +7,7 @@ import {initialSave} from '../src/logic.js';
 test('las tres habilidades se pueden comprar durante el resultado',()=>{
   for (const key of ['power','swing','reflex']) {
     const game=Object.create(BaseballGame.prototype);
-    game.state='result';
+    game.state='rest';
     game.save=initialSave();
     game.save.coins=218;
     game.audio={cash(){}};

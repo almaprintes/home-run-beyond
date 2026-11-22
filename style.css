@@ -40,3 +40,15 @@
 .bonus-track.ready strong{color:#8bf9c0}
 .footer-stats{padding-top:7px}
 @media(max-height:720px){.result{top:calc(83px + env(safe-area-inset-top))}.result-panel{padding:9px 12px}.result-distance{font-size:38px}.upgrades{padding-top:8px}.upgrade-grid{margin:6px auto}.upgrade{padding:5px 3px}.bonus-track{padding:5px 8px;margin-bottom:5px}}
+/* V0.3 — el lanzamiento queda libre de botones y la pausa tiene su propia acción. */
+.pitch-surface{position:absolute;inset:0;z-index:3;width:100%;height:100%;padding:0 16px calc(24px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;justify-content:center;appearance:none;border:0;border-radius:0;background:transparent;color:#fff;cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pitch-surface:focus-visible{outline:3px solid #ffdc92;outline-offset:-4px}
+.pitch-touch-label{pointer-events:none;display:block;max-width:95%;font-weight:900;font-size:11px;letter-spacing:1.5px;line-height:1.2;padding:9px 15px;border-radius:40px;background:rgba(6,25,39,.76);border:1px solid rgba(255,255,255,.34);text-shadow:0 1px 4px #0008;box-shadow:0 3px 14px #001a304d}
+.result-quiet{font-size:9px;letter-spacing:.75px;font-weight:800;color:#9ec6d6;white-space:nowrap}
+.rest-again{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;max-width:600px;margin:8px auto 11px;padding:12px 14px;border:1px solid #8cbaca;border-radius:12px;background:linear-gradient(180deg,#234d62,#113246);box-shadow:0 3px 0 #041624;color:#e9f8ff;font-size:12px;font-weight:950;letter-spacing:1px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.rest-again span{font-size:18px;color:#ffd18a}
+.rest-again:active{transform:translateY(2px);box-shadow:0 1px 0 #041624}
+.resting .upgrades{border-top:1px solid rgba(255,204,113,.48)}
+.resting .upgrades-top strong{color:#ffdc94}
+.resting .result-panel{max-height:min(228px,calc(100dvh - 370px))}
+@media(max-height:720px){.rest-again{padding:8px 12px;margin:5px auto 7px;font-size:11px}.resting .upgrades{padding-top:6px}.resting .result-panel{max-height:min(204px,calc(100dvh - 318px))}.pitch-touch-label{padding:7px 12px;font-size:10px}}
