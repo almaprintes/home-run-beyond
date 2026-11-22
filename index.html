@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css?v=0.30.0"/>
+<link rel="stylesheet" href="./style.css?v=0.31.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -64,7 +64,11 @@
     <div class="upgrade-grid">
       <button class="upgrade" id="up-power"><span class="upgrade-icon">💪</span><span class="upgrade-name">POTENCIA</span><span class="upgrade-level" id="level-power">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-power">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-power">80</span></span></span></button>
       <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-swing">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-swing">85</span></span></span></button>
-      <button class="upgrade" id="up-multiplier"><span class="upgrade-icon">✦</span><span class="upgrade-name">MULTIPLICADOR</span><span class="upgrade-level" id="level-multiplier">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-multiplier">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-multiplier">290</span></span></span></button>
+      <button class="upgrade" id="up-multiplier"><span class="upgrade-icon">✦</span><span class="upgrade-name">MULTIPLICADOR</span><span class="upgrade-level" id="level-multiplier">NIV. 1</span>
+      <span class="upgrade-multiplier" aria-label="Multiplicador actual y siguiente nivel">
+        <strong id="multiplier-current">×1,00</strong><small id="multiplier-next">SIG. ×1,04</small>
+      </span>
+      <span class="upgrade-cost"><span class="upgrade-action" id="buy-label-multiplier">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-multiplier">290</span></span></span></button>
     </div>
     <div id="bonus-track" class="bonus-track"><span class="bonus-icon">🎁</span><span id="bonus-text" class="bonus-text">MEJORA EXTRA CADA 5 COMPRAS</span><strong id="bonus-progress">0/4</strong></div>
     <button type="button" id="again" class="rest-again" hidden>VOLVER A BATEAR <span aria-hidden="true">➜</span></button>
@@ -75,7 +79,7 @@
       <div class="modal-head"><div><small>EL VESTUARIO</small><h2>Personaliza tu estilo</h2></div><button class="x" id="shop-close" aria-label="Cerrar">×</button></div>
       <div class="modal-intro">Cosméticos sin ventajas competitivas. Desbloquea colores y estelas con las monedas de tus batazos.</div>
       <div id="shop-items" class="shop-items"></div>
-      <div class="foot-note">Versión 0.30 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
+      <div class="foot-note">Versión 0.31 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -90,6 +94,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.30.0"></script>
+<script type="module" src="./src/main.js?v=0.31.0"></script>
 </body>
 </html>

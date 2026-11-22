@@ -1,13 +1,13 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.30.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.30.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.30.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.30.0';
-import {GameAudio} from './audio.js?v=0.30.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.30.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.30.0';
-import {BatterSprites} from './sprites.js?v=0.30.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.30.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.30.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.31.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.31.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.31.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.31.0';
+import {GameAudio} from './audio.js?v=0.31.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.31.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.31.0';
+import {BatterSprites} from './sprites.js?v=0.31.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.31.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.31.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -92,13 +92,21 @@ export class BaseballGame{
    const lvl=this.save.levels[key],cost=upgradeCost(lvl,key),affordable=cost<=this.save.coins;
    const button=el('up-'+key),free=bonus&&hasAds&&!this.rewardPending;
    el('level-'+key).textContent='NIV. '+formatInt(lvl);
+   if(key==='multiplier'){
+    // Mismo cálculo que se utiliza al pagar monedas tras el batazo.
+    const current=coinMultiplier(lvl),upcoming=coinMultiplier(lvl+1);
+    const display=n=>'×'+n.toFixed(2).replace('.',',');
+    el('multiplier-current').textContent=display(current);
+    el('multiplier-next').textContent=upcoming>current?'SIG. '+display(upcoming):'MÁXIMO';
+   }
    el('cost-'+key).textContent=free?'+1 NIVEL':formatInt(cost);
    el('buy-label-'+key).textContent=this.rewardPending?'ESPERA':free?'VER ANUNCIO':affordable?'MEJORAR':'SIN MONEDAS';
    button.classList.toggle('is-affordable',!free&&affordable&&!this.rewardPending);
    button.classList.toggle('is-bonus',free);
    button.classList.toggle('is-locked',!free&&!affordable);
    button.disabled=this.rewardPending||(!free&&!affordable);
-   button.setAttribute('aria-label',key+' nivel '+lvl+', '+(free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
+   const multiplierInfo=key==='multiplier'?', multiplicador actual por '+coinMultiplier(lvl).toFixed(2)+', siguiente por '+coinMultiplier(lvl+1).toFixed(2):'';
+   button.setAttribute('aria-label',key+' nivel '+lvl+multiplierInfo+', '+(free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
   }
  }
  toast(s){el('toast').textContent=s;el('toast').classList.add('show');this.toastTimer=1.85;this.toastText=s}

@@ -68,3 +68,46 @@ test('un proveedor de anuncios solo entrega recompensa tras confirmación real',
   assert.equal(g.save.bonusClaims,1);
  }finally{if(oldWindow===undefined)delete globalThis.window;else globalThis.window=oldWindow}
 });
+
+test('la tarjeta de Multiplicador muestra el premio actual y el del siguiente nivel',()=>{
+ const previous=globalThis.document;
+ const nodes=new Map();
+ globalThis.document={getElementById(id){
+  if(!nodes.has(id))nodes.set(id,{
+   textContent:'',disabled:false,
+   classList:{toggle(){}},
+   setAttribute(name,value){this[name]=value}
+  });
+  return nodes.get(id);
+ }};
+ try{
+  const game=Object.create(BaseballGame.prototype);
+  game.save=initialSave();game.save.coins=4000;
+  game.save.levels.multiplier=8;game.rewardPending=false;
+  game.audio={cash(){}};game.persist=()=>{};game.toast=()=>{};
+  game.drawUI();
+  assert.equal(nodes.get('level-multiplier').textContent,'NIV. 8');
+  assert.equal(nodes.get('multiplier-current').textContent,'×1,28');
+  assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,32');
+  assert.equal(nodes.get('cost-multiplier').textContent,'1.465');
+  assert.match(nodes.get('up-multiplier')['aria-label'],/nivel 8, multiplicador actual por 1\.28, siguiente por 1\.32/);
+  game.buyUpgrade('multiplier');
+  assert.equal(game.save.levels.multiplier,9);
+  assert.equal(nodes.get('multiplier-current').textContent,'×1,32');
+  assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,36');
+  assert.equal(nodes.get('level-multiplier').textContent,'NIV. 9');
+  assert.notEqual(nodes.get('cost-multiplier').textContent,'1.465');
+ }finally{
+  if(previous===undefined)delete globalThis.document;else globalThis.document=previous;
+ }
+});
+
+test('la tarjeta de multiplicador es compacta y enseña ambos valores sin alterar la recompensa',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+ assert.match(html,/id="multiplier-current"/);
+ assert.match(html,/id="multiplier-next"/);
+ assert.match(css,/#up-multiplier \.upgrade-multiplier/);
+ assert.match(css,/font-variant-numeric:tabular-nums/);
+ assert.match(html,/id="cost-multiplier"/);
+});

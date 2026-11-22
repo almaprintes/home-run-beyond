@@ -98,3 +98,10 @@
 
 /* Balance Potencia / Swing: indicador explicativo legible en móvil. */
 .aim-balance-hint{font-size:8px!important;letter-spacing:.36px!important;white-space:normal;color:#ffe3a2!important;line-height:1.3}
+
+/* Multiplier card: real coin reward rate and immediate next upgrade. */
+#up-multiplier .upgrade-multiplier{width:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;min-height:29px;white-space:nowrap;line-height:1.05}
+#up-multiplier .upgrade-multiplier strong{color:#ffdc87;font-weight:1000;font-size:16px;letter-spacing:.1px;font-variant-numeric:tabular-nums}
+#up-multiplier .upgrade-multiplier small{color:#b7ead7;font-weight:900;font-size:9px;letter-spacing:.2px;font-variant-numeric:tabular-nums}
+#up-multiplier:disabled .upgrade-multiplier{opacity:1}
+@media(max-height:740px){#up-multiplier .upgrade-multiplier{min-height:26px}#up-multiplier .upgrade-multiplier strong{font-size:14px}}
