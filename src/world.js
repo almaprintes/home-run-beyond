@@ -15,8 +15,87 @@ export function areaAt(z){if(z<115)return 'ESTADIO';if(z<460)return 'BARRIOS';if
 function worldHeight(x,z){if(z<1850)return 0;if(z<3600){const a=Math.sin(z*.004+x*.013)*.65+Math.sin(z*.015-x*.009)*.3;return Math.max(0,a*4)}return Math.max(0,(Math.sin(x*.009+z*.004)+Math.sin(x*.004-z*.007))*.8)}
 export function groundAt(x,z){if(riverAt(z))return {y:0,type:'water'};if(roadAt(z))return {y:0,type:'road'};return {y:worldHeight(x,z),type:'grass'}}
 function buildingData(i,j){const n=i*89+j*791;const h=10+rand(n+1)*39;const w=18+rand(n+2)*15;const d=17+rand(n+3)*23;return {h,w,d,color:choose(n+4,walls),roof:choose(n+8,roofs)}}
-export function collideBuilding(pos){if(pos.z<230||pos.z>1530||Math.abs(pos.x)>310)return null;const grid=60;const j=Math.round((pos.z-270)/grid);const i=Math.round(pos.x/grid);const x=i*grid,z=270+j*grid;const b=buildingData(i,j);if(Math.abs(pos.x-x)<b.w*.5+1&&Math.abs(pos.z-z)<b.d*.5+1&&pos.y<=b.h+3)return {x,z,h:b.h};return null}
-function city(r,x,z,idx,row,lod){const b=buildingData(idx,row);const paint=b.color;const y=b.h*.5;const col=paint;r.box(x,y,z,b.w,b.h,b.d,col);r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
+
+// Única fuente de verdad para los edificios visibles y sus colisiones.
+// La cuadrícula también genera árboles y huecos para carreteras/río.
+export function buildingAt(i,j){
+ if(!Number.isInteger(i)||!Number.isInteger(j)||i< -5||i>5||j<0||j>24)return null;
+ const x=i*60,z=270+j*60,n=i*11+j*191;
+ if(riverAt(z)||roadAt(z)||rand(n)<.16)return null;
+ return {x,z,i,j,...buildingData(i,j)};
+}
+export function buildingBoxes(b){
+ const halfW=b.w/2,halfD=b.d/2;
+ return [
+  {kind:'wall',min:[b.x-halfW,0,b.z-halfD],max:[b.x+halfW,b.h,b.z+halfD]},
+  {kind:'roof',min:[b.x-halfW-1,b.h,b.z-halfD-1],max:[b.x+halfW+1,b.h+1.4,b.z+halfD+1]},
+  {kind:'vent',min:[b.x-b.w*.18,b.h+1,b.z-b.d*.125],max:[b.x+b.w*.18,b.h+3,b.z+b.d*.125]}
+ ];
+}
+function sweptSphereBox(start,end,radius,box){
+ const d=[end.x-start.x,end.y-start.y,end.z-start.z],p=[start.x,start.y,start.z];
+ let enter=-Infinity,exit=Infinity,axis=-1,sign=0;
+ for(let a=0;a<3;a++){
+  const low=box.min[a]-radius,high=box.max[a]+radius;
+  if(Math.abs(d[a])<1e-9){if(p[a]<low||p[a]>high)return null;continue;}
+  const t1=(low-p[a])/d[a],t2=(high-p[a])/d[a],near=Math.min(t1,t2),far=Math.max(t1,t2);
+  if(near>enter){enter=near;axis=a;sign=d[a]>0?-1:1}
+  exit=Math.min(exit,far);
+  if(exit<enter)return null;
+ }
+ if(exit<0||enter>1)return null;
+ let t=Math.max(0,enter),point={x:p[0]+d[0]*t,y:p[1]+d[1]*t,z:p[2]+d[2]*t};
+ let normal=[0,0,0];
+ if(enter>=0){normal[axis]=sign;}
+ else{
+  // Recuperación segura si ya se encuentra solapando el sólido.
+  const faces=[];for(let a=0;a<3;a++){
+   faces.push({axis:a,sign:-1,dist:p[a]-(box.min[a]-radius),boundary:box.min[a]-radius});
+   faces.push({axis:a,sign:1,dist:box.max[a]+radius-p[a],boundary:box.max[a]+radius});
+  }
+  faces.sort((a,b)=>a.dist-b.dist);
+  const f=faces[0];normal[f.axis]=f.sign;
+  const coords=[point.x,point.y,point.z];coords[f.axis]=f.boundary;
+  point={x:coords[0],y:coords[1],z:coords[2]};
+ }
+ return {t,point,normal:{x:normal[0],y:normal[1],z:normal[2]},kind:box.kind};
+}
+export function traceBuildingCollision(from,to,radius=1.45){
+ if(!from||!to)return null;
+ const xMin=Math.min(from.x,to.x)-radius-2,xMax=Math.max(from.x,to.x)+radius+2;
+ const zMin=Math.min(from.z,to.z)-radius-2,zMax=Math.max(from.z,to.z)+radius+2;
+ // Iteramos las celdas cruzadas, no solo el edificio más cercano al punto final.
+ const iMin=Math.max(-5,Math.floor(xMin/60)-1),iMax=Math.min(5,Math.ceil(xMax/60)+1);
+ const jMin=Math.max(0,Math.floor((zMin-270)/60)-1),jMax=Math.min(24,Math.ceil((zMax-270)/60)+1);
+ let nearest=null;
+ for(let j=jMin;j<=jMax;j++)for(let i=iMin;i<=iMax;i++){
+  const b=buildingAt(i,j);if(!b)continue;
+  if(b.x+b.w/2+radius+2<xMin||b.x-b.w/2-radius-2>xMax||b.z+b.d/2+radius+2<zMin||b.z-b.d/2-radius-2>zMax)continue;
+  for(const box of buildingBoxes(b)){
+   const hit=sweptSphereBox(from,to,radius,box);
+   if(!hit)continue;
+   const dot=(to.x-from.x)*hit.normal.x+(to.y-from.y)*hit.normal.y+(to.z-from.z)*hit.normal.z;
+   if(hit.t>0&&dot>=0)continue;
+   if(!nearest||hit.t<nearest.t-1e-8||(Math.abs(hit.t-nearest.t)<1e-8&&hit.normal.y>nearest.normal.y)){
+    nearest={...hit,building:b};
+   }
+  }
+ }
+ return nearest;
+}
+// API de compatibilidad: solo devuelve un edificio realmente existente.
+export function collideBuilding(pos){
+ if(!pos)return null;
+ for(let j=Math.max(0,Math.floor((pos.z-270)/60)-1);j<=Math.min(24,Math.ceil((pos.z-270)/60)+1);j++)
+  for(let i=Math.max(-5,Math.floor(pos.x/60)-1);i<=Math.min(5,Math.ceil(pos.x/60)+1);i++){
+   const b=buildingAt(i,j);if(!b)continue;
+   for(const box of buildingBoxes(b))
+    if(pos.x>=box.min[0]&&pos.x<=box.max[0]&&pos.y>=box.min[1]&&pos.y<=box.max[1]&&pos.z>=box.min[2]&&pos.z<=box.max[2])
+     return {x:b.x,z:b.z,h:b.h,kind:box.kind};
+  }
+ return null;
+}
+function city(r,x,z,idx,row,lod){const b=buildingAt(idx,row);if(!b)return;const paint=b.color;const y=b.h*.5;const col=paint;r.box(x,y,z,b.w,b.h,b.d,col);r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
  if(lod<2){const winColor=rand(idx,row)>.5?'#9fe0dc':'#fbdf9b';const levels=Math.min(4,Math.floor(b.h/7));for(let t=0;t<levels;t++){const yy=3+t*7;for(let s of [-1,1]){r.box(x+s*b.w*.23,yy,z+b.d*.5+.16,3.6,3.3,.27,winColor);r.box(x+s*(b.w*.5+.1),yy,z, .26,3.3,3.6,winColor)}}}
 }
 function road(r,x,z,w,d){r.box(x,.035,z,w,.09,d,'#364f5c');r.box(x,.1,z,w*.022,.025,d,'#e5c48b')}
@@ -28,7 +107,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0){const maxR=viewZ<300
     if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=((j*173+time*(12+j%3*7)+500)%850)-425,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
    }
  }
- if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-5;i<=5;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;if(rand(n)<.16){tree(r,x,z,8+rand(n+5)*6,n);tree(r,x+15,z+12,5+rand(n+7)*6,n+32)}else city(r,x,z,i,j,lod);r.box(x+24,.08,z+25,8,.15,8,'#87c77b')}}}
+ if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-5;i<=5;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;if(!buildingAt(i,j)){tree(r,x,z,8+rand(n+5)*6,n);tree(r,x+15,z+12,5+rand(n+7)*6,n+32)}else city(r,x,z,i,j,lod);r.box(x+24,.08,z+25,8,.15,8,'#87c77b')}}}
  if(viewZ>1800){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;for(let i=-5;i<=5;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)tree(r,x,z,z>3600?12:8,i*99+j);
  if(rand(i*31,j*19)>.87)r.cone(x,y+11,z,20,32,'#879a74')}}}
  // Una vista al horizonte no tiene por qué cargar el mundo completo.

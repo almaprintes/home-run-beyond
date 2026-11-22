@@ -1,5 +1,5 @@
 import {Renderer,CanvasRenderer,lerp} from './engine.js';
-import {drawWorld,groundAt,roadAt,riverAt,areaAt,collideBuilding} from './world.js';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js';
 import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
 import {GameAudio} from './audio.js';
 import {hasRewardedAds,showRewardedAd} from './rewarded.js';
@@ -69,12 +69,49 @@ export class BaseballGame{
  startPitch(){this.state='pitching';el('app').classList.remove('resting');el('again').hidden=true;el('pitch-surface').hidden=false;el('region').hidden=false;this.pitch=0;this.swing=0;this.pitchElapsed=0;this.ball=null;this.distance=0;this.pendingShot=null;el('result').hidden=true;el('record-badge').hidden=true;el('impact').textContent='';el('distance').textContent='0';el('controls').hidden=true;el('run-info').hidden=false;el('upgrades').hidden=true;el('action-title').textContent='¡BATEA!';el('action-sub').textContent='PULSA EN EL MOMENTO JUSTO';el('action-icon').textContent='⚾';el('action').classList.add('pitch');el('status-pill').textContent='⚾ VIENE EL LANZAMIENTO';el('tip').textContent='Sigue la pelota y pulsa cuando llegue al bate';el('region').textContent='ESTADIO · 0 KM';this.audio.tone(420,.12,'sine',.065,0,-140);}
  swingBat(auto=false){if(this.state!=='pitching')return;const contactTime=this.pitchElapsed+batSpeedMs(this.save.levels.swing)/1000;const deltaMs=(contactTime-.91*this.pitchDuration)*1000;this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs);this.pendingShot.deltaMs=deltaMs;this.state='swinging';el('pitch-surface').hidden=true;this.swingElapsed=0;this.swing=0;el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;this.audio.swing();}
  launch(){const hit=this.pendingShot;this.state='flight';this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-2.3,y:2.2,z:0,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
- simulateStep(dt){const b=this.ball;if(!b)return;const prevY=b.y,prevZ=b.z;
- b.vy-=9.81*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;b.maxZ=Math.max(b.maxZ,b.z);this.simElapsed+=dt;
- const collision=collideBuilding(b);if(collision && b.vy<0 && b.y>collision.h-4 && prevY>collision.h-1){b.y=collision.h+2;b.vy=Math.abs(b.vy)*.33;b.vz*=.73;b.vx*=.7;b.bounces++;b.lastCollision='TEJADO';this.audio.land();}
- const ground=groundAt(b.x,b.z);if(b.y<=ground.y+1.15){b.y=ground.y+1.15;b.bounces++;if(ground.type==='water'){b.lastCollision='¡AL AGUA!';this.finishShot();return;}const bounce=ground.type==='road'?.61:.37;b.vy=Math.abs(b.vy)*bounce;b.vz*=ground.type==='road'?.72:.58;b.vx*=.58;b.lastCollision=ground.type==='road'?'REBOTE EN ASFALTO':'REBOTE EN CÉSPED';if(b.bounces<=3)this.audio.land();if(b.bounces>=3||Math.abs(b.vz)<3||Math.abs(b.vy)<1.8)this.finishShot()}
- if(this.simElapsed>340||b.z>200000){this.finishShot()}
- if(b.z-prevZ>250&&b.y<0)this.finishShot();}
+
+ simulateStep(dt){
+  const b=this.ball;if(!b||this.state!=='flight')return;
+  const radius=1.45;
+  const before={x:b.x,y:b.y,z:b.z};
+  b.vy-=9.81*dt;
+  const next={x:b.x+b.vx*dt,y:b.y+b.vy*dt,z:b.z+b.vz*dt};
+  const hit=traceBuildingCollision(before,next,radius);
+  if(hit){
+   // Colisión continua contra fachadas, cubiertas y casetas, con la misma geometría visible.
+   const n=hit.normal,eps=.09;
+   b.x=hit.point.x+n.x*eps;b.y=hit.point.y+n.y*eps;b.z=hit.point.z+n.z*eps;
+   const normalSpeed=b.vx*n.x+b.vy*n.y+b.vz*n.z;
+   if(normalSpeed<0){
+    const rebound=n.y>.5?.40:.30,friction=n.y>.5?.80:.72;
+    b.vx=(b.vx-(1+rebound)*normalSpeed*n.x)*friction;
+    b.vy=(b.vy-(1+rebound)*normalSpeed*n.y)*friction;
+    b.vz=(b.vz-(1+rebound)*normalSpeed*n.z)*friction;
+   }else{
+    b.vx*=.65;b.vy*=.65;b.vz*=.65;
+   }
+   b.bounces++;
+   b.buildingHits=(b.buildingHits||0)+1;
+   b.lastCollision=n.y>.5?'REBOTE EN TEJADO':hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
+   if(b.buildingHits<=3)this.audio.land();
+   // No dejar la bola oscilando dentro de edificios cercanos.
+   if(b.buildingHits>=4||Math.hypot(b.vx,b.vy,b.vz)<3){this.finishShot();return}
+  }else{b.x=next.x;b.y=next.y;b.z=next.z}
+  b.maxZ=Math.max(b.maxZ,b.z);
+  this.simElapsed+=dt;
+  const ground=groundAt(b.x,b.z);
+  if(b.y<=ground.y+radius){
+   b.y=ground.y+radius;b.bounces++;
+   if(ground.type==='water'){b.lastCollision='¡AL AGUA!';this.finishShot();return;}
+   const bounce=ground.type==='road'?.61:.37;
+   b.vy=Math.abs(b.vy)*bounce;
+   b.vz*=ground.type==='road'?.72:.58;b.vx*=.58;
+   b.lastCollision=ground.type==='road'?'REBOTE EN ASFALTO':'REBOTE EN CÉSPED';
+   if(b.bounces<=3)this.audio.land();
+   if(b.bounces>=4||Math.abs(b.vz)<3||Math.abs(b.vy)<1.8){this.finishShot();return}
+  }
+  if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
+ }
  finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,Math.max(1,b?.maxZ||0));this.persist();this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
  resetAndPitch(){el('result').hidden=true;this.camera=[11,16,-35];this.target=[0,2,32];this.startPitch()}
