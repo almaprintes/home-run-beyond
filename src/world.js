@@ -13,8 +13,30 @@ export function riverAt(z){return z>1620&&z<1740}
 export function roadAt(z){return z>155&&Math.abs((z+35)%200-100)<14}
 export function areaAt(z){if(z<115)return 'ESTADIO';if(z<460)return 'BARRIOS';if(z<1550)return 'CIUDAD';if(z<1950)return 'RÍO Y PUERTO';if(z<3600)return 'COLINAS';if(z<10000)return 'GRAN VALLE';return 'MUNDO ABIERTO'}
 function worldHeight(x,z){if(z<1850)return 0;if(z<3600){const a=Math.sin(z*.004+x*.013)*.65+Math.sin(z*.015-x*.009)*.3;return Math.max(0,a*4)}return Math.max(0,(Math.sin(x*.009+z*.004)+Math.sin(x*.004-z*.007))*.8)}
-export function groundAt(x,z){if(riverAt(z))return {y:0,type:'water'};if(roadAt(z))return {y:0,type:'road'};return {y:worldHeight(x,z),type:'grass'}}
-function buildingData(i,j){const n=i*89+j*791;const h=10+rand(n+1)*39;const w=18+rand(n+2)*15;const d=17+rand(n+3)*23;return {h,w,d,color:choose(n+4,walls),roof:choose(n+8,roofs)}}
+const WET_PATCHES=[
+ {x:15,z:2140,rx:72,rz:55,type:'swamp'},
+ {x:-95,z:2520,rx:34,rz:22,type:'puddle'},
+ {x:105,z:2970,rx:45,rz:30,type:'puddle'},
+ {x:-26,z:3480,rx:66,rz:40,type:'swamp'}
+];
+export function wetAreaAt(x,z){
+ for(const patch of WET_PATCHES){
+  if(((x-patch.x)/patch.rx)**2+((z-patch.z)/patch.rz)**2<1)return patch.type;
+ }
+ return null;
+}
+export function groundAt(x,z){
+ if(riverAt(z))return {y:0,type:'water'};
+ const wet=wetAreaAt(x,z);
+ if(wet)return {y:worldHeight(x,z),type:wet};
+ if(roadAt(z))return {y:0,type:'road'};
+ return {y:worldHeight(x,z),type:'grass'};
+}
+function buildingData(i,j){
+ const n=i*89+j*791,h=10+rand(n+1)*39,w=18+rand(n+2)*15,d=17+rand(n+3)*23;
+ const roofMaterial=rand(n+10)<.22?'rubber':'solid';
+ return {h,w,d,color:choose(n+4,walls),roof:roofMaterial==='rubber'?'#314f55':choose(n+8,roofs),roofMaterial};
+}
 
 // Única fuente de verdad para los edificios visibles y sus colisiones.
 // La cuadrícula también genera árboles y huecos para carreteras/río.
@@ -27,9 +49,9 @@ export function buildingAt(i,j){
 export function buildingBoxes(b){
  const halfW=b.w/2,halfD=b.d/2;
  return [
-  {kind:'wall',min:[b.x-halfW,0,b.z-halfD],max:[b.x+halfW,b.h,b.z+halfD]},
-  {kind:'roof',min:[b.x-halfW-1,b.h,b.z-halfD-1],max:[b.x+halfW+1,b.h+1.4,b.z+halfD+1]},
-  {kind:'vent',min:[b.x-b.w*.18,b.h+1,b.z-b.d*.125],max:[b.x+b.w*.18,b.h+3,b.z+b.d*.125]}
+  {kind:'wall',material:'concrete',min:[b.x-halfW,0,b.z-halfD],max:[b.x+halfW,b.h,b.z+halfD]},
+  {kind:'roof',material:b.roofMaterial,min:[b.x-halfW-1,b.h,b.z-halfD-1],max:[b.x+halfW+1,b.h+1.4,b.z+halfD+1]},
+  {kind:'vent',material:'solid',min:[b.x-b.w*.18,b.h+1,b.z-b.d*.125],max:[b.x+b.w*.18,b.h+3,b.z+b.d*.125]}
  ];
 }
 function sweptSphereBox(start,end,radius,box){
@@ -58,7 +80,7 @@ function sweptSphereBox(start,end,radius,box){
   const coords=[point.x,point.y,point.z];coords[f.axis]=f.boundary;
   point={x:coords[0],y:coords[1],z:coords[2]};
  }
- return {t,point,normal:{x:normal[0],y:normal[1],z:normal[2]},kind:box.kind};
+ return {t,point,normal:{x:normal[0],y:normal[1],z:normal[2]},kind:box.kind,material:box.material};
 }
 export function traceBuildingCollision(from,to,radius=1.45){
  if(!from||!to)return null;
@@ -108,6 +130,15 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0){const maxR=viewZ<300
    }
  }
  if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-5;i<=5;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;if(!buildingAt(i,j)){tree(r,x,z,8+rand(n+5)*6,n);tree(r,x+15,z+12,5+rand(n+7)*6,n+32)}else city(r,x,z,i,j,lod);r.box(x+24,.08,z+25,8,.15,8,'#87c77b')}}}
+ // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
+ for(const patch of WET_PATCHES){
+  if(Math.abs(patch.z-viewZ)>700)continue;
+  const yy=worldHeight(patch.x,patch.z)+.12;
+  r.add('ball',patch.x,yy,patch.z,patch.rx*2,.10,patch.rz*2,
+    patch.type==='swamp'?'#597f71':'#62a8b4');
+  r.add('ball',patch.x-patch.rx*.15,yy+.05,patch.z+patch.rz*.12,patch.rx*.95,.045,patch.rz*.7,
+    patch.type==='swamp'?'#779b75':'#8bcaca');
+ }
  if(viewZ>1800){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;for(let i=-5;i<=5;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)tree(r,x,z,z>3600?12:8,i*99+j);
  if(rand(i*31,j*19)>.87)r.cone(x,y+11,z,20,32,'#879a74')}}}
  // Una vista al horizonte no tiene por qué cargar el mundo completo.

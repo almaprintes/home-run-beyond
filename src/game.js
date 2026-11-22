@@ -71,43 +71,44 @@ export class BaseballGame{
  launch(){const hit=this.pendingShot;this.state='flight';this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-2.3,y:2.2,z:0,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  simulateStep(dt){
-  const b=this.ball;if(!b||this.state!=='flight')return;
-  const radius=1.45;
-  const before={x:b.x,y:b.y,z:b.z};
+  const b=this.ball;
+  if(!b||this.state!=='flight')return;
+  const radius=1.45,prev={x:b.x,y:b.y,z:b.z};
   b.vy-=9.81*dt;
   const next={x:b.x+b.vx*dt,y:b.y+b.vy*dt,z:b.z+b.vz*dt};
-  const hit=traceBuildingCollision(before,next,radius);
+  const hit=traceBuildingCollision(prev,next,radius);
+  let touching=false;
   if(hit){
-   // Una cubierta no debe mantener indefinidamente una pelota de baja energía.
-   const n=hit.normal,eps=.09;
-   const speedBefore=Math.hypot(b.vx,b.vy,b.vz);
-   const inward=-(b.vx*n.x+b.vy*n.y+b.vz*n.z);
-   b.x=hit.point.x+n.x*eps;b.y=hit.point.y+n.y*eps;b.z=hit.point.z+n.z*eps;
-   b.buildingHits=(b.buildingHits||0)+1;
-   b.firstBuildingZ ??= b.z;
-   b.afterBuildingTime ??= 0;
-   b.lastCollision=n.y>.5?'REBOTE EN TEJADO':hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
-   // Apoyada en una azotea: detener en vez de simular micro-rebotes invisibles.
-   if(n.y>.5 && (speedBefore<4.5 ||
-       (b.buildingHits>1&&speedBefore<9&&inward<3.5))){
-    b.vx=0;b.vy=0;b.vz=0;
-    b.maxZ=Math.max(b.maxZ,b.z);
-    this.finishShot();return;
-   }
+   // El material determina el rebote; ningún número de impactos termina la partida.
+   const n=hit.normal,mat=hit.material||'concrete';
+   const restitution=mat==='rubber'?.16:mat==='solid'?.80:.71;
+   const tangentRetention=mat==='rubber'?.48:mat==='solid'?.92:.86;
+   b.x=hit.point.x+n.x*.075;
+   b.y=hit.point.y+n.y*.075;
+   b.z=hit.point.z+n.z*.075;
+   const normalSpeed=b.vx*n.x+b.vy*n.y+b.vz*n.z;
+   const inward=Math.max(0,-normalSpeed);
    if(inward>0){
-    const rebound=n.y>.5?.38:.28,friction=n.y>.5?.77:.68;
-    b.vx=(b.vx-(1+rebound)*(-inward)*n.x)*friction;
-    b.vy=(b.vy-(1+rebound)*(-inward)*n.y)*friction;
-    b.vz=(b.vz-(1+rebound)*(-inward)*n.z)*friction;
+    const nx=n.x,ny=n.y,nz=n.z;
+    // Velocidad perpendicular reflejada y tangencial frenada según el material.
+    b.vx=(b.vx-normalSpeed*nx)*tangentRetention+inward*restitution*nx;
+    b.vy=(b.vy-normalSpeed*ny)*tangentRetention+inward*restitution*ny;
+    b.vz=(b.vz-normalSpeed*nz)*tangentRetention+inward*restitution*nz;
    }else{
-    // Si aparece una penetración previa, resolverla sin reinyectar energía.
-    b.vx*=.45;b.vy*=.45;b.vz*=.45;
+    // Corrección de penetración previa: sin inyectar energía en el sólido.
+    b.vx*=.84;b.vy*=.84;b.vz*=.84;
    }
-   b.bounces++;
-   if(b.buildingHits<=3)this.audio.land();
-   if(b.buildingHits>=4||Math.hypot(b.vx,b.vy,b.vz)<3.5){
-    b.maxZ=Math.max(b.maxZ,b.z);
-    this.finishShot();return;
+   if(n.y>.5&&inward<1.5){
+    // Reposo/rodadura: mantener contacto con el techo y disipar rozamiento.
+    b.vy=0;
+    const rollingDrag=Math.exp(-(mat==='rubber'?4.8:.85)*dt);
+    b.vx*=rollingDrag;b.vz*=rollingDrag;
+    touching=true;
+   }
+   b.lastCollision=n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
+   if(inward>1){
+    b.bounces++;
+    if(b.bounces<=5)this.audio.land();
    }
   }else{
    b.x=next.x;b.y=next.y;b.z=next.z;
@@ -116,27 +117,42 @@ export class BaseballGame{
   this.simElapsed+=dt;
   const ground=groundAt(b.x,b.z);
   if(b.y<=ground.y+radius){
-   b.y=ground.y+radius;b.bounces++;
-   if(ground.type==='water'){b.lastCollision='¡AL AGUA!';this.finishShot();return}
-   const bounce=ground.type==='road'?.61:.37;
-   b.vy=Math.abs(b.vy)*bounce;
-   b.vz*=ground.type==='road'?.72:.58;b.vx*=.58;
-   b.lastCollision=ground.type==='road'?'REBOTE EN ASFALTO':'REBOTE EN CÉSPED';
-   if(b.bounces<=3)this.audio.land();
-   if(b.bounces>=4||Math.abs(b.vz)<3||Math.abs(b.vy)<1.8){this.finishShot();return}
-  }
-  if(b.buildingHits>0){
-   b.afterBuildingTime=(b.afterBuildingTime||0)+dt;
-   const moved=Math.hypot(b.x-before.x,b.y-before.y,b.z-before.z);
-   // Cuando la bola no se desplaza realmente, no esperar los 23 s de vuelo.
-   if(moved<Math.max(.018,dt*1.35))b.stillAfterHit=(b.stillAfterHit||0)+dt;
-   else b.stillAfterHit=Math.max(0,(b.stillAfterHit||0)-dt*.5);
-   if(b.stillAfterHit>.48 ||
-     (b.afterBuildingTime>1.5&&Math.hypot(b.vx,b.vy,b.vz)<5.5) ||
-     (b.afterBuildingTime>3.0&&Math.abs(b.z-b.firstBuildingZ)<12)){
-    b.lastCollision='PELOTA DETENIDA';
-    this.finishShot();return;
+   b.y=ground.y+radius;
+   const type=ground.type;
+   const wet=type==='water'||type==='swamp'||type==='puddle';
+   if(wet){
+    // El agua absorbe casi todo el impulso, pero no para de forma artificial al tocar.
+    const retention=type==='water'?.035:type==='swamp'?.12:.20;
+    b.vx*=retention;b.vz*=retention;
+    b.vy=Math.max(0,b.vy)*.04;
+    b.lastCollision=type==='water'?'¡AL AGUA!':type==='swamp'?'¡PANTANO!':'¡CHARCO!';
+    b.wetTime=(b.wetTime||0)+dt;
+    touching=true;
+   }else{
+    const normalImpact=Math.abs(Math.min(0,b.vy));
+    if(normalImpact>.9){
+     b.vy=normalImpact*(type==='road'?.78:.39);
+     b.vz*=type==='road'?.92:.70;b.vx*=type==='road'?.92:.70;
+     b.bounces++;
+     if(b.bounces<=5)this.audio.land();
+    }else{
+     b.vy=0;
+     const drag=Math.exp(-(type==='road'?1.2:2.8)*dt);
+     b.vz*=drag;b.vx*=drag;
+     touching=true;
+    }
+    b.lastCollision=type==='road'?'ASFALTO':'CÉSPED';
    }
+  }
+  const speed=Math.hypot(b.vx,b.vy,b.vz);
+  if(touching&&speed<.85)b.restTime=(b.restTime||0)+dt;
+  else b.restTime=0;
+  const moved=Math.hypot(b.x-prev.x,b.y-prev.y,b.z-prev.z);
+  if(moved<.014&&speed<2)b.stillTime=(b.stillTime||0)+dt;
+  else b.stillTime=0;
+  // Terminación basada en reposo real, no en el material ni en contar rebotes.
+  if(b.restTime>.24||b.stillTime>.75||(b.wetTime||0)>.65&&speed<2.5){
+   this.finishShot();return;
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }

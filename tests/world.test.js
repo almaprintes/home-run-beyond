@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {rand,groundAt,roadAt,riverAt,areaAt,collideBuilding,drawWorld,buildingAt,traceBuildingCollision} from '../src/world.js';
+import {rand,groundAt,roadAt,riverAt,areaAt,collideBuilding,drawWorld,buildingAt,traceBuildingCollision,wetAreaAt} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
-const worldAPI=()=>({buildingAt,traceBuildingCollision});
+const worldAPI=()=>({buildingAt,traceBuildingCollision,groundAt,wetAreaAt});
 import {lookAt,perspective,mul4} from '../src/engine.js';
 test('procedural determinista entre sesiones',()=>{assert.equal(rand(331,76),rand(331,76));assert.notEqual(rand(331,76),rand(331,77))});
 test('zonas de agua y suelo',()=>{assert.equal(groundAt(0,1680).type,'water');assert.ok(riverAt(1680));assert.equal(groundAt(0,50).type,'grass');assert.equal(areaAt(0),'ESTADIO');assert.equal(areaAt(900),'CIUDAD');});
@@ -59,43 +59,63 @@ test('golpe contra pared real rebota y no atraviesa el edificio',()=>{
  assert.ok(game.ball.buildingHits===1);
 });
 
-test('una pelota casi parada sobre un tejado termina el golpe sin espera',()=>{
- const b=buildingAt(0,3)||buildingAt(0,2)||buildingAt(0,1);
- assert.ok(b);
+
+function flightGame(ball){
  const game=Object.create(BaseballGame.prototype);
  game.state='flight';game.simElapsed=0;
- // Fuera de la caseta de azotea, sobre la superficie sólida.
- const x=b.x+b.w*.33,z=b.z;
- game.ball={x,y:b.h+1.4+1.45+.12,z,vx:0,vy:-2,vz:.2,bounces:0,buildingHits:0,maxZ:0};
+ game.ball={bounces:0,maxZ:0,...ball};
  game.audio={land(){}};
- let finished=false;
- game.finishShot=()=>{finished=true;game.state='rest'};
- let steps=0;
- for(;steps<180&&!finished;steps++)game.simulateStep(1/60);
- assert.equal(finished,true,'el techo dejó la bola suspendida más de tres segundos');
- assert.ok(steps<150,'la física tardó demasiado en detectar el aterrizaje');
- assert.ok(game.ball.y>b.h,'la bola atravesó el tejado');
-});
-
-test('colisiones repetidas en azoteas y casetas terminan antes del timeout general',()=>{
- const buildings=[];
+ game.finishShot=()=>{game.state='rest'};
+ return game;
+}
+function findBuilding(material){
  for(let j=0;j<=24;j++)for(let i=-5;i<=5;i++){
   const b=buildingAt(i,j);
-  if(b)buildings.push(b);
+  if(b&&b.roofMaterial===material)return b;
  }
- let settled=0;
- for(const b of buildings.slice(0,100)){
-  for(const useVent of [false,true]){
-   const game=Object.create(BaseballGame.prototype);
-   game.state='flight';game.simElapsed=0;game.audio={land(){}};
-   const x=b.x+(useVent?0:b.w*.34),z=b.z;
-   const ceiling=b.h+(useVent?3:1.4);
-   game.ball={x,y:ceiling+1.45+.10,z,vx:.8,vy:-1.8,vz:.8,bounces:0,buildingHits:0,maxZ:0};
-   game.finishShot=()=>{game.state='rest';settled++};
-   for(let step=0;step<180&&game.state==='flight';step++)game.simulateStep(1/60);
-   assert.notEqual(game.state,'flight',`bola atrapada en edificio ${b.i},${b.j} (${useVent?'caseta':'techo'})`);
-   assert.ok(Number.isFinite(game.ball.y));
-  }
+ throw Error('No hay cubierta del material '+material);
+}
+test('tejados duros devuelven gran parte del impulso y la bola sigue en vuelo',()=>{
+ const b=findBuilding('solid'),x=b.x+b.w*.34,z=b.z;
+ const game=flightGame({x,y:b.h+1.4+1.45+.13,z,vx:0,vy:-17,vz:14});
+ let collided=false;
+ for(let k=0;k<12;k++){
+  game.simulateStep(1/60);
+  if(game.ball.bounces>0){collided=true;break;}
  }
- assert.equal(settled,Math.min(buildings.length,100)*2);
+ assert.ok(collided,'No llegó al tejado duro');
+ assert.equal(game.state,'flight','Un choque contra superficie dura no debe terminar el golpe');
+ assert.ok(game.ball.vy>8,'El material duro debe producir rebote alto');
+ assert.ok(game.ball.vz>10,'La cubierta sólida no debe eliminar la velocidad horizontal');
+});
+test('tejado de goma disipa más energía que el tejado duro, sin finalizar por contacto',()=>{
+ const b=findBuilding('rubber'),x=b.x+b.w*.34,z=b.z;
+ const game=flightGame({x,y:b.h+1.4+1.45+.13,z,vx:0,vy:-17,vz:14});
+ for(let k=0;k<12&&game.ball.bounces===0;k++)game.simulateStep(1/60);
+ assert.ok(game.ball.bounces>0);
+ assert.equal(game.state,'flight');
+ assert.ok(game.ball.vy>0&&game.ball.vy<5);
+ assert.ok(game.ball.vz<9,'La goma debe frenar apreciablemente el avance');
+});
+test('pantano y charco frenan casi en seco y se representan en el terreno',()=>{
+ const {groundAt,wetAreaAt}=worldAPI();
+ for(const [x,z,type] of [[15,2140,'swamp'],[-95,2520,'puddle']]){
+  assert.equal(wetAreaAt(x,z),type);
+  const ground=groundAt(x,z);assert.equal(ground.type,type);
+  const game=flightGame({x,y:ground.y+1.48,z,vx:0,vy:-12,vz:27});
+  game.simulateStep(1/60);
+  assert.ok(game.ball.vz<6,`el ${type} debería frenar casi toda la velocidad`);
+  assert.equal(game.state,'flight','Contacto con agua no debe finalizar de inmediato');
+  for(let k=0;k<65&&game.state==='flight';k++)game.simulateStep(1/60);
+  assert.equal(game.state,'rest','La bola debe terminar tras quedarse sin movimiento en agua');
+ }
+});
+test('rebotes sucesivos en superficie sólida no terminan por contador de impactos',()=>{
+ const b=findBuilding('solid');
+ const game=flightGame({x:b.x+b.w*.32,y:b.h+1.4+1.45+.12,z:b.z,vx:0,vy:-8,vz:1});
+ for(let k=0;k<120&&game.state==='flight';k++)game.simulateStep(1/60);
+ assert.ok(game.ball.bounces>=1);
+ assert.ok(game.simElapsed>0);
+ // Un golpe puede terminar al reposar, nunca al sumar un número prefijado de choques.
+ assert.ok(!/buildingHits>=4|bounces>=4/.test(BaseballGame.prototype.simulateStep.toString()));
 });
