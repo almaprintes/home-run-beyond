@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('la versión 0.13 evita cachear CSS y JavaScript viejos bajo la misma URL',()=>{
+test('la versión 0.24 evita cachear CSS y JavaScript viejos bajo la misma URL',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.23\.0/);
- assert.match(html,/src\/main\.js\?v=0\.23\.0/);
- assert.match(main,/game\.js\?v=0\.23\.0/);
+ assert.match(html,/style\.css\?v=0\.24\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.24\.0/);
+ assert.match(main,/game\.js\?v=0\.24\.0/);
  for(const src of ['game.js','world.js','sprites.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
@@ -27,7 +27,7 @@ test('icono y lienzo mantienen tamaño aunque se sirva CSS antiguo',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  assert.match(html,/class="brand-baseball"[^>]+width="34" height="34"[^>]+max-width:34px/);
  assert.match(html,/id="character-overlay"[^>]+position:absolute;inset:0;width:100%;height:100%/);
- assert.match(html,/Versión 0\.23/);
+ assert.match(html,/Versión 0\.24/);
 });
 
 test('se cargan realmente los sprites aprobados y se dibuja el personaje seleccionado',async()=>{
