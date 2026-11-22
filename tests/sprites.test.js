@@ -17,7 +17,7 @@ test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'rest',ball:null}),'ready','tras un strike el bateador permanece visible');
 });
 test('todos los recortes originales son WebP locales y legibles',()=>{
- assert.equal(Object.keys(BATTER_ASSETS).length,11);
+ assert.equal(Object.keys(BATTER_ASSETS).length,8);
  for(const [key,path] of Object.entries(BATTER_ASSETS)){
   const name=new URL('../'+path.slice(2),import.meta.url);
   assert.ok(existsSync(name),'Falta el sprite '+key);
@@ -59,7 +59,7 @@ test('el canvas 2D es una capa visual no interactiva que se adapta a la pantalla
  assert.match(style,/#character-overlay\{[^}]*pointer-events:none/);
  assert.match(html,/assets\/baseball\.webp/);
  assert.doesNotMatch(html,/id="aim-pointer"/);
- assert.match(readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8'),/this\.images\['aim-center'\]/);
+ assert.doesNotMatch(readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8'),/this\.images\['aim-center'\]/);
  assert.match(sw,/\.\/src\/sprites\.js/);
  assert.match(sw,/\.\/assets\/batter\/follow\.webp/);
  const sprites=new BatterSprites({getContext:()=>null});

@@ -5,11 +5,11 @@ import {BaseballGame} from '../src/game.js';
 import {initialSave} from '../src/logic.js';
 
 test('las tres habilidades se pueden comprar durante el resultado',()=>{
-  for (const key of ['power','swing','reflex']) {
+  for (const key of ['power','swing','multiplier']) {
     const game=Object.create(BaseballGame.prototype);
     game.state='rest';
     game.save=initialSave();
-    game.save.coins=218;
+    game.save.coins=1000;
     game.audio={cash(){}};
     game.persist=()=>{};
     game.drawUI=()=>{};
@@ -17,7 +17,7 @@ test('las tres habilidades se pueden comprar durante el resultado',()=>{
     const oldLevel=game.save.levels[key];
     game.buyUpgrade(key);
     assert.equal(game.save.levels[key],oldLevel+1,`Falló la compra: ${key}`);
-    assert.ok(game.save.coins<218);
+    assert.ok(game.save.coins<1000);
   }
 });
 
@@ -40,5 +40,31 @@ test('resultados compactos y los botones comprables se destacan',()=>{
   assert.match(css,/\.upgrade\.is-affordable\{/);
   assert.match(css,/\.upgrade\.is-bonus\{/);
   assert.match(html,/id="bonus-track"/);
-  assert.match(html,/id="buy-label-reflex"/);
+  assert.match(html,/id="buy-label-multiplier"/);
+});
+test('un bono pendiente no se canjea gratis si no hay anuncios, pero permite comprar',()=>{
+ const game=Object.create(BaseballGame.prototype);
+ game.state='rest';game.save=initialSave();game.save.coins=2000;
+ game.save.paidUpgrades=5;game.audio={cash(){}};game.persist=()=>{};
+ game.drawUI=()=>{};game.toast=()=>{};
+ const before=game.save.coins;
+ game.buyUpgrade('multiplier');
+ assert.equal(game.save.levels.multiplier,2);
+ assert.ok(game.save.coins<before,'compra pagada, no recompensa fingida');
+ assert.equal(game.save.bonusClaims,0,'bono pendiente no reclamado');
+});
+test('un proveedor de anuncios solo entrega recompensa tras confirmación real',async()=>{
+ const oldWindow=globalThis.window;
+ globalThis.window={HRB_REWARDED_AD:{show:async()=>({rewarded:true})}};
+ try{
+  const g=Object.create(BaseballGame.prototype);
+  g.state='rest';g.save=initialSave();g.save.coins=500;
+  g.save.paidUpgrades=5;
+  g.audio={cash(){}};g.persist=()=>{};g.drawUI=()=>{};g.toast=()=>{};
+  g.buyUpgrade('multiplier');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(g.save.levels.multiplier,2);
+  assert.equal(g.save.coins,500,'premio por anuncio no consume monedas');
+  assert.equal(g.save.bonusClaims,1);
+ }finally{if(oldWindow===undefined)delete globalThis.window;else globalThis.window=oldWindow}
 });

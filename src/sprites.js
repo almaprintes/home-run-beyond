@@ -1,7 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.27.0';
-import {surfaceBelowBall} from './world.js?v=0.27.0';
-import {SWEEP_MAX_RAD} from './aiming.js?v=0.27.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.27.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.28.0';
+import {surfaceBelowBall} from './world.js?v=0.28.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.28.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -9,9 +8,6 @@ export const BATTER_ASSETS=Object.freeze({
  ready:'./assets/batter/ready.webp',
  watch:'./assets/batter/watch.webp',
  loaded:'./assets/batter/loaded.webp',
- 'aim-left':'./assets/batter/aim-left.webp',
- 'aim-center':'./assets/batter/aim-center.webp',
- 'aim-right':'./assets/batter/aim-right.webp',
  contact:'./assets/batter/contact.webp',
  follow:'./assets/batter/follow.webp',
  ball:'./assets/baseball.webp',
@@ -113,21 +109,6 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
  ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
 }
 
-// La escala se toma de una dirección de referencia FIJA, no de la punta móvil.
-// Así la flecha solo rota y no crece/encoge por la perspectiva del campo.
-export function aimArrowProjection(camera,target,width,height,zoom,angle=0){
- const base=projectToScreen(camera,target,[-4.5,2.5,-4.7],width,height,zoom);
- const reference=projectToScreen(camera,target,[-4.5,2.5,26.3],width,height,zoom);
- if(!base||!reference)return null;
- // El giro es un indicador HUD: usar directamente el ángulo de disparo evita
- // la aceleración y los saltos que introduce la perspectiva de un punto lejano.
- // Ángulo positivo = izquierda en pantalla; el centro apunta verticalmente.
- const heading=Number.isFinite(angle)?Math.max(-SWEEP_MAX_RAD,Math.min(SWEEP_MAX_RAD,angle)):0;
- const fixedLength=Math.hypot(reference.x-base.x,reference.y-base.y);
- return {x:base.x,y:base.y,rotation:-heading,
-  heightPx:Math.max(150,Math.min(height*.39,fixedLength*1.45))};
-}
-
 export class BatterSprites{
  constructor(canvas){
   this.canvas=canvas;
@@ -195,27 +176,6 @@ export class BatterSprites{
      ctx.drawImage(this.images.spark,originX+widthPx*.75,originY+heightPx*.39,Math.min(100,widthPx*.58),Math.min(100,widthPx*.58));
     }
     ctx.restore();
-   }
-  }
-  // Una sola flecha azul que gira en torno a una base fija sin cambiar de tamaño.
-  if(game.state==='aiming'&&this.images['aim-center']){
-   const pose=aimArrowProjection(camera,target,width,height,zoom,game.aimAngle);
-   if(pose){
-    const image=this.images['aim-center'];
-    const widthPx=pose.heightPx*(image.naturalWidth/image.naturalHeight);
-    // La lámina original incluye una franja clara en el borde superior: al girar
-    // se veía como una línea blanca que cruzaba el estadio. Recortar solo el
-    // margen del asset conserva la flecha aprobada y elimina ese borde.
-    const topCrop=Math.min(18,Math.floor(image.naturalHeight*.075));
-    const bottomCrop=Math.min(10,Math.floor(image.naturalHeight*.042));
-    const sourceHeight=image.naturalHeight-topCrop-bottomCrop;
-    if(sourceHeight>0){
-     const scale=pose.heightPx/image.naturalHeight;
-     ctx.save();ctx.translate(pose.x,pose.y);ctx.rotate(pose.rotation);
-     ctx.drawImage(image,0,topCrop,image.naturalWidth,sourceHeight,
-      -widthPx*.5,-pose.heightPx+topCrop*scale,widthPx,sourceHeight*scale);
-     ctx.restore();
-    }
    }
   }
   game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);

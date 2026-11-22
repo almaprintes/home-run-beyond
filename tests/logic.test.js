@@ -1,25 +1,75 @@
-import test from 'node:test';import assert from 'node:assert/strict';
-import {initialSave,sanitizeSave,upgradeCost,upgrade,settleShot,forwardDistance,timingQuality,calculateShot,batSpeedMs,rewardForMeters} from '../src/logic.js';
-test('progreso válido y contra guardados corruptos',()=>{const s=sanitizeSave({coins:Infinity,levels:{power:-90,swing:1e99,reflex:6},owned:['classic','nova','nova'],equipped:'fake'});assert.equal(s.coins,170);assert.equal(s.levels.power,1);assert.equal(s.levels.swing,1);assert.equal(s.levels.reflex,6);assert.equal(s.equipped,'classic');assert.deepEqual(s.owned,['classic','nova']);});
-test('costes crecientes y mejoras persisten',()=>{const s=initialSave(),old=s.coins;assert.equal(upgradeCost(1,'power'),80);assert.ok(upgrade(s,'power'));assert.equal(s.levels.power,2);assert.equal(s.coins,old-80);assert.ok(upgradeCost(200,'power')>upgradeCost(150,'power'));});
-test('reflejos amplían la ventana perfecta',()=>{assert.equal(timingQuality(95,1),'excellent');assert.equal(timingQuality(95,80),'perfect');});
-test('swing reduce retardo y aumenta velocidad',()=>{assert.ok(batSpeedMs(100)<batSpeedMs(1));const a=calculateShot({power:1,swing:1,reflex:1},0),b=calculateShot({power:100,swing:100,reflex:1},0);assert.ok(b.ratedDistance>a.ratedDistance);assert.ok(a.vz>0);});
-test('golpear y récord con moneda determinada por distancia',()=>{const s=initialSave(),first=settleShot(s,90),second=settleShot(s,50);assert.ok(first.record);assert.ok(!second.record);assert.equal(s.shots,2);assert.equal(s.totalMeters,140);assert.equal(s.best,90);assert.equal(first.coins,rewardForMeters(90,s.levels));});
-test('el primer nivel no puede salir del estadio de 121 m ni con perfecto',()=>{const s=initialSave(),shot=calculateShot(s.levels,0);assert.ok(shot.ratedDistance<121,`Alcance inicial ${shot.ratedDistance}`)});
-test('el desarrollo avanzado puede superar el río y las ciudades',()=>{const shot=calculateShot({power:300,swing:300,reflex:150},0);assert.ok(shot.ratedDistance>10000);});
-test('el marcador descuenta metros cuando la bola retrocede',()=>{
- const b={z:430,maxZ:430};
- assert.equal(forwardDistance(b),430);
- b.z=287;assert.equal(forwardDistance(b),287);
- b.z=-14;assert.equal(forwardDistance(b),0);
- b.z=80;assert.equal(forwardDistance(b),80);
- assert.equal(forwardDistance(null),0);
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialSave,sanitizeSave,upgradeCost,upgrade,settleShot,forwardDistance,timingQuality,calculateShot,batSpeedMs,rewardForMeters,coinMultiplier,coinRewardBreakdown} from '../src/logic.js';
+
+test('la partida migra reflejos a multiplicador conservando monedas, niveles, récords y cosméticos',()=>{
+ const s=sanitizeSave({coins:2847,best:1730,shots:84,totalMeters:5000,levels:{power:49,swing:14,reflex:7},owned:['classic','nova'],equipped:'nova'});
+ assert.equal(s.coins,2847);assert.equal(s.best,1730);assert.equal(s.shots,84);
+ assert.deepEqual(s.levels,{power:49,swing:14,multiplier:7});
+ assert.equal(s.equipped,'nova');assert.equal(s.totalMeters,5000);
+ const again=sanitizeSave(s);assert.deepEqual(again.levels,s.levels);
 });
-test('recompensa y récord usan posición final tras el rebote, no el máximo',()=>{
- const save=initialSave(),ball={z:100,maxZ:475};
- const reward=settleShot(save,forwardDistance(ball));
- assert.equal(reward.meters,100);
- assert.equal(save.best,100);
- assert.equal(save.totalMeters,100);
- assert.equal(reward.coins,rewardForMeters(100,save.levels));
+test('guardados corruptos no crean niveles, dinero o cosméticos falsos',()=>{
+ const s=sanitizeSave({coins:Infinity,levels:{power:-90,swing:1e99,reflex:6},owned:['classic','nova','nova'],equipped:'fake'});
+ assert.equal(s.coins,170);assert.equal(s.levels.power,1);assert.equal(s.levels.swing,1);
+ assert.equal(s.levels.multiplier,6);assert.equal(s.equipped,'classic');
+ assert.deepEqual(s.owned,['classic','nova']);
+});
+test('los precios aumentan claramente a niveles altos y guardan saldo',()=>{
+ const s=initialSave();const before=s.coins;
+ assert.equal(upgradeCost(1,'power'),160);
+ assert.ok(upgrade(s,'power'));assert.equal(s.levels.power,2);assert.equal(s.coins,before-160);
+ assert.ok(upgradeCost(49,'power')>upgradeCost(14,'power')*5);
+ assert.ok(upgradeCost(200,'power')>upgradeCost(150,'power'));
+ assert.ok(upgradeCost(1,'multiplier')>upgradeCost(1,'swing'));
+});
+test('Swing no modifica fuerza, velocidad, retardo, calidad o pagos para un tiro idéntico',()=>{
+ const a={power:20,swing:1,multiplier:1},b={power:20,swing:1000,multiplier:1};
+ assert.equal(batSpeedMs(1),batSpeedMs(100));
+ assert.equal(timingQuality(95,1),timingQuality(95,100));
+ assert.deepEqual(calculateShot(a,25),calculateShot(b,25));
+ assert.equal(rewardForMeters(900,a),rewardForMeters(900,b));
+});
+test('Potencia es la única que modifica la física y el alcance del batazo',()=>{
+ const a=calculateShot({power:1,swing:1,multiplier:1},0);
+ const b=calculateShot({power:100,swing:1,multiplier:1},0);
+ assert.ok(b.ratedDistance>a.ratedDistance&&b.initialSpeed>a.initialSpeed);
+ assert.ok(a.vz>0&&a.ratedDistance<121);
+ const c=calculateShot({power:1,swing:1,multiplier:100},0);
+ assert.equal(a.ratedDistance,c.ratedDistance);
+});
+test('el multiplicador mejora solo monedas, no la distancia o el swing',()=>{
+ const a={power:15,swing:5,multiplier:1},b={power:15,swing:5,multiplier:20};
+ assert.deepEqual(calculateShot(a,0),calculateShot(b,0));
+ assert.ok(rewardForMeters(900,b)>rewardForMeters(900,a));
+ assert.equal(coinMultiplier(1),1);
+ assert.equal(coinMultiplier(51),3);
+ assert.equal(coinMultiplier(10000),3);
+ const detail=coinRewardBreakdown(900,b);
+ assert.equal(detail.base+detail.bonus,detail.total);
+ assert.equal(detail.total,rewardForMeters(900,b));
+});
+test('las monedas aparecen separadas entre base y bonus',()=>{
+ const save=initialSave();save.levels.multiplier=7;
+ const r=settleShot(save,959);
+ assert.equal(r.baseCoins,Math.floor(959*.75));
+ assert.equal(r.multiplier,1.24);
+ assert.equal(r.coins,r.baseCoins+r.bonusCoins);
+ assert.ok(r.coins>r.baseCoins);
+ assert.equal(save.coins,170+r.coins);
+ assert.equal(save.best,959);
+});
+test('sin retroceso añadido: recompensas basadas en la posición final',()=>{
+ const ball={z:430,maxZ:475};
+ assert.equal(forwardDistance(ball),430);
+ ball.z=100;assert.equal(forwardDistance(ball),100);
+ ball.z=-14;assert.equal(forwardDistance(ball),0);
+ assert.equal(forwardDistance(null),0);
+ const s=initialSave(),reward=settleShot(s,forwardDistance({z:100,maxZ:475}));
+ assert.equal(reward.meters,100);assert.equal(s.best,100);
+ assert.equal(s.totalMeters,100);
+});
+test('las regiones lejanas siguen alcanzables mediante Potencia elevada',()=>{
+ const r=calculateShot({power:4500,swing:1,multiplier:1},0);
+ assert.ok(r.ratedDistance>10000);
 });

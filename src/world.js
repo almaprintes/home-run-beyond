@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.27.0';
+import {lerp} from './engine.js?v=0.28.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -365,27 +365,6 @@ export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',
   r.add('ball',-4.5*t,y,z,.77,.77,.77,'#ffffff');
  }
 }
-// Indicador único: pivote fijo en el punto de contacto del bate.
-// La punta recorre un arco al variar angle; no se dibuja barra ni mini-flecha.
-export function drawAimArrow(r,angle=0,quality='good'){
- const color=quality==='perfect'?'#72ffdd':quality==='excellent'?'#89eedf':
-             quality==='miss'?'#ffa69b':'#78d9ff';
- const x=-4.5,z=-4.7,y=5.4,len=31;
- const dx=Math.sin(angle),dz=Math.cos(angle);
- const tipX=x+dx*len,tipZ=z+dz*len;
- r.setLayer?.('overlay');
- // Única flecha rígida girando alrededor de la misma base.
- r.box(x+dx*len*.43,y,z+dz*len*.43,2.05,.42,len*.86,color,angle);
- for(const side of [-1,1]){
-  const px=tipX-Math.sin(angle+side*.66)*8.1;
-  const pz=tipZ-Math.cos(angle+side*.66)*8.1;
-  const vx=tipX-px,vz=tipZ-pz;
-  r.box((px+tipX)/2,y,(pz+tipZ)/2,2.8,.49,Math.hypot(vx,vz),color,Math.atan2(vx,vz));
- }
- // La bola del origen no se desplaza aunque cambie el rumbo.
- r.ball(x,y+.14,z,2.35,'#fff3bf');
- r.setLayer?.('opaque');
-}
 export function drawBaseball(r,x,y,z,spin=0){
  // Pelota de béisbol inequívoca: esfera blanca suave, costuras rojas y puntadas.
  // Su propia pasada de profundidad mantiene el balón visible tras los obstáculos.
@@ -414,7 +393,7 @@ export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
  drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady);
- if(game.state==='aiming'&&!game.sprites?.images?.['aim-center'])drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
+ // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}

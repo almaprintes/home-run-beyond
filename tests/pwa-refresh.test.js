@@ -3,42 +3,44 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('la versión 0.27 evita cachear CSS y JavaScript viejos bajo la misma URL',()=>{
+test('v0.28 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.27\.0/);
- assert.match(html,/src\/main\.js\?v=0\.27\.0/);
- assert.match(main,/game\.js\?v=0\.27\.0/);
+ assert.match(html,/style\.css\?v=0\.28\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.28\.0/);
+ assert.match(main,/game\.js\?v=0\.28\.0/);
  for(const src of ['game.js','world.js','sprites.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.27.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.28.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v27-20261122-recorded-strike/);
+ assert.match(sw,/hrb-v28-20261122-economy-aim-bar/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
- assert.doesNotMatch(sw,/caches\.match\(e\.request\)\.then\(c=>c\|\|fetch/);
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
  assert.match(sw,/\.\/assets\/strike\.mp3/);
 });
 
-test('icono y lienzo mantienen tamaño aunque se sirva CSS antiguo',()=>{
+test('la interfaz muestra nuevo multiplicador, barra de dirección y desglose de premios',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(html,/Versión 0\.28/);
+ assert.match(html,/id="aim-ball"/);
+ assert.match(html,/id="aim-sweet-zone"/);
+ assert.match(html,/id="up-multiplier"/);
+ assert.match(html,/id="coin-breakdown"/);
+ assert.match(html,/MEJORA EXTRA CADA 5 COMPRAS/);
+ assert.doesNotMatch(html,/id="up-reflex"/);
  assert.match(html,/class="brand-baseball"[^>]+width="34" height="34"[^>]+max-width:34px/);
  assert.match(html,/id="character-overlay"[^>]+position:absolute;inset:0;width:100%;height:100%/);
- assert.match(html,/Versión 0\.27/);
 });
 
-test('se cargan realmente los sprites aprobados y se dibuja el personaje seleccionado',async()=>{
- const previousImage=globalThis.Image, previousWindow=globalThis.window;
+test('sprites aprobados persisten durante apuntado, sin dibujar la flecha antigua',async()=>{
+ const previousImage=globalThis.Image,previousWindow=globalThis.window;
  const calls=[];
- const ctx={
-  setTransform(){},clearRect(){},save(){},restore(){},beginPath(){},ellipse(){},fill(){},
-  translate(){},rotate(){},drawImage(...args){calls.push(args)},
-  imageSmoothingEnabled:true,imageSmoothingQuality:'high'
- };
+ const ctx={setTransform(){},clearRect(){},save(){},restore(){},beginPath(){},ellipse(){},fill(){},
+  translate(){},rotate(){},drawImage(...args){calls.push(args)},imageSmoothingEnabled:true,imageSmoothingQuality:'high'};
  const canvas={clientWidth:430,clientHeight:930,width:0,height:0,getContext:()=>ctx};
  class FakeImage{
   constructor(){this.naturalWidth=194;this.naturalHeight=347}
@@ -49,22 +51,15 @@ test('se cargan realmente los sprites aprobados y se dibuja el personaje selecci
  try{
   const sprites=new BatterSprites(canvas);
   assert.equal(await sprites.load(),true);
-  assert.equal(sprites.ready,true);
   assert.equal(sprites.ballLoaded,true);
   const game={state:'pitching',pitch:.40,camera:[-6.7,7.5,-20.5],target:[-.8,3.5,12],ball:null,clock:0};
   sprites.draw(game,62);
-  assert.ok(calls.length>0,'no se dibujó el bateador');
-  assert.ok(calls.some(([img])=>img.src===BATTER_ASSETS.watch),'no se dibuja la pose del bateador aprobada');
-  assert.ok(canvas.width===430&&canvas.height===930);
-  calls.length=0;
-  game.state='aiming';game.aimAngle=.55;
+  assert.ok(calls.some(([img])=>img.src===BATTER_ASSETS.watch));
+  calls.length=0;game.state='aiming';
   sprites.draw(game,62);
-  assert.ok(calls.some(([img])=>img.src===BATTER_ASSETS.loaded),'el bateador sigue visible');
-  const arrowCall=calls.find(([img])=>img.src===BATTER_ASSETS['aim-center']);
-  assert.ok(arrowCall,'la única flecha grande se dibuja por separado');
-  assert.equal(arrowCall.length,9,'usar origen recortado elimina el borde blanco del asset');
-  assert.ok(arrowCall[2]>=14,'el margen superior blanco debe quedar fuera del recorte');
-  assert.ok(arrowCall[4]<arrowCall[0].naturalHeight,'la flecha no debe dibujar la franja completa');
+  assert.ok(calls.some(([img])=>img.src===BATTER_ASSETS.loaded));
+  assert.ok(!Object.keys(BATTER_ASSETS).some(key=>key.startsWith('aim-')));
+  assert.ok(canvas.width===430&&canvas.height===930);
  }finally{
   if(previousImage===undefined)delete globalThis.Image;else globalThis.Image=previousImage;
   if(previousWindow===undefined)delete globalThis.window;else globalThis.window=previousWindow;

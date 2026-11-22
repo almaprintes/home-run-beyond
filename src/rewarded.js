@@ -1,7 +1,7 @@
 /** Adaptador de anuncios recompensados de la PWA. No se muestra ninguna publicidad falsa.
  * El futuro proveedor deberá registrar window.HRB_REWARDED_AD.show({placement})
  * y resolver {rewarded:true} únicamente al recibir confirmación de recompensa.
- * Sin proveedor, el bono de la alfa se entrega sin anuncio y se etiqueta explícitamente.
+ * Sin proveedor, el bono queda pendiente, y se permiten compras de pago.
  */
 export function hasRewardedAds(){return typeof window!=='undefined'&&typeof window.HRB_REWARDED_AD?.show==='function'}
 export async function showRewardedAd(){if(!hasRewardedAds())return false;
