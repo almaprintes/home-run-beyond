@@ -56,7 +56,8 @@ test('golpe contra pared real rebota y no atraviesa el edificio',()=>{
  game.simulateStep(.15);
  assert.ok(game.ball.z < b.z-b.d/2,'la bola entró en el cuerpo del edificio');
  assert.ok(game.ball.vz<0,'la pared no invirtió la componente de velocidad');
- assert.ok(game.ball.buildingHits===1);
+ assert.ok(game.ball.bounces>=1,'la pared debe registrar el impacto');
+ assert.equal(game.state,'flight','chocar con una pared no finaliza la partida');
 });
 
 
