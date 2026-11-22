@@ -59,7 +59,7 @@ test('avanzar por +Z rueda sobre el eje horizontal X y no como moneda lateral',(
  integratePhysicalSpin(b,{x:0,z:0},Math.PI*BALL_RADIUS/16,true,'grass');
  const top=rotateQuaternion(b.spin.orientation,[0,1,0]);
  const right=rotateQuaternion(b.spin.orientation,[1,0,0]);
- assert.ok(top[2]>.999,'el polo superior debe rodar HACIA delante (Z)');
+ assert.ok(top[2]<-.999,'el giro visible hacia delante no debe parecer marcha atrás');
  assert.ok(Math.abs(top[0])<1e-8,'un avance recto no produce giro lateral');
  assert.ok(Math.abs(right[0]-1)<1e-8,'el eje transversal se mantiene fijo');
 });
@@ -70,11 +70,34 @@ test('desplazamiento lateral X rueda sobre Z, y marcha atrás deshace exactament
  b.x=Math.PI*BALL_RADIUS/2;
  integratePhysicalSpin(b,{x:0,z:0},Math.PI*BALL_RADIUS/16,true,'grass');
  const top=rotateQuaternion(b.spin.orientation,[0,1,0]);
- assert.ok(top[0]>.999,'solo al moverse lateralmente rueda hacia el lado');
+ assert.ok(top[0]<-.999,'el giro visible lateral también debe conservar el sentido corregido');
  b.vx=-8;b.x=0;
  integratePhysicalSpin(b,{x:Math.PI*BALL_RADIUS/2,z:0},Math.PI*BALL_RADIUS/16,true,'grass');
  const home=rotateQuaternion(b.spin.orientation,[0,1,0]);
  assert.ok(Math.abs(home[1]-1)<1e-8,'retroceder la misma distancia vuelve a su orientación');
+});
+
+test('las costuras se desplazan hacia abajo en pantalla al avanzar desde la cámara',()=>{
+ // La cámara sigue la pelota desde atrás, mirando a +Z. Su punto central
+ // debe muestrear una zona ALTA del arte al rodar hacia delante: las costuras
+ // se desplazan hacia abajo en pantalla, no hacia arriba como antes.
+ const w=32,h=32,source=new Uint8ClampedArray(w*h*4);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const i=(y*w+x)*4;
+  source[i]=Math.round(y*255/(h-1));source[i+1]=0;source[i+2]=120;source[i+3]=255;
+ }
+ const output=new Uint8ClampedArray(BALL_SURFACE_SIZE*BALL_SURFACE_SIZE*4);
+ const b={x:0,y:BALL_RADIUS,z:0,vx:0,vy:0,vz:8};
+ initBallSpin(b);
+ const camera=[0,5,-18],target=[0,5,30];
+ shadeRollingSurface(source,w,h,b.spin,camera,target,output);
+ const center=(31*BALL_SURFACE_SIZE+31)*4;
+ const before=output[center];
+ b.z=.34*BALL_RADIUS;
+ integratePhysicalSpin(b,{x:0,z:0},.34*BALL_RADIUS/8,true,'grass');
+ shadeRollingSurface(source,w,h,b.spin,camera,target,output);
+ assert.ok(output[center]<before,
+  'costuras aún suben en pantalla: signo de giro invertido al avanzar hacia delante');
 });
 
 test('el sprite aprobado gira como esfera y conserva sus colores, sin franjas de moneda',()=>{

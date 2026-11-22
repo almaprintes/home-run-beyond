@@ -96,9 +96,11 @@ export function integratePhysicalSpin(ball,previous,dt,contact=false,material='g
  spin.contact=true;
  spin.rollAngle=(spin.rollAngle||0)+delta;
  spin.rollHeading=Math.atan2(dx,dz);
- // Actual contact with the ground: world axis = up × displacement.
- // A forward roll therefore goes over the top; sideways travel rolls sideways.
- spinQuaternion(spin,[dz,0,-dx],distance*traction/radius);
+ // The approved 2D baseball graphic is projected onto a virtual sphere.
+ // Its image-space orientation is opposite to a physical texture unwrap: invert
+ // the rendered angular phase so forward rolling reads FORWARD on iPhone.
+ // The scalar rollAngle/roll speed remain distance / radius and unchanged.
+ spinQuaternion(spin,[dz,0,-dx],-distance*traction/radius);
  spin.tilt=(spin.tilt+.15*delta)%(2*Math.PI);
  return spin;
 }
