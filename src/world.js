@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.15.0';
+import {lerp} from './engine.js?v=0.16.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -181,16 +181,37 @@ function road(r,x,z,w,d){
  r.setMaterial?.('asphalt');r.box(x,.035,z,w,.09,d,'#364f5c');
  r.setMaterial?.('plain');r.box(x,.19,z,w*.022,.035,d,'#e5c48b');
 }
+// El suelo se extiende más allá del horizonte visible. Los edificios y vehículos
+// siguen usando un radio corto para mantener los FPS de la PWA en iPhone.
+export function terrainCoverage(viewZ,viewY=0){
+ const h=Math.max(0,Number(viewY)||0);
+ return {
+  detail:viewZ<3000?370:700,
+  behind:Math.max(750,Math.min(2000,650+h*2.5)),
+  ahead:Math.max(1900,Math.min(4400,1550+h*5.5))
+ };
+}
 export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const cam=[viewX,viewY,viewZ];
  const drawTree=(x,z,h,seed)=>{
   if(focusBall&&treeObscuresBall(cam,focusBall,x,z,h))r.setLayer?.('ghost');
   tree(r,x,z,h,seed);r.setLayer?.('opaque');
  };
- const maxR=viewZ<3000?370:700;const start=Math.max(0,Math.floor((viewZ-maxR)/200)-1),end=Math.floor((viewZ+maxR)/200)+1;
+ const coverage=terrainCoverage(viewZ,viewY);
+ const start=Math.max(0,Math.floor((viewZ-coverage.behind)/200)-1);
+ const end=Math.floor((viewZ+coverage.ahead)/200)+1;
  for(let chunk=start;chunk<=end;chunk++){
-   const mid=chunk*200+100;if(mid>0){const h=worldHeight(viewX,mid);const g=mid<1750?'#7fbb74':mid<3600?'#86b784':'#95b78a';r.field(0,h-.18,mid,2500,202,g)}
-   if(chunk*200<1750&&(chunk+1)*200>1620){r.field(0,-.09,1680,2500,120,'#4badd1',0,'water');for(let x=-720;x<720;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
+   const mid=chunk*200+100;
+   if(mid>0){
+    const h=worldHeight(viewX,mid);
+    const g=mid<1750?'#5e9956':mid<3600?'#659864':'#719b6d';
+    // Textura siempre opaca; se centra bajo la cámara y nunca deja ver el cielo.
+    r.field(viewX,h-.18,mid,3200,202,g,0,'grass');
+   }
+   // El río debe seguir siendo visible a distancia, sin dejar el resto del suelo azul.
+   if(chunk*200<1750&&(chunk+1)*200>1620){r.field(0,-.09,1680,2500,120,'#4badd1',0,'water')}
+   if(Math.abs(mid-viewZ)>coverage.detail+160)continue;
+   if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-720;x<720;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
    if(chunk>0){road(r,0,chunk*200+65,880,24);for(let x=-420;x<420;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
     if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=((j*173+time*(12+j%3*7)+500)%850)-425,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
    }

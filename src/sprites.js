@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.15.0';
-import {surfaceBelowBall} from './world.js?v=0.15.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.15.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.16.0';
+import {surfaceBelowBall} from './world.js?v=0.16.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.16.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.

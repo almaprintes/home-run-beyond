@@ -46,6 +46,11 @@ void main(){
  }
  vec3 col=pow(base*vShade,vec3(.96));
  float f=smoothstep(uFogDistance*.43,uFogDistance,vFog);
+ // La niebla atmosférica no debe convertir el terreno próximo en cielo.
+ // La hierba y la tierra permanecen legibles hasta el horizonte lejano.
+ if(vMaterial==1 || vMaterial==8){
+  f=smoothstep(uFogDistance*.95,uFogDistance*3.6,vFog);
+ }
  fragColor=vec4(mix(col,uFogColor,f),uOpacity);
 }
 `;
@@ -118,7 +123,7 @@ export class Renderer{
    }
   };
   atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible; se conservan los colores base')};
-  atlas.src='./assets/materials-atlas-v2.png?v=0.15.0';
+  atlas.src='./assets/materials-atlas-v2.png?v=0.16.0';
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}
@@ -132,7 +137,7 @@ export class Renderer{
  cone(x,y,z,r,h,col){this.add('cone',x,y,z,r*2,h,r*2,col)}
  field(x,y,z,sx,sz,col,ry=0,material='grass'){this.add('field',x,y,z,sx,1,sz,col,ry,0,0,material)}
  render(cam,target,zoom=60){
-  const gl=this.gl;this.resize();gl.clearColor(0.48,.76,.84,0);
+  const gl=this.gl;this.resize();gl.clearColor(0.48,.76,.84,1);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
   const view=lookAt(cam,target),p=perspective(zoom*Math.PI/180,this.aspect,.25,Math.max(2500,this.fogDistance*5)),vp=mul4(p,view);
   gl.uniformMatrix4fv(this.uniforms.uViewProj,false,vp);

@@ -7,16 +7,16 @@ test('la versión 0.13 evita cachear CSS y JavaScript viejos bajo la misma URL',
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.15\.0/);
- assert.match(html,/src\/main\.js\?v=0\.15\.0/);
- assert.match(main,/game\.js\?v=0\.15\.0/);
+ assert.match(html,/style\.css\?v=0\.16\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.16\.0/);
+ assert.match(main,/game\.js\?v=0\.16\.0/);
  for(const src of ['game.js','world.js','sprites.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.15.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.16.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v15-20261122-mipmapped-grass-natural-sound/);
+ assert.match(sw,/hrb-v16-20261122-solid-city-ground/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.doesNotMatch(sw,/caches\.match\(e\.request\)\.then\(c=>c\|\|fetch/);
  assert.match(sw,/caches\.match\(request\)/);
@@ -27,7 +27,7 @@ test('icono y lienzo mantienen tamaño aunque se sirva CSS antiguo',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  assert.match(html,/class="brand-baseball"[^>]+width="34" height="34"[^>]+max-width:34px/);
  assert.match(html,/id="character-overlay"[^>]+position:absolute;inset:0;width:100%;height:100%/);
- assert.match(html,/Versión 0\.15/);
+ assert.match(html,/Versión 0\.16/);
 });
 
 test('se cargan realmente los sprites aprobados y se dibuja el personaje seleccionado',async()=>{
