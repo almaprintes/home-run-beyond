@@ -5,8 +5,13 @@ export function aimBarPosition(elapsedSeconds,swingLevel=1){
  const phase=((elapsedSeconds/aimSweepPeriod(swingLevel))%1+1)%1;
  return phase<.5?-1+4*phase:3-4*phase;
 }
-export function aimSweetHalf(swingLevel=1){
- return Math.min(.30,.13+.02*Math.log2(Math.max(1,swingLevel)));
+// El mayor alcance exige más precisión: Potencia estrecha la zona central.
+// Swing contrarresta la dificultad ampliándola y ralentizando el cursor.
+// El límite inferior evita que incluso con mucha potencia resulte imposible.
+export function aimSweetHalf(swingLevel=1,powerLevel=1){
+ const help=.022*Math.log2(Math.max(1,swingLevel));
+ const difficulty=.016*Math.log2(Math.max(1,powerLevel));
+ return Math.max(.055,Math.min(.30,.13+help-difficulty));
 }
 export function aimSweep(elapsedSeconds,swingLevel=1){
  return -SWEEP_MAX_RAD*aimBarPosition(elapsedSeconds,swingLevel);

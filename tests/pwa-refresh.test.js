@@ -3,20 +3,20 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('v0.28 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
+test('v0.29 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.28\.0/);
- assert.match(html,/src\/main\.js\?v=0\.28\.0/);
- assert.match(main,/game\.js\?v=0\.28\.0/);
+ assert.match(html,/style\.css\?v=0\.29\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.29\.0/);
+ assert.match(main,/game\.js\?v=0\.29\.0/);
  for(const src of ['game.js','world.js','sprites.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.28.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.29.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v28-20261122-economy-aim-bar/);
+ assert.match(sw,/hrb-v29-20261122-power-sweet-spot/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
@@ -25,7 +25,7 @@ test('v0.28 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
 
 test('la interfaz muestra nuevo multiplicador, barra de dirección y desglose de premios',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(html,/Versión 0\.28/);
+ assert.match(html,/Versión 0\.29/);
  assert.match(html,/id="aim-ball"/);
  assert.match(html,/id="aim-sweet-zone"/);
  assert.match(html,/id="up-multiplier"/);

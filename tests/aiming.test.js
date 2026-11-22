@@ -21,10 +21,22 @@ test('la pelota cruza la barra horizontal de lado a lado a velocidad constante',
 });
 
 test('subir Swing facilita solo la barra: centro mayor y velocidad menor',()=>{
- assert.ok(aimSweetHalf(14)>aimSweetHalf(1));
+ assert.ok(aimSweetHalf(14,1)>aimSweetHalf(1,1));
  assert.ok(aimSweepPeriod(14)>aimSweepPeriod(1));
- assert.ok(aimSweetHalf(10000)<=.30);
+ assert.ok(aimSweetHalf(10000,1)<=.30);
  assert.ok(aimSweepPeriod(10000)<=3.2);
+});
+
+test('Potencia estrecha el punto dulce; Swing lo amplía y compensa el desafío',()=>{
+ const swing=14;
+ assert.ok(aimSweetHalf(swing,49)<aimSweetHalf(swing,1));
+ assert.ok(aimSweetHalf(swing,100)<aimSweetHalf(swing,49));
+ assert.ok(aimSweetHalf(14,49)>aimSweetHalf(1,49),'Swing aumenta el margen con Potencia fija');
+ const novice=aimSweetHalf(1,1),highPower=aimSweetHalf(1,49),recovered=aimSweetHalf(14,49);
+ assert.ok(highPower<novice,'la potencia no puede ser gratis en términos de precisión');
+ assert.ok(recovered>highPower,'Swing tiene que recuperar margen');
+ assert.ok(recovered<aimSweetHalf(14,1),'la misma mejora de Swing no cancela toda la dificultad extra');
+ assert.ok(aimSweetHalf(1,10000)>=.055,'no se puede dejar una zona imposible');
 });
 
 test('dirección aplica el rumbo sin añadir energía a un golpe',()=>{
@@ -51,7 +63,9 @@ test('tocar y mantener congela la calidad; soltar en la zona dulce manda la bola
   game.freezeSwing(false);
   const q=game.pendingShot.quality,t=game.pitchElapsed;
   assert.equal(game.state,'aiming');
-  assert.ok(elements.get('aim-sweet-zone').style.width);
+  assert.equal(elements.get('aim-sweet-zone').style.width,
+   (aimSweetHalf(14,4)*100).toFixed(2)+'%',
+   'la barra representa la dificultad efectiva de Potencia y Swing');
   const quarter=aimSweepPeriod(game.save.levels.swing)/4;
   game.aimElapsed=quarter;game.aimAngle=aimSweep(quarter,game.save.levels.swing);
   game.swingBat(false);
@@ -79,4 +93,27 @@ test('no quedan flechas visuales ni indicadores antiguos',()=>{
  assert.doesNotMatch(game,/el\('aim-compass'\)|el\('aim-pointer'\)/);
  assert.match(game,/setPointerCapture\?\.\(e.pointerId\)/);
  assert.match(game,/window.addEventListener\('pointerup',release\)/);
+});
+
+test('un golpe fuera del punto dulce por Potencia alta no se corrige artificialmente',()=>{
+ const g=Object.create(BaseballGame.prototype);
+ g.state='aiming';g.aimElapsed=0;g.aimAngle=0;
+ g.save={levels:{power:49,swing:14,multiplier:7}};
+ g.pendingShot=calculateShot(g.save.levels,0);g.audio={swing(){}};
+ const elems=new Map(),before=globalThis.document;
+ globalThis.document={getElementById:id=>{
+  if(!elems.has(id))elems.set(id,{hidden:false,textContent:'',style:{},classList:{add(){},remove(){}}});
+  return elems.get(id);
+ }};
+ try{
+  const tolerance=aimSweetHalf(14,49),period=aimSweepPeriod(14);
+  const outside=tolerance+.015;
+  g.aimElapsed=(outside+1)*period/4;
+  g.aimAngle=aimSweep(g.aimElapsed,14);
+  g.swingBat(false);
+  assert.ok(Math.abs(g.pendingShot.direction)>.001,'fuera de la franja no debe disparar recto');
+  assert.equal(g.state,'swinging');
+ }finally{
+  if(before===undefined)delete globalThis.document;else globalThis.document=before;
+ }
 });

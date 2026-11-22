@@ -1,12 +1,12 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.28.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.28.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.28.0';
-import {GameAudio} from './audio.js?v=0.28.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.28.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.28.0';
-import {BatterSprites} from './sprites.js?v=0.28.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.28.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.28.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.29.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.29.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.29.0';
+import {GameAudio} from './audio.js?v=0.29.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.29.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.29.0';
+import {BatterSprites} from './sprites.js?v=0.29.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.29.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.29.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -133,7 +133,7 @@ export class BaseballGame{
   el('app').classList.add('aiming');el('aim-feedback').hidden=false;
   el('locked-quality').textContent=qualityNames[this.pendingShot.quality];
   el('aim-heading').textContent=aimDegrees(this.aimAngle);el('aim-direction').textContent='IZQUIERDA';
-  el('aim-sweet-zone').style.width=(aimSweetHalf(this.save.levels.swing)*100).toFixed(2)+'%';
+  el('aim-sweet-zone').style.width=(aimSweetHalf(this.save.levels.swing,this.save.levels.power)*100).toFixed(2)+'%';
   el('aim-ball').style.left='0%';
   el('pitch-touch-label').textContent='SUELTA PARA FIJAR DIRECCIÓN';
   el('aim').hidden=true;el('region').textContent='DIRECCIÓN DEL BATAZO';
@@ -141,7 +141,7 @@ export class BaseballGame{
  swingBat(auto=false){
   if(this.state==='pitching')this.freezeSwing(auto);
   if(this.state!=='aiming')return;
-  const sweet=Math.abs(aimBarPosition(this.aimElapsed,this.save.levels.swing))<=aimSweetHalf(this.save.levels.swing);
+  const sweet=Math.abs(aimBarPosition(this.aimElapsed,this.save.levels.swing))<=aimSweetHalf(this.save.levels.swing,this.save.levels.power);
   this.pendingShot=redirectShot(this.pendingShot,auto||sweet?0:this.aimAngle);
   this.state='swinging';el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;
   el('app').classList.remove('aiming');
@@ -315,7 +315,7 @@ export class BaseballGame{
    el('aim-heading').textContent=aimDegrees(this.aimAngle);
    const value=this.aimAngle*180/Math.PI;
    // Un único indicador: flecha 3D de origen fijo y texto de rumbo.
-   el('aim-direction').textContent=Math.abs(position)<=aimSweetHalf(this.save.levels.swing)?'RECTO · PUNTO DULCE':value>0?'IZQUIERDA':'DERECHA';
+   el('aim-direction').textContent=Math.abs(position)<=aimSweetHalf(this.save.levels.swing,this.save.levels.power)?'RECTO · PUNTO DULCE':value>0?'IZQUIERDA':'DERECHA';
  }
  if(this.state==='swinging'){
    this.swingElapsed+=dt;

@@ -95,3 +95,6 @@
 .coin-breakdown{display:block;color:#c7f7df!important;font-size:9px!important;font-weight:800;letter-spacing:.1px;line-height:1.3;padding-top:3px;white-space:nowrap}
 .upgrade-name{font-size:9px;letter-spacing:.25px}
 @media(max-height:720px){.aiming .aim-feedback{top:calc(104px + env(safe-area-inset-top));padding:8px 11px;gap:5px}.aim-meter{height:42px}.aim-ball{height:34px;width:34px}}
+
+/* Balance Potencia / Swing: indicador explicativo legible en móvil. */
+.aim-balance-hint{font-size:8px!important;letter-spacing:.36px!important;white-space:normal;color:#ffe3a2!important;line-height:1.3}
