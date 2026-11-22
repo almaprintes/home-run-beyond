@@ -38,6 +38,13 @@ test('tras iniciar el vuelo, los toques repetidos no generan otro golpe',()=>{
  let n=0;
  g.state='pitching';g.audio={init(){}};
  g.swingBat=()=>{n++;g.state='swinging';};
- g.onAction();g.onAction();
- assert.equal(n,1);
+ const previous=globalThis.document;
+ try{
+  globalThis.document={getElementById:()=>({hidden:true})};
+  g.onAction();g.onAction();
+  assert.equal(n,1);
+ }finally{
+  if(previous===undefined)delete globalThis.document;
+  else globalThis.document=previous;
+ }
 });
