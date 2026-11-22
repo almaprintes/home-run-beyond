@@ -142,7 +142,7 @@ export class BaseballGame{
   this.pendingShot=redirectShot(this.pendingShot,auto?0:this.aimAngle);
   this.state='swinging';el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;
   el('app').classList.remove('aiming');
-  this.swingElapsed=0;this.visualSwingElapsed=0;this.contactHold=this.pendingShot.quality==='miss'?0:hitStopDuration(this.pendingShot.quality);this.swing=.42;
+  this.swingElapsed=0;this.visualSwingElapsed=0;this.contactHold=hitStopDuration(this.pendingShot.quality);this.swing=.42;
   el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;
   this.audio.swing();
  }
