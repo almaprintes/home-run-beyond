@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.21.0';
+import {lerp} from './engine.js?v=0.22.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -14,7 +14,8 @@ function tree(r,x,z,h=7,seed=1){
  r.setMaterial?.('plain');
 }
 function bush(r,x,z,s=2){r.ball(x,s*.38,z,s,'#43835e')}
-export function riverAt(z){return z>1620&&z<1740}
+export const RIVER_HALF_WIDTH=540;
+export function riverAt(z,x=0){return z>1620&&z<1740&&Math.abs(x)<=RIVER_HALF_WIDTH}
 export function roadAt(z){return z>155&&Math.abs((z+35)%200-100)<14}
 export function areaAt(z){if(z<115)return 'ESTADIO';if(z<460)return 'BARRIOS';if(z<1550)return 'CIUDAD';if(z<1950)return 'RÍO Y PUERTO';if(z<3600)return 'COLINAS';if(z<10000)return 'GRAN VALLE';return 'MUNDO ABIERTO'}
 function worldHeight(x,z){if(z<1850)return 0;if(z<3600){const a=Math.sin(z*.004+x*.013)*.65+Math.sin(z*.015-x*.009)*.3;return Math.max(0,a*4)}return Math.max(0,(Math.sin(x*.009+z*.004)+Math.sin(x*.004-z*.007))*.8)}
@@ -31,7 +32,7 @@ export function wetAreaAt(x,z){
  return null;
 }
 export function groundAt(x,z){
- if(riverAt(z))return {y:0,type:'water'};
+ if(riverAt(z,x))return {y:0,type:'water'};
  const wet=wetAreaAt(x,z);
  if(wet)return {y:worldHeight(x,z),type:wet};
  if(roadAt(z))return {y:0,type:'road'};
@@ -191,6 +192,20 @@ export function terrainCoverage(viewZ,viewY=0){
   ahead:Math.max(1900,Math.min(4400,1550+h*5.5))
  };
 }
+// Material de cada solar: parches grandes, sin líneas finas ni brillo repetitivo.
+// Coordenadas ancladas al mundo: al mover la cámara no se desliza la textura.
+export function terrainPatchMaterial(chunk,index){
+ const n=Math.floor(rand(chunk*37+index*91,chunk*11+index*3)*10);
+ if(chunk>=1&&chunk<=7)return n<3?'paving':n<5?'dirt':'grass';
+ return n<2?'dirt':'grass';
+}
+export function terrainBaseColor(z){
+ if(z<200)return '#538f59';
+ if(z<1550)return '#659c63';
+ if(z<1850)return '#83a66a';
+ if(z<3600)return '#739d6b';
+ return '#759a68';
+}
 export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const cam=[viewX,viewY,viewZ];
  const drawTree=(x,z,h,seed)=>{
@@ -200,18 +215,45 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const coverage=terrainCoverage(viewZ,viewY);
  const start=Math.max(0,Math.floor((viewZ-coverage.behind)/200)-1);
  const end=Math.floor((viewZ+coverage.ahead)/200)+1;
+ // Una sola capa verde de seguridad debajo de todas las calles y edificios:
+ // nunca debe verse el color cian del framebuffer como si fuera suelo.
+ r.field(viewX,-.60,viewZ+500,9000,9000,'#608a5c',0,'grass');
  for(let chunk=start;chunk<=end;chunk++){
    const mid=chunk*200+100;
    if(mid>0){
     const h=worldHeight(viewX,mid);
-    const g=mid<1750?'#5e9956':mid<3600?'#659864':'#719b6d';
-    // Textura siempre opaca; se centra bajo la cámara y nunca deja ver el cielo.
-    r.field(viewX,h-.18,mid,3200,202,g,0,'grass');
+    r.field(viewX,h-.18,mid,4200,204,terrainBaseColor(mid),0,'grass');
+    // Cerca de la cámara, el césped alterna tierra seca y solares pavimentados.
+    // Pocas parcelas grandes: más legibles que cientos de puntitos con shimmer.
+    if(Math.abs(mid-viewZ)<coverage.detail+320 && !riverAt(mid)){
+     const xOrigin=Math.floor(viewX/320)*320;
+     for(let i=-4;i<=4;i++){
+      const seed=chunk*61+i*131;
+      const mat=terrainPatchMaterial(chunk,i);
+      const col=mat==='paving'?'#afa894':mat==='dirt'?'#ab926d':
+                  rand(seed,9)<.5?'#5e9a60':'#82b079';
+      const xx=xOrigin+i*320+rand(seed,2)*70-35;
+      const zz=mid+rand(seed,3)*95-47.5;
+      const ww=130+rand(seed,4)*155,dd=46+rand(seed,5)*64;
+      r.field(xx,h-.065,zz,ww,dd,col,rand(seed,6)*.35,mat);
+     }
+     if(chunk>0&&chunk<8){
+      // Parcelas y aceras urbanas a ambos lados de la calzada.
+      for(const side of [-1,1]){
+       r.field(side*265,h-.038,mid,150,130,'#aba99b',0,'paving');
+       r.field(side*365,h-.032,mid+38,68,46,'#a78765',0,'dirt');
+      }
+     }
+    }
    }
-   // El río debe seguir siendo visible a distancia, sin dejar el resto del suelo azul.
-   if(chunk*200<1750&&(chunk+1)*200>1620){r.field(0,-.09,1680,2500,120,'#4badd1',0,'water')}
+   // El cauce ocupa realmente 1.080 m de anchura, NO toda la ciudad.
+   // Las orillas de tierra quedan alrededor, encima del césped.
+   if(chunk*200<1750&&(chunk+1)*200>1620){
+    r.field(0,-.07,1680,1460,154,'#a49b72',0,'dirt');
+    r.field(0,-.015,1680,RIVER_HALF_WIDTH*2,118,'#3d9ab4',0,'water');
+   }
    if(Math.abs(mid-viewZ)>coverage.detail+160)continue;
-   if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-720;x<720;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
+   if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-520;x<=520;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
    if(chunk>0){road(r,0,chunk*200+65,880,24);for(let x=-420;x<420;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
     if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=((j*173+time*(12+j%3*7)+500)%850)-425,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
    }

@@ -57,10 +57,10 @@ test('el radio de detalle no crece con el horizonte y protege FPS de iPhone',()=
 test('niebla del suelo diferenciada y framebuffer opaco',()=>{
  const engine=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
  assert.match(engine,/if\(vMaterial==1 \|\| vMaterial==8\)/);
- assert.match(engine,/smoothstep\(uFogDistance\*\.95,uFogDistance\*3\.6,vFog\)/);
+ assert.match(engine,/\.34\*smoothstep\(uFogDistance\*\.95,uFogDistance\*6\.,vFog\)/);
  assert.match(engine,/gl\.clearColor\(0\.48,\.76,\.84,1\)/);
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(world,/r\.field\(viewX,h-\.18,mid,3200,202,g,0,'grass'\)/);
+ assert.match(world,/r\.field\(viewX,h-\.18,mid,4200,204,terrainBaseColor\(mid\),0,'grass'\)/);
  assert.match(world,/if\(Math\.abs\(mid-viewZ\)>coverage\.detail\+160\)continue/);
 });
 
