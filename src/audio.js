@@ -86,6 +86,20 @@ export class GameAudio{
  hit(q){this.sound('bat',q==='perfect'?.38:q==='excellent'?.32:q==='good'?.26:.16)}
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  miss(){this.sound('swing',.09)}
+ unlockSpeech(){
+  // Safari iOS exige que la primera locución se solicite desde un gesto.
+  // Una locución vacía y muda prepara el narrador durante el toque inicial.
+  if(!this.enabled||this.speechUnlocked)return;
+  try{
+   const synth=globalThis.speechSynthesis,Speech=globalThis.SpeechSynthesisUtterance;
+   if(!synth||!Speech)return;
+   const primer=new Speech('');
+   primer.lang='en-US';primer.volume=0;
+   this.speechPrimer=primer;
+   synth.speak(primer);
+   this.speechUnlocked=true;
+  }catch(error){console.warn('Activación de voz no disponible',error)}
+ }
  strike(){
   if(!this.enabled)return;
   // Voz nativa del dispositivo: sin descargar voces ni depender de conexión.

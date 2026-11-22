@@ -85,3 +85,22 @@ test('voz de Strike en inglés, respetando modo silencio',()=>{
   if(prevSpeech===undefined)delete globalThis.SpeechSynthesisUtterance;else globalThis.SpeechSynthesisUtterance=prevSpeech;
  }
 });
+
+test('el primer gesto prepara la voz iOS de manera muda; luego se pronuncia Strike',()=>{
+ const oldSynth=globalThis.speechSynthesis,oldSpeech=globalThis.SpeechSynthesisUtterance;
+ const heard=[];
+ globalThis.speechSynthesis={getVoices:()=>[],speak:p=>heard.push(p),cancel(){}};
+ globalThis.SpeechSynthesisUtterance=class{constructor(text){this.text=text}};
+ try{
+  const a=new GameAudio();
+  a.unlockSpeech();a.unlockSpeech();
+  assert.equal(heard.length,1,'el desbloqueo debe ejecutarse una sola vez');
+  assert.equal(heard[0].text,'');
+  assert.equal(heard[0].volume,0);
+  a.strike();
+  assert.equal(heard[1].text,'Strike!');
+ }finally{
+  if(oldSynth===undefined)delete globalThis.speechSynthesis;else globalThis.speechSynthesis=oldSynth;
+  if(oldSpeech===undefined)delete globalThis.SpeechSynthesisUtterance;else globalThis.SpeechSynthesisUtterance=oldSpeech;
+ }
+});

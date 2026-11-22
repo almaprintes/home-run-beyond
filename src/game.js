@@ -105,6 +105,7 @@ export class BaseballGame{
  onAction(){if(!el('welcome').hidden||!el('shop').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false);}
 
  startPitch(){
+  this.audio?.unlockSpeech?.();
   this.state='pitching';this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;
   this.strikeCalled=false;this.swingElapsed=0;this.visualSwingElapsed=0;
   el('app').classList.remove('resting','aiming');el('again').hidden=true;
