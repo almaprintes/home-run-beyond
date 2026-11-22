@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.22.0';
+import {lerp} from './engine.js?v=0.23.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -365,25 +365,25 @@ export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',
   r.add('ball',-4.5*t,y,z,.77,.77,.77,'#ffffff');
  }
 }
+// Indicador único: pivote fijo en el punto de contacto del bate.
+// La punta recorre un arco al variar angle; no se dibuja barra ni mini-flecha.
 export function drawAimArrow(r,angle=0,quality='good'){
- const color=quality==='perfect'?'#6cffd0':quality==='excellent'?'#92f6e7':quality==='miss'?'#ff9c91':'#ffe082';
- const x=-2.3,z=-.75,y=6.0,len=35;
+ const color=quality==='perfect'?'#72ffdd':quality==='excellent'?'#89eedf':
+             quality==='miss'?'#ffa69b':'#78d9ff';
+ const x=-4.5,z=-4.7,y=5.4,len=31;
  const dx=Math.sin(angle),dz=Math.cos(angle);
- const tx=x+dx*len,tz=z+dz*len;
+ const tipX=x+dx*len,tipZ=z+dz*len;
  r.setLayer?.('overlay');
- // Gran flecha suspendida sobre el campo, siempre visible por encima de la geometría.
- r.box(x+dx*len*.46,y,z+dz*len*.46,1.85,.46,len*.91,color,angle);
+ // Única flecha rígida girando alrededor de la misma base.
+ r.box(x+dx*len*.43,y,z+dz*len*.43,2.05,.42,len*.86,color,angle);
  for(const side of [-1,1]){
-  const px=tx-Math.sin(angle+side*.64)*8.5;
-  const pz=tz-Math.cos(angle+side*.64)*8.5;
-  const vx=tx-px,vz=tz-pz;
-  r.box((px+tx)/2,y,(pz+tz)/2,2.65,.55,Math.hypot(vx,vz),color,Math.atan2(vx,vz));
+  const px=tipX-Math.sin(angle+side*.66)*8.1;
+  const pz=tipZ-Math.cos(angle+side*.66)*8.1;
+  const vx=tipX-px,vz=tipZ-pz;
+  r.box((px+tipX)/2,y,(pz+tipZ)/2,2.8,.49,Math.hypot(vx,vz),color,Math.atan2(vx,vz));
  }
- r.ball(tx,y+.15,tz,2.75,color);
- for(let i=1;i<=3;i++){
-  const pos=i*7;
-  r.box(x+dx*pos,y+.45,z+dz*pos,1.4,.30,1.25,'#ffffff',angle);
- }
+ // La bola del origen no se desplaza aunque cambie el rumbo.
+ r.ball(x,y+.14,z,2.35,'#fff3bf');
  r.setLayer?.('opaque');
 }
 export function drawBaseball(r,x,y,z,spin=0){
@@ -414,7 +414,7 @@ export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
  drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor,!!game.spriteReady);
- if((game.state==='aiming'||game.state==='swinging')&&!game.spriteReady)drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
+ if(game.state==='aiming'&&!game.sprites?.images?.['aim-center'])drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}

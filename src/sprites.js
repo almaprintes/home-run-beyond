@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.22.0';
-import {surfaceBelowBall} from './world.js?v=0.22.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.22.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.23.0';
+import {surfaceBelowBall} from './world.js?v=0.23.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.23.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -21,7 +21,7 @@ export const BATTER_ASSETS=Object.freeze({
 export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0}={}){
  if(state==='ready')return 'ready';
  if(state==='pitching')return pitch>.72?'loaded':pitch>.12?'watch':'ready';
- if(state==='aiming')return aimAngle<-.25?'aim-left':aimAngle>.25?'aim-right':'aim-center';
+ if(state==='aiming')return 'loaded'; // La flecha se renderiza aparte, con pivote fijo y giro continuo.
  if(state==='swinging')return swingElapsed<.073?'contact':'follow';
  return null;
 }
@@ -179,6 +179,23 @@ export class BatterSprites{
      ctx.drawImage(this.images.spark,originX+widthPx*.75,originY+heightPx*.39,Math.min(100,widthPx*.58),Math.min(100,widthPx*.58));
     }
     ctx.restore();
+   }
+  }
+  // Una sola flecha azul aprobada, no tres recortes estáticos ni brújula.
+  // Su BASE permanece en el punto de bateo; únicamente la punta oscila.
+  if(game.state==='aiming'&&this.images['aim-center']){
+   const base=projectToScreen(camera,target,[-4.5,2.5,-4.7],width,height,zoom);
+   const angle=Number.isFinite(game.aimAngle)?game.aimAngle:0;
+   const tip=projectToScreen(camera,target,
+    [-4.5+Math.sin(angle)*31,2.5,-4.7+Math.cos(angle)*31],width,height,zoom);
+   if(base&&tip){
+    const dx=tip.x-base.x,dy=tip.y-base.y;
+    const rotation=Math.atan2(dx,-dy);
+    const image=this.images['aim-center'];
+    const heightPx=Math.max(150,Math.min(height*.39,Math.hypot(dx,dy)*1.45));
+    const widthPx=heightPx*(image.naturalWidth/image.naturalHeight);
+    ctx.save();ctx.translate(base.x,base.y);ctx.rotate(rotation);
+    ctx.drawImage(image,-widthPx*.5,-heightPx,widthPx,heightPx);ctx.restore();
    }
   }
   game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);

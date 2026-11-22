@@ -7,9 +7,9 @@ test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'ready'}),'ready');
  assert.equal(selectBatterPose({state:'pitching',pitch:.3}),'watch');
  assert.equal(selectBatterPose({state:'pitching',pitch:.88}),'loaded');
- assert.equal(selectBatterPose({state:'aiming',aimAngle:-.65}),'aim-left');
- assert.equal(selectBatterPose({state:'aiming',aimAngle:0}),'aim-center');
- assert.equal(selectBatterPose({state:'aiming',aimAngle:.65}),'aim-right');
+ assert.equal(selectBatterPose({state:'aiming',aimAngle:-.65}),'loaded');
+ assert.equal(selectBatterPose({state:'aiming',aimAngle:0}),'loaded');
+ assert.equal(selectBatterPose({state:'aiming',aimAngle:.65}),'loaded');
  assert.equal(selectBatterPose({state:'swinging',swingElapsed:.04}),'contact');
  assert.equal(selectBatterPose({state:'swinging',swingElapsed:.1}),'follow');
  assert.equal(selectBatterPose({state:'flight'}),null);
@@ -57,7 +57,8 @@ test('el canvas 2D es una capa visual no interactiva que se adapta a la pantalla
  assert.match(html,/id="character-overlay"/);
  assert.match(style,/#character-overlay\{[^}]*pointer-events:none/);
  assert.match(html,/assets\/baseball\.webp/);
- assert.match(html,/id="aim-pointer"[^>]*assets\/aim-center\.webp/);
+ assert.doesNotMatch(html,/id="aim-pointer"/);
+ assert.match(readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8'),/this\.images\['aim-center'\]/);
  assert.match(sw,/\.\/src\/sprites\.js/);
  assert.match(sw,/\.\/assets\/batter\/follow\.webp/);
  const sprites=new BatterSprites({getContext:()=>null});

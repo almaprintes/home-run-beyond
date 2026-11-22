@@ -49,11 +49,21 @@ test('mantener pausa el pitcher y suelta aplica el rumbo calculado',()=>{
   assert.equal(elements.get('pitch-surface').hidden,true);
  }finally{if(old===undefined)delete globalThis.document;else globalThis.document=old}
 });
-test('la flecha se renderiza en 3D y apunta igual que el vector físico',()=>{
- const calls=[],r={box:(...args)=>calls.push(args),ball(){}};
- drawAimArrow(r,Math.PI/5,'perfect');
- assert.equal(calls.length,6);
- assert.ok(Math.abs(calls[0][7]-Math.PI/5)<1e-10);
+test('una flecha grande rota alrededor de una única base fija y coincide con el tiro',()=>{
+ const frames=[];
+ for(const angle of [-.7,0,.7]){
+  const boxes=[],pivots=[];
+  const r={setLayer(){},box:(...a)=>boxes.push(a),ball:(...a)=>pivots.push(a)};
+  drawAimArrow(r,angle,'perfect');
+  assert.equal(boxes.length,3,'debe haber un asta y dos lados de una sola punta');
+  assert.equal(pivots.length,1,'el origen es un único punto fijo');
+  assert.ok(Math.abs(boxes[0][7]-angle)<1e-10,'el asta no sigue el rumbo');
+  frames.push({angle,boxes,pivot:pivots[0]});
+ }
+ assert.deepEqual(frames[0].pivot,frames[1].pivot);
+ assert.deepEqual(frames[1].pivot,frames[2].pivot);
+ assert.notEqual(frames[0].boxes[0][0],frames[2].boxes[0][0],'la punta tiene que oscilar');
+ assert.ok(frames[1].boxes[0][2]>frames[1].pivot[2],'la punta debe ir hacia delante');
  const shot=redirectShot(calculateShot({power:1,swing:1,reflex:1},0),Math.PI/5);
  assert.ok(shot.vx>0);
 });
@@ -68,20 +78,21 @@ test('control de pulsación larga y liberación con captura táctil',()=>{
  assert.match(game,/window.addEventListener\('pointerup',release\)/);
 });
 
-test('apuntado muestra brújula y flecha en primera plana',()=>{
+test('apuntado tiene solo la flecha grande; sin brújula, barra ni flecha pequeña',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(html,/id="aim-compass"/);
- assert.match(html,/id="aim-pointer"/);
- assert.match(html,/id="aim-vector"/);
- assert.match(css,/\.aim-compass\{/);
- assert.match(game,/el\('aim-pointer'\)\.style\.left=/);
- assert.match(game,/el\('aim-compass'\)\.hidden=false/);
- assert.match(game,/el\('aim-compass'\)\.hidden=true/);
- assert.match(world,/r\.setLayer\?\.\('overlay'\)/);
+ assert.doesNotMatch(html,/id="aim-compass"|id="aim-pointer"|id="aim-vector"/);
+ assert.doesNotMatch(css,/\.aim-compass|\.aim-pointer/);
+ assert.doesNotMatch(game,/el\('aim-compass'\)|el\('aim-pointer'\)|el\('aim-vector'\)/);
+ assert.match(html,/id="aim-direction"/);
+ assert.match(game,/el\('aim-direction'\)\.textContent=/);
+ assert.match(world,/if\(game\.state==='aiming'&&!game\.sprites\?\.images\?\.\['aim-center'\]\)drawAimArrow/);
+ assert.doesNotMatch(world,/!game\.spriteReady\)drawAimArrow/);
+ assert.match(html,/id="pitch-touch-label"/);
 });
+
 test('el encuadre queda detrás y a la izquierda del bateador',()=>{
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.match(game,/desiredCam=\[-6\.7,7\.5\+bob,-20\.5\]/);
