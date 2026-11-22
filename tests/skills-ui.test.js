@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BaseballGame} from '../src/game.js';
-import {initialSave} from '../src/logic.js';
+import {initialSave,upgradeCost,formatInt} from '../src/logic.js';
 
 test('las tres habilidades se pueden comprar durante el resultado',()=>{
   for (const key of ['power','swing','multiplier']) {
@@ -89,14 +89,14 @@ test('la tarjeta de Multiplicador muestra el premio actual y el del siguiente ni
   assert.equal(nodes.get('level-multiplier').textContent,'NIV. 8');
   assert.equal(nodes.get('multiplier-current').textContent,'×1,28');
   assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,32');
-  assert.equal(nodes.get('cost-multiplier').textContent,'1.465');
+  assert.equal(nodes.get('cost-multiplier').textContent,formatInt(upgradeCost(8,'multiplier')));
   assert.match(nodes.get('up-multiplier')['aria-label'],/nivel 8, multiplicador actual por 1\.28, siguiente por 1\.32/);
   game.buyUpgrade('multiplier');
   assert.equal(game.save.levels.multiplier,9);
   assert.equal(nodes.get('multiplier-current').textContent,'×1,32');
   assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,36');
   assert.equal(nodes.get('level-multiplier').textContent,'NIV. 9');
-  assert.notEqual(nodes.get('cost-multiplier').textContent,'1.465');
+  assert.equal(nodes.get('cost-multiplier').textContent,formatInt(upgradeCost(9,'multiplier')));
  }finally{
   if(previous===undefined)delete globalThis.document;else globalThis.document=previous;
  }
