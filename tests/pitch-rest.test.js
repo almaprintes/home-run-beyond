@@ -37,7 +37,7 @@ test('tras iniciar el vuelo, los toques repetidos no generan otro golpe',()=>{
  const g=Object.create(BaseballGame.prototype);
  let n=0;
  g.state='pitching';g.audio={init(){}};
- g.swingBat=()=>{n++;g.state='swinging';};
+ g.freezeSwing=()=>{n++;g.state='aiming';};
  const previous=globalThis.document;
  try{
   globalThis.document={getElementById:()=>({hidden:true})};

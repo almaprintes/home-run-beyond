@@ -52,3 +52,14 @@
 .resting .upgrades-top strong{color:#ffdc94}
 .resting .result-panel{max-height:min(228px,calc(100dvh - 370px))}
 @media(max-height:720px){.rest-again{padding:8px 12px;margin:5px auto 7px;font-size:11px}.resting .upgrades{padding-top:6px}.resting .result-panel{max-height:min(204px,calc(100dvh - 318px))}.pitch-touch-label{padding:7px 12px;font-size:10px}}
+
+/* 0.7 — apuntado con mantener y soltar; el campo y el pitcher siguen visibles. */
+.pitch-surface{touch-action:none}
+.pitch-touch-label{background:linear-gradient(100deg,rgba(8,37,52,.92),rgba(14,65,76,.91));color:#f9ecbf;border:1px solid #ffd78e9c;box-shadow:0 5px 18px #031b2b8a;pointer-events:none}
+.aiming .pitch-touch-label{background:linear-gradient(100deg,rgba(9,60,63,.95),rgba(12,85,73,.95));border-color:#89f1c8}
+.aim-feedback{z-index:3;top:calc(152px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;white-space:nowrap;background:rgba(5,32,43,.72);border:1px solid #f9eab180;border-radius:16px;padding:9px 17px;color:#fff;box-shadow:0 8px 20px #031b2b73;pointer-events:none}
+.aim-feedback strong{font-size:clamp(17px,5vw,23px);color:#ffe29a;font-weight:1000;font-style:italic}
+.aim-hint{font-size:12px;letter-spacing:1.3px;font-weight:900;color:#bcf4db}
+.aim-hint span{color:#fff}
+.aim-feedback small{font-size:9px;letter-spacing:.8px;font-weight:750;color:#c1d8e5}
+@media(max-height:720px){.aim-feedback{top:calc(100px + env(safe-area-inset-top));padding:6px 12px;gap:2px}}

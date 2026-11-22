@@ -34,7 +34,12 @@
     <button id="action" class="hit-button"><span id="action-icon">⚾</span><span id="action-title">¡JUGAR!</span><small id="action-sub">UN DEDO · UN GOLPE</small></button>
     <div id="tip" class="tip">Elige el instante exacto para conseguir un golpe perfecto</div>
   </section>
-  <button type="button" id="pitch-surface" class="layer pitch-surface" aria-label="Tocar para batear" hidden><span class="pitch-touch-label">TOCA LA PANTALLA PARA BATEAR</span></button>
+  <button type="button" id="pitch-surface" class="layer pitch-surface" aria-label="Mantener pulsado para batear y soltar para fijar la dirección" hidden><span id="pitch-touch-label" class="pitch-touch-label">MANTÉN PULSADO PARA BATEAR</span></button>
+  <div id="aim-feedback" class="layer aim-feedback" hidden aria-live="off">
+    <strong id="locked-quality">¡PERFECTO!</strong>
+    <div class="aim-hint">DIRECCIÓN <span id="aim-heading">0°</span></div>
+    <small>SUELTA EL DEDO PARA DISPARAR</small>
+  </div>
   <div id="aim" class="layer aim" hidden><div class="aim-ring"><span>✦</span></div></div>
   <section class="layer result" id="result" hidden>
     <div class="result-panel">
@@ -62,7 +67,7 @@
       <div class="modal-head"><div><small>EL VESTUARIO</small><h2>Personaliza tu estilo</h2></div><button class="x" id="shop-close" aria-label="Cerrar">×</button></div>
       <div class="modal-intro">Cosméticos sin ventajas competitivas. Desbloquea colores y estelas con las monedas de tus batazos.</div>
       <div id="shop-items" class="shop-items"></div>
-      <div class="foot-note">Versión 0.3 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
+      <div class="foot-note">Versión 0.7 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -71,7 +76,7 @@
       <div class="eyebrow">CRAFTRACE STUDIO PRESENTA</div>
       <h1>HOME RUN <em>BEYOND</em></h1>
       <p>Un pitcher. Un botón. Una pelota capaz de cruzar ciudades.</p>
-      <div class="onboard-steps"><span>1 · ESPERA EL LANZAMIENTO</span><span>2 · BATEA EN EL MOMENTO PERFECTO</span><span>3 · GANA MONEDAS Y MEJORA</span></div>
+      <div class="onboard-steps"><span>1 · ESPERA EL LANZAMIENTO</span><span>2 · MANTÉN PULSADO PARA FIJAR EL GOLPE</span><span>3 · SUELTA CUANDO LA FLECHA APUNTE DONDE QUIERAS</span></div>
       <button id="start" class="main-button">¡AL CAMPO! <span>➜</span></button>
     </div>
   </section>

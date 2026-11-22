@@ -175,7 +175,24 @@ function person(r,x,z,team,phase=0,batting=false,batColor='#e7b56e'){const bob=b
  }else{r.pole(x-1.35,3.13+bob,z+.3,.29,1.5,palette.skin,0,-.1,-.35);r.pole(x+1.35,3.1+bob,z+.3,.29,1.5,palette.skin,0,-.1,.35);r.ball(x-1.6,2.7+bob,z+.65,.65,'#89533b')}
 }
 export function drawActors(r,throwProgress=0,swingProgress=0,batColor="#e7b56e"){person(r,-2.3,-5,'batter',swingProgress,true,batColor);person(r,0,21,'pitcher',throwProgress*3,false);if(throwProgress>0 && throwProgress<1){const t=throwProgress;const z=20.5-25.4*t, y=2.5+.35*Math.sin(t*PI);r.ball(0,y,z,.72,'#fffefa');r.add('ball',0,y,z,.77,.77,.77,'#ffffff');}}
-export function drawWorld(r,cam,game){const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();sky(r,z,x,cam[1]);drawTerrain(r,z,x,cam[1],game.clock||0);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor)}
+export function drawAimArrow(r,angle=0,quality='good'){
+ const color=quality==='perfect'?'#74ffcc':quality==='excellent'?'#8ff5d5':quality==='miss'?'#ff9b83':'#ffd27f';
+ const x=-2.3,z=1,y=1.55,len=27;
+ const dirX=Math.sin(angle),dirZ=Math.cos(angle);
+ const tipX=x+dirX*len,tipZ=z+dirZ*len;
+ // Esta orientación es la misma que se aplica al vector físico X/Z de la pelota.
+ r.box(x+dirX*len*.47,y,z+dirZ*len*.47,1.20,.30,len*.94,color,angle);
+ for(const side of [-1,1]){
+  const hx=tipX-Math.sin(angle+side*.60)*7;
+  const hz=tipZ-Math.cos(angle+side*.60)*7;
+  const dx=tipX-hx,dz=tipZ-hz;
+  r.box((hx+tipX)/2,y,(hz+tipZ)/2,1.6,.35,Math.hypot(dx,dz),color,Math.atan2(dx,dz));
+ }
+ r.ball(tipX,y+.20,tipZ,2.1,color);
+}
+export function drawWorld(r,cam,game){const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();sky(r,z,x,cam[1]);drawTerrain(r,z,x,cam[1],game.clock||0);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor);
+ if(game.state==='aiming')drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
+ }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}
   for(let i=6;i>=1;i--){let q=(i/6)*.07;const xx=b.x-b.vx*q,yy=b.y-b.vy*q+.5*9.81*q*q,zz=b.z-b.vz*q;const ss=1.5*(1-i/8);r.ball(xx,Math.max(.4,yy),zz,ss,i>3?'#ffc58e':'#fcead2')}

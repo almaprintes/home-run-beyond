@@ -8,8 +8,9 @@ Un pitcher, un bateador, un botón y una pelota que puede terminar atravesando c
 
 1. Abre la dirección HTTPS publicada en **Safari del iPhone**.
 2. Pulsa **¡AL CAMPO!** (primera vez) o **¡JUGAR!**.
-3. Al lanzar el pitcher, toca **¡BATEA!** calculando la llegada de la pelota. El instante influye en la distancia.
-4. Cuando caiga la pelota, cobra las monedas. Pulsa **OTRO BATAZO** o compra mejoras en **POTENCIA**, **SWING** y **REFLEJOS**.
+3. Cuando la pelota llegue, **mantén pulsada la pantalla** para congelar el instante del golpe y su calidad. Mientras mantienes el dedo, una flecha 3D oscila de un lado a otro.
+4. **Suelta el dedo** cuando la flecha indique la dirección deseada. Ese rumbo se utiliza en la física del lanzamiento.
+5. Tras detenerse la pelota, compra habilidades o pulsa **VOLVER A BATEAR** desde la pantalla de descanso.
 5. Usa `+` para entrar en la tienda de bates cosméticos; el botón `♫` activa/desactiva el sonido.
 
 Para instalarlo en iOS: Safari → Compartir → **Añadir a pantalla de inicio**. Se puede abrir en pantalla completa y, tras una primera visita conectada, los recursos esenciales quedan almacenados para funcionar sin red. Las partidas se guardan en **localStorage** del dispositivo; no se sincronizan entre dispositivos.
@@ -69,3 +70,6 @@ Sin trackers, cookies de analítica, servidor de cuentas ni SDK publicitario. Lo
 El panel de resultado se presenta en una tarjeta compacta, sin oscurecer la pantalla de forma invasiva. Las tres tarjetas de habilidades destacan con borde dorado si son comprables, gris si no hay monedas y verde al estar disponible un bonus extra. Cada **cuatro mejoras pagadas** se desbloquea una **mejora adicional** en la habilidad que elija el jugador, y se conserva en el guardado local. Los jugadores de la versión anterior reciben el bonus que les corresponda por sus niveles ya adquiridos.
 
 **Publicidad recompensada:** el juego está preparado para conectar el adaptador `src/rewarded.js` con un proveedor. Cuando ese adaptador existe se debe comprobar la confirmación `rewarded:true` antes de aplicar el beneficio. Mientras no haya proveedor publicitario, se muestra claramente «BONO ALFA · SIN ANUNCIO» y se regala el nivel. No hay anuncios simulados, SDKs ni seguimiento comercial en esta versión.
+## Mecánica de apuntado 0.7
+
+La cámara de bateo está detrás del bateador a altura próxima a la de su cabeza. Mientras se pulsa la superficie táctil, el instante y la calidad del bateo quedan congelados, y una flecha tridimensional recorre lateralmente ±52°. Soltar congela el ángulo y lanza la pelota con ese rumbo, conservando su rapidez inicial horizontal. Se admiten toques, ratón y teclado; el botón principal permanece bajo la zona de visión para no tapar al pitcher.

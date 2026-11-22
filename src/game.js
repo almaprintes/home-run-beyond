@@ -3,9 +3,10 @@ import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js';
 import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
 import {GameAudio} from './audio.js';
 import {hasRewardedAds,showRewardedAd} from './rewarded.js';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
- constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.camera=[11,16,-35];this.target=[0,2,32];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
+ constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-2.3,5.5,-16];this.target=[-1.2,3.3,21];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
  try{this.save=sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY)))}catch{this.save=initialSave()}
  this.audio.enabled=this.save.sound;this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
  try{this.renderer=new Renderer(el('world'))}catch(e){console.warn('WebGL2 no disponible; utilizando reserva gráfica 2D',e);this.renderer=new CanvasRenderer(el('world'))}this.renderer.game=this;
@@ -13,21 +14,37 @@ export class BaseballGame{
  persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(this.save))}catch(e){if(e?.name!=='SecurityError')console.warn('No se pudo guardar el progreso',e)}}
  initUI(){const click=(id,fn)=>el(id).addEventListener('click',e=>{e.preventDefault();fn(e)});
  el('action').addEventListener('pointerdown',e=>{e.preventDefault();this.onAction()});
- el('pitch-surface').addEventListener('pointerdown',e=>{if(this.state!=='pitching')return;e.preventDefault();this.onAction()});
+ const pitchSurface=el('pitch-surface');
+ pitchSurface.addEventListener('pointerdown',e=>{
+  if(this.state!=='pitching'||this.activePointer!==null||(e.pointerType==='mouse'&&e.button!==0))return;
+  e.preventDefault();this.activePointer=e.pointerId;
+  try{pitchSurface.setPointerCapture(e.pointerId)}catch{}
+  this.onAction();
+ });
+ const release=e=>{
+  if(e.pointerId!==this.activePointer)return;
+  this.activePointer=null;
+  if(this.state==='aiming'){e.preventDefault();this.swingBat(false)}
+ };
+ pitchSurface.addEventListener('pointerup',release);
+ pitchSurface.addEventListener('pointercancel',release);
+ window.addEventListener('pointerup',release);
+ window.addEventListener('pointercancel',release);
  click('again',()=>this.resetAndPitch());click('start',()=>{this.save.seenIntro=true;this.persist();el('welcome').hidden=true;this.resetAndPitch()});
  click('shop-open',()=>this.openShop());click('shop-close',()=>this.closeShop());click('sound',()=>{this.save.sound=!this.save.sound;this.audio.enabled=this.save.sound;this.persist();this.drawUI();this.toast(this.save.sound?'SONIDO ACTIVADO':'SONIDO DESACTIVADO')});
  for(const key of ['power','swing','reflex'])click('up-'+key,()=>this.buyUpgrade(key));
  document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){if(e.repeat)return;if(!el('welcome').hidden||!el('shop').hidden)return;e.preventDefault();if(this.state==='rest')this.resetAndPitch();else this.onAction()}});
+ document.addEventListener('keyup',e=>{if((e.code==='Space'||e.code==='Enter')&&this.state==='aiming'&&this.activePointer===null){e.preventDefault();this.swingBat(false)}});
  document.addEventListener('visibilitychange',()=>{this.last=0;this.stopped=document.hidden});
  document.addEventListener('contextmenu',e=>e.preventDefault());
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showIntro(){el('welcome').hidden=this.save.seenIntro;if(!this.save.seenIntro){el('controls').hidden=true;el('upgrades').hidden=true;el('run-info').hidden=true;}}
  closeShop(){el('shop').hidden=true;this.drawUI()}
- openShop(){if(this.state==='pitching'||this.state==='swinging'||this.state==='flight')return;el('shop').hidden=false;this.renderShop()}
+ openShop(){if(this.state==='pitching'||this.state==='aiming'||this.state==='swinging'||this.state==='flight')return;el('shop').hidden=false;this.renderShop()}
  renderShop(){el('shop-items').replaceChildren();for(const item of COSMETICS){const owned=this.save.owned.includes(item.id),equipped=this.save.equipped===item.id;const row=document.createElement('div');row.className='shop-item';const preview=document.createElement('div');preview.className='shop-preview';preview.style.color=item.color;preview.textContent=item.emoji;const detail=document.createElement('div');detail.className='shop-detail';const strong=document.createElement('strong');strong.textContent=item.name;const small=document.createElement('small');small.textContent=item.description;detail.append(strong,small);const btn=document.createElement('button');btn.className='shop-buy';btn.textContent=equipped?'EQUIPADO':owned?'EQUIPAR':`✦ ${formatInt(item.price)}`;btn.disabled=equipped||(!owned&&this.save.coins<item.price);btn.addEventListener('click',()=>{if(!owned&&this.save.coins<item.price)return;if(!owned){this.save.coins-=item.price;this.save.owned.push(item.id);this.audio.cash()}this.save.equipped=item.id;this.batColor=item.color;this.persist();this.renderShop();this.drawUI()});row.append(preview,detail,btn);el('shop-items').append(row)}}
  buyUpgrade(key){
-  if(this.state==='pitching'||this.state==='swinging'||this.state==='flight'||this.rewardPending)return;
+  if(this.state==='pitching'||this.state==='aiming'||this.state==='swinging'||this.state==='flight'||this.rewardPending)return;
   if(bonusCredits(this.save)>0){
    if(hasRewardedAds()){
     this.rewardPending=true;this.drawUI();
@@ -65,10 +82,50 @@ export class BaseballGame{
   }
  }
  toast(s){el('toast').textContent=s;el('toast').classList.add('show');this.toastTimer=1.85;this.toastText=s}
- onAction(){if(!el('welcome').hidden||!el('shop').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.swingBat(false);}
- startPitch(){this.state='pitching';el('app').classList.remove('resting');el('again').hidden=true;el('pitch-surface').hidden=false;el('region').hidden=false;this.pitch=0;this.swing=0;this.pitchElapsed=0;this.ball=null;this.distance=0;this.pendingShot=null;el('result').hidden=true;el('record-badge').hidden=true;el('impact').textContent='';el('distance').textContent='0';el('controls').hidden=true;el('run-info').hidden=false;el('upgrades').hidden=true;el('action-title').textContent='¡BATEA!';el('action-sub').textContent='PULSA EN EL MOMENTO JUSTO';el('action-icon').textContent='⚾';el('action').classList.add('pitch');el('status-pill').textContent='⚾ VIENE EL LANZAMIENTO';el('tip').textContent='Sigue la pelota y pulsa cuando llegue al bate';el('region').textContent='ESTADIO · 0 KM';this.audio.tone(420,.12,'sine',.065,0,-140);}
- swingBat(auto=false){if(this.state!=='pitching')return;const contactTime=this.pitchElapsed+batSpeedMs(this.save.levels.swing)/1000;const deltaMs=(contactTime-.91*this.pitchDuration)*1000;this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs);this.pendingShot.deltaMs=deltaMs;this.state='swinging';el('pitch-surface').hidden=true;this.swingElapsed=0;this.swing=0;el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;this.audio.swing();}
- launch(){const hit=this.pendingShot;this.state='flight';this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-2.3,y:2.2,z:0,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ onAction(){if(!el('welcome').hidden||!el('shop').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false);}
+
+ startPitch(){
+  this.state='pitching';this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;
+  el('app').classList.remove('resting','aiming');el('again').hidden=true;
+  el('pitch-surface').hidden=false;el('aim-feedback').hidden=true;
+  el('pitch-touch-label').textContent='MANTÉN PULSADO PARA BATEAR';
+  el('region').hidden=false;this.pitch=0;this.swing=0;this.pitchElapsed=0;
+  this.ball=null;this.distance=0;this.pendingShot=null;
+  el('result').hidden=true;el('record-badge').hidden=true;
+  el('impact').textContent='';el('distance').textContent='0';el('controls').hidden=true;
+  el('run-info').hidden=true;el('upgrades').hidden=true;
+  el('action-title').textContent='¡BATEA!';
+  el('action-sub').textContent='MANTÉN PARA APUNTAR';el('action-icon').textContent='⚾';
+  el('action').classList.add('pitch');
+  el('status-pill').textContent='⚾ VIENE EL LANZAMIENTO';
+  el('tip').textContent='Mantén al llegar la pelota y suelta para lanzar';
+  el('region').textContent='ESTADIO · 0 KM';
+  this.audio.tone(420,.12,'sine',.065,0,-140);
+ }
+ freezeSwing(auto=false){
+  if(this.state!=='pitching')return;
+  const contactTime=this.pitchElapsed+batSpeedMs(this.save.levels.swing)/1000;
+  const deltaMs=(contactTime-.91*this.pitchDuration)*1000;
+  this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs);
+  this.pendingShot.deltaMs=deltaMs;
+  this.state='aiming';this.aimElapsed=0;this.aimAngle=0;this.swing=.42;
+  el('app').classList.add('aiming');el('aim-feedback').hidden=false;
+  el('locked-quality').textContent=qualityNames[this.pendingShot.quality];
+  el('aim-heading').textContent='0°';
+  el('pitch-touch-label').textContent='SUELTA PARA FIJAR DIRECCIÓN';
+  el('aim').hidden=true;el('region').textContent='DIRECCIÓN DEL BATAZO';
+ }
+ swingBat(auto=false){
+  if(this.state==='pitching')this.freezeSwing(auto);
+  if(this.state!=='aiming')return;
+  this.pendingShot=redirectShot(this.pendingShot,auto?0:this.aimAngle);
+  this.state='swinging';el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;
+  el('app').classList.remove('aiming');
+  this.swingElapsed=0;this.swing=.42;
+  el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;
+  this.audio.swing();
+ }
+ launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-2.3,y:2.2,z:0,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  simulateStep(dt){
   const b=this.ball;
@@ -158,12 +215,18 @@ export class BaseballGame{
  }
  finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,Math.max(1,b?.maxZ||0));this.persist();this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
- resetAndPitch(){el('result').hidden=true;this.camera=[11,16,-35];this.target=[0,2,32];this.startPitch()}
+ resetAndPitch(){el('result').hidden=true;this.camera=[-2.3,5.5,-16];this.target=[-1.2,3.3,21];this.startPitch()}
  update(dt){this.clock+=dt;if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)el('toast').classList.remove('show')}
  if(this.state==='pitching'){this.pitchElapsed+=dt;this.pitch=clamp(this.pitchElapsed/this.pitchDuration,0,1);if(this.pitchElapsed>this.pitchDuration+.22)this.swingBat(true);
  const aim=this.pitch>.69&&this.pitch<.96;el('aim').hidden=!aim;el('aim').style.scale=String(1+Math.min(.4,(this.save.levels.reflex-1)*.003));el('aim').style.opacity=String(aim?clamp((this.pitch-.69)*6,.3,1):0);
  el('status-pill').textContent=this.pitch>.7?'🎯 ¡AHORA, AHORA!':'⚾ VIENE EL LANZAMIENTO';}
- if(this.state==='swinging'){this.swingElapsed+=dt;this.swing=clamp(this.swingElapsed/.17,0,1);if(this.swingElapsed>=.12)this.launch()}
+ if(this.state==='aiming'){
+   // La calidad y el instante del lanzamiento no cambian hasta que el dedo se suelta.
+   this.aimElapsed+=dt;
+   this.aimAngle=aimSweep(this.aimElapsed);
+   el('aim-heading').textContent=aimDegrees(this.aimAngle);
+ }
+ if(this.state==='swinging'){this.swingElapsed+=dt;this.swing=.42+.58*clamp(this.swingElapsed/.17,0,1);if(this.swingElapsed>=.12)this.launch()}
  if(this.state==='flight'){
    this.liveSeconds+=dt;
    const speed=Math.hypot(this.ball.vx,this.ball.vz);const mult=clamp(speed/58,1,22);const total=dt*mult;const substeps=Math.ceil(total/.026);
@@ -173,8 +236,15 @@ export class BaseballGame{
  }
  const flight=this.state==='flight'||this.state==='rest';let desiredCam,desiredTarget,zoom;
  if(flight&&this.ball){const b=this.ball;const speed=Math.hypot(b.vz,b.vx);desiredCam=[b.x+clamp(b.y*.035,9,50),b.y+Math.min(120,16+b.y*.18),b.z-clamp(18+speed*.42,32,310)];desiredTarget=[b.x,b.y*.54,b.z+clamp(speed*.14,14,65)];zoom=58}
- else{const bob=Math.sin(this.clock*.4)*.28;desiredCam=[12,16.5+bob,-34];desiredTarget=[-1,2.4,28];zoom=58}
- const smooth=1-Math.exp(-dt*(flight?3.6:2.3));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
+ else{
+  const bob=Math.sin(this.clock*.4)*.10;
+  if(this.state==='aiming'){
+   desiredCam=[-2.3,5.25+bob,-12.4];desiredTarget=[-1.3,3.25,20];zoom=61;
+  }else{
+   desiredCam=[-2.3,5.65+bob,-17];desiredTarget=[-.8,3.4,21];zoom=62;
+  }
+ }
+ const smooth=1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
  this.renderer.fogDistance=flight&&this.camera[1]>350?1700:580;drawWorld(this.renderer,this.camera,this);if(this.shake>0){this.shake=Math.max(0,this.shake-dt);const j=this.shake*5;this.camera[0]+=Math.sin(this.clock*93)*j;this.camera[1]+=Math.cos(this.clock*111)*j*.44;}this.renderer.render(this.camera,this.target,zoom);
  }
  frame(now){if(this.stopped){this.last=now;requestAnimationFrame(t=>this.frame(t));return}const dt=this.last?clamp((now-this.last)/1000,0,.048):.016;this.last=now;this.frames++;this.fpsClock+=dt;this.qualityClock+=dt;
