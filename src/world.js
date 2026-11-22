@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.14.0';
+import {lerp} from './engine.js?v=0.15.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};

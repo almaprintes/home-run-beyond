@@ -97,3 +97,9 @@ La pelota aprobada mantiene su recurso original pero limita el diámetro dibujad
 ## Efectos de golpeo y colisiones 0.14 (22/11/2026)
 
 Los impactos generan partículas y anillos que siguen la posición 3D de la pelota. Se diferencian ladrillo/hormigón/tejado, goma, hierba/tierra, asfalto y agua/pantano/charco por color, emisión, dinámica y sonido sintetizado. El límite es de 90 partículas y ocho anillos simultáneos. El golpe crea una ráfaga y una pausa visual de contacto de 60/38/18 ms para perfecto/excelente/bueno respectivamente, sin alterar la calidad ni las velocidades de lanzamiento. Sacudida de cámara acotada que no se acumula en la posición persistente. Progreso intacto.
+
+## Revisión gráfica y sonora 0.15 (22/11/2026)
+
+Se reemplaza el atlas original por 12 materiales de 192×192 px en una sola imagen fuente 4×3. Hierba orgánica sin líneas orientadas; ladrillo, asfalto, tejas, madera, hormigón, agua, tierra, yeso/fachada pintada, metal, pavimento y goma. En WebGL2 cada recorte se copia a una capa independiente de una TEXTURE_2D_ARRAY: una cadena de mipmaps por material, trilineal LINEAR_MIPMAP_LINEAR y anisotropía hasta 4× cuando existe la extensión. Esto evita filtrado cruzado de atlas y aliasing a distancia. Reducción de contraste de detalle con distancia y eliminación de planos de césped superpuestos y z-fighting. Los solares pasan a pavimento en vez de cuadros verdes.
+
+Se sustituyen los pitidos de impacto y swing por muestras de audio generadas dentro de WebAudio: ruido filtrado, ataque transitorio, cuerpo de resonancia y envolventes distintos para madera, metal, hormigón, goma, tierra, césped y agua. Son sonidos sintetizados proceduralmente, no grabaciones reales; no añaden peticiones de red. Se mantiene la física, la economía y la compatibilidad con el guardado local. En caso de fallo de la carga de texturas, el renderer conserva colores de respaldo.

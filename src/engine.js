@@ -27,23 +27,22 @@ uniform float uFogDistance;
 uniform vec3 uFogColor;
 uniform float uOpacity;
 uniform float uTextureReady;
-uniform sampler2D uAtlas;
+uniform highp sampler2DArray uMaterialArray;
 out vec4 fragColor;
 void main(){
  vec3 base=vCol;
  if(uTextureReady>.5 && vMaterial>0){
   vec3 n=abs(normalize(vNormal));
   vec2 coord=n.y>max(n.x,n.z)?vWorld.xz:(n.x>n.z?vWorld.zy:vWorld.xy);
-  float density=vMaterial==1?11.:vMaterial==2?14.:vMaterial==3?11.:vMaterial==4?13.:
-                vMaterial==5?10.:vMaterial==6?18.:vMaterial==7?31.:10.;
-  vec2 unit=fract(coord/density);
-  // Preserve edge pixels inside each tile: no bleeding into the next material.
-  unit=mix(vec2(1.5/192.),vec2(1.-1.5/192.),unit);
-  float index=float(vMaterial-1);
-  vec2 tile=vec2(mod(index,4.),floor(index/4.));
-  vec3 pigment=texture(uAtlas,(tile+unit)/vec2(4.,2.)).rgb;
-  float strength=vMaterial==2?.82:vMaterial==3?.83:vMaterial==1?.70:.68;
-  base=mix(vCol,pigment*(.76+.24*vCol),strength);
+  float density=vMaterial==1?22.:vMaterial==2?16.:vMaterial==3?17.:vMaterial==4?18.:
+                vMaterial==5?18.:vMaterial==6?24.:vMaterial==7?40.:vMaterial==8?24.:
+                vMaterial==9?26.:vMaterial==10?24.:vMaterial==11?20.:25.;
+  vec2 uv=coord/density;
+  // Each material has its own GPU array layer and mip chain: no atlas tile bleeding.
+  vec3 pigment=textureGrad(uMaterialArray,vec3(uv,float(vMaterial-1)),dFdx(uv),dFdy(uv)).rgb;
+  float strength=vMaterial==1?.73:vMaterial==2?.76:vMaterial==3?.81:.70;
+  float distantFade=1.-.68*smoothstep(185.,650.,vFog);
+  base=mix(vCol,pigment*(.88+.12*vCol),strength*distantFade);
  }
  vec3 col=pow(base*vShade,vec3(.96));
  float f=smoothstep(uFogDistance*.43,uFogDistance,vFog);
@@ -72,30 +71,54 @@ function matrix(x,y,z,sx,sy,sz,ry=0,rx=0,rz=0){
  const a20=-syy*cz+cy*sxx*szz,a21=syy*szz+cy*sxx*cz,a22=cy*cx;
  return [a00*sx,a10*sx,a20*sx,0,a01*sy,a11*sy,a21*sy,0,a02*sz,a12*sz,a22*sz,0,x,y,z,1]
 }
-export const MATERIAL_IDS=Object.freeze({plain:0,grass:1,brick:2,asphalt:3,roof:4,wood:5,concrete:6,water:7,dirt:8});
+export const MATERIAL_IDS=Object.freeze({plain:0,grass:1,brick:2,asphalt:3,roof:4,wood:5,concrete:6,water:7,dirt:8,plaster:9,metal:10,paving:11,rubber:12});
 export class Renderer{
- constructor(canvas){this.canvas=canvas;let gl=canvas.getContext('webgl2',{antialias:true,alpha:true,powerPreference:'high-performance',depth:true,stencil:false,desynchronized:true});if(!gl)throw Error('Este dispositivo no admite WebGL2');this.gl=gl;this.program=makeProgram(gl);this.uniforms={};for(let n of ['uViewProj','uCamPos','uFogDistance','uFogColor','uOpacity','uTextureReady','uAtlas'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
+ constructor(canvas){this.canvas=canvas;let gl=canvas.getContext('webgl2',{antialias:true,alpha:true,powerPreference:'high-performance',depth:true,stencil:false,desynchronized:true});if(!gl)throw Error('Este dispositivo no admite WebGL2');this.gl=gl;this.program=makeProgram(gl);this.uniforms={};for(let n of ['uViewProj','uCamPos','uFogDistance','uFogColor','uOpacity','uTextureReady','uMaterialArray'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
  this.meshes={};for(const [name,geom] of Object.entries({box:cube(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane()})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],overlay:[]};}
  gl.bindVertexArray(null);this.layer='opaque';this.materialId=0;
- this.materialTexture=null;this.textureReady=false;
- if(typeof gl.createTexture==='function'&&typeof Image!=='undefined'){
-  const texture=gl.createTexture();this.materialTexture=texture;
-  gl.bindTexture(gl.TEXTURE_2D,texture);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
+ this.materialTexture=null;this.textureReady=false;this.anisotropy=1;
+ // WebGL2 texture array: materials have independent mipmaps so no tile shimmer/bleeding.
+ if(typeof gl.createTexture==='function'&&typeof gl.texImage3D==='function'&&
+    typeof gl.texSubImage3D==='function'&&typeof gl.generateMipmap==='function'&&
+    typeof Image!=='undefined'&&typeof document!=='undefined'){
   const atlas=new Image();
   atlas.onload=()=>{
-   gl.bindTexture(gl.TEXTURE_2D,texture);
-   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
-   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,atlas);
-   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
-   this.textureReady=true;
+   try{
+    const size=192,layers=12,tex=gl.createTexture();
+    const canvas=document.createElement('canvas');
+    canvas.width=size;canvas.height=size;
+    const ctx=canvas.getContext('2d',{willReadFrequently:false});
+    if(!ctx)throw Error('Canvas de atlas no disponible');
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_S,gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_T,gl.REPEAT);
+    gl.texImage3D(gl.TEXTURE_2D_ARRAY,0,gl.RGBA8,size,size,layers,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    for(let layer=0;layer<layers;layer++){
+     ctx.clearRect(0,0,size,size);
+     ctx.drawImage(atlas,(layer%4)*size,Math.floor(layer/4)*size,size,size,0,0,size,size);
+     gl.texSubImage3D(gl.TEXTURE_2D_ARRAY,0,0,0,layer,size,size,1,gl.RGBA,gl.UNSIGNED_BYTE,canvas);
+    }
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+    gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+    const ext=gl.getExtension?.('EXT_texture_filter_anisotropic')||
+              gl.getExtension?.('WEBKIT_EXT_texture_filter_anisotropic')||
+              gl.getExtension?.('MOZ_EXT_texture_filter_anisotropic');
+    if(ext&&typeof gl.texParameterf==='function'){
+     const supported=gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT)||1;
+     this.anisotropy=Math.max(1,Math.min(4,supported));
+     gl.texParameterf(gl.TEXTURE_2D_ARRAY,ext.TEXTURE_MAX_ANISOTROPY_EXT,this.anisotropy);
+    }
+    this.materialTexture=tex;this.textureReady=true;
+   }catch(err){
+    this.textureReady=false;
+    console.warn('Atlas no disponible; usando colores de respaldo',err);
+   }
   };
-  atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible: colores base conservados')};
-  atlas.src='./assets/materials-atlas.png?v=0.14.0';
+  atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible; se conservan los colores base')};
+  atlas.src='./assets/materials-atlas-v2.png?v=0.15.0';
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}
@@ -120,8 +143,8 @@ export class Renderer{
   gl.uniform1f(this.uniforms.uTextureReady,useAtlas?1:0);
   if(useAtlas){
    gl.activeTexture(gl.TEXTURE0);
-   gl.bindTexture(gl.TEXTURE_2D,this.materialTexture);
-   gl.uniform1i(this.uniforms.uAtlas,0);
+   gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.materialTexture);
+   gl.uniform1i(this.uniforms.uMaterialArray,0);
   }
   const order=['field','box','hex','cone','ball','baseball','pole'];
   const draw=(layer)=>{
