@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {aimSweep,redirectShot,aimDegrees} from '../src/aiming.js';
+import {aimSweep,redirectShot,aimDegrees,SWEEP_MAX_RAD} from '../src/aiming.js';
 import {calculateShot} from '../src/logic.js';
 import {drawAimArrow} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
@@ -114,4 +114,30 @@ test('la flecha conserva escala y pivote al barrer todo su recorrido',()=>{
  }
  assert.ok(new Set(poses.map(p=>p.rotation.toFixed(4))).size>2,
   'el indicador sigue rotando mientras mantiene su escala');
+});
+
+test('barrido con velocidad regular, giro suave en extremos y sin saltos al cerrar el ciclo',()=>{
+ const quarter=2.1/4;
+ const eps=.0005;
+ assert.ok(Math.abs(aimSweep(quarter)-SWEEP_MAX_RAD)<1e-9);
+ assert.ok(Math.abs(aimSweep(quarter*3)+SWEEP_MAX_RAD)<1e-9);
+ const x=[.13,.18,.23].map(t=>aimSweep(t));
+ const v1=(x[1]-x[0])/.05,v2=(x[2]-x[1])/.05;
+ assert.ok(Math.abs(v1-v2)<.08,'el giro central debería mantener una velocidad prácticamente constante');
+ const boundary=(aimSweep(quarter+eps)-aimSweep(quarter-eps))/(2*eps);
+ assert.ok(Math.abs(boundary)<.02,'el cambio de sentido debe detenerse sin golpe seco');
+ assert.ok(Math.abs(aimSweep(2.1-eps)-aimSweep(2.1+eps))<.01,'la repetición no puede saltar');
+ for(let i=1;i<=600;i++){
+  const a=aimSweep(i*2.1/600),b=aimSweep((i-1)*2.1/600);
+  assert.ok(Math.abs(a-b)<.025,'salto brusco al avanzar un fotograma');
+ }
+});
+
+test('el giro visual del indicador respeta exactamente el rumbo sin distorsión de perspectiva',()=>{
+ const cam=[-6.7,7.5,-20.5],target=[-.8,3.5,12];
+ for(const angle of [-SWEEP_MAX_RAD,-.45,0,.45,SWEEP_MAX_RAD]){
+  const pose=aimArrowProjection(cam,target,430,930,62,angle);
+  assert.ok(pose);
+  assert.ok(Math.abs(pose.rotation+angle)<1e-10,'el giro no debe acelerar por perspectiva');
+ }
 });

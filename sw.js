@@ -1,4 +1,4 @@
-const CACHE='hrb-v24-20261122-fixed-arrow-rolling';
+const CACHE='hrb-v25-20261122-clean-smooth-arrow';
 const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/engine.js','./src/world.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js','./src/impact-fx.js','./src/ball-visuals.js','./src/ball-spin.js','./assets/materials-atlas-v2.png',
  './assets/baseball.webp','./assets/aim-left.webp','./assets/aim-center.webp','./assets/aim-right.webp',
  './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
@@ -6,10 +6,10 @@ const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/
  './assets/batter/aim-left.webp','./assets/batter/aim-center.webp','./assets/batter/aim-right.webp',
  './assets/batter/contact.webp','./assets/batter/follow.webp',
  './icons/icon-192.png','./icons/icon-512.png',
- './style.css?v=0.24.0','./src/main.js?v=0.24.0','./src/game.js?v=0.24.0',
- './src/world.js?v=0.24.0','./src/engine.js?v=0.24.0','./src/logic.js?v=0.24.0',
- './src/audio.js?v=0.24.0','./src/rewarded.js?v=0.24.0','./src/aiming.js?v=0.24.0',
- './src/sprites.js?v=0.24.0','./src/impact-fx.js?v=0.24.0','./src/ball-visuals.js?v=0.24.0','./src/ball-spin.js?v=0.24.0','./assets/materials-atlas-v2.png?v=0.24.0'];
+ './style.css?v=0.25.0','./src/main.js?v=0.25.0','./src/game.js?v=0.25.0',
+ './src/world.js?v=0.25.0','./src/engine.js?v=0.25.0','./src/logic.js?v=0.25.0',
+ './src/audio.js?v=0.25.0','./src/rewarded.js?v=0.25.0','./src/aiming.js?v=0.25.0',
+ './src/sprites.js?v=0.25.0','./src/impact-fx.js?v=0.25.0','./src/ball-visuals.js?v=0.25.0','./src/ball-spin.js?v=0.25.0','./assets/materials-atlas-v2.png?v=0.25.0'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 // Red primero PARA TODOS LOS ASSETS: una PWA instalada nunca debe mezclar

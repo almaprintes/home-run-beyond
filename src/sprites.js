@@ -1,6 +1,7 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.24.0';
-import {surfaceBelowBall} from './world.js?v=0.24.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.24.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.25.0';
+import {surfaceBelowBall} from './world.js?v=0.25.0';
+import {SWEEP_MAX_RAD} from './aiming.js?v=0.25.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.25.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -117,13 +118,13 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
 export function aimArrowProjection(camera,target,width,height,zoom,angle=0){
  const base=projectToScreen(camera,target,[-4.5,2.5,-4.7],width,height,zoom);
  const reference=projectToScreen(camera,target,[-4.5,2.5,26.3],width,height,zoom);
- const heading=Number.isFinite(angle)?angle:0;
- const tip=projectToScreen(camera,target,
-  [-4.5+Math.sin(heading)*31,2.5,-4.7+Math.cos(heading)*31],width,height,zoom);
- if(!base||!reference||!tip)return null;
- const dx=tip.x-base.x,dy=tip.y-base.y;
+ if(!base||!reference)return null;
+ // El giro es un indicador HUD: usar directamente el ángulo de disparo evita
+ // la aceleración y los saltos que introduce la perspectiva de un punto lejano.
+ // Ángulo positivo = izquierda en pantalla; el centro apunta verticalmente.
+ const heading=Number.isFinite(angle)?Math.max(-SWEEP_MAX_RAD,Math.min(SWEEP_MAX_RAD,angle)):0;
  const fixedLength=Math.hypot(reference.x-base.x,reference.y-base.y);
- return {x:base.x,y:base.y,rotation:Math.atan2(dx,-dy),
+ return {x:base.x,y:base.y,rotation:-heading,
   heightPx:Math.max(150,Math.min(height*.39,fixedLength*1.45))};
 }
 
@@ -202,8 +203,19 @@ export class BatterSprites{
    if(pose){
     const image=this.images['aim-center'];
     const widthPx=pose.heightPx*(image.naturalWidth/image.naturalHeight);
-    ctx.save();ctx.translate(pose.x,pose.y);ctx.rotate(pose.rotation);
-    ctx.drawImage(image,-widthPx*.5,-pose.heightPx,widthPx,pose.heightPx);ctx.restore();
+    // La lámina original incluye una franja clara en el borde superior: al girar
+    // se veía como una línea blanca que cruzaba el estadio. Recortar solo el
+    // margen del asset conserva la flecha aprobada y elimina ese borde.
+    const topCrop=Math.min(18,Math.floor(image.naturalHeight*.075));
+    const bottomCrop=Math.min(10,Math.floor(image.naturalHeight*.042));
+    const sourceHeight=image.naturalHeight-topCrop-bottomCrop;
+    if(sourceHeight>0){
+     const scale=pose.heightPx/image.naturalHeight;
+     ctx.save();ctx.translate(pose.x,pose.y);ctx.rotate(pose.rotation);
+     ctx.drawImage(image,0,topCrop,image.naturalWidth,sourceHeight,
+      -widthPx*.5,-pose.heightPx+topCrop*scale,widthPx,sourceHeight*scale);
+     ctx.restore();
+    }
    }
   }
   game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);
