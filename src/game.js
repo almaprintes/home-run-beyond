@@ -1,10 +1,10 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
-import {GameAudio} from './audio.js';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js';
-import {aimSweep,redirectShot,aimDegrees} from './aiming.js';
-import {BatterSprites} from './sprites.js';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.12.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.12.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.12.0';
+import {GameAudio} from './audio.js?v=0.12.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.12.0';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.12.0';
+import {BatterSprites} from './sprites.js?v=0.12.0';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
  constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;

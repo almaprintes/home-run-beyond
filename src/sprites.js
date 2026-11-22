@@ -1,4 +1,4 @@
-import {lookAt,perspective,mul4} from './engine.js';
+import {lookAt,perspective,mul4} from './engine.js?v=0.12.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.

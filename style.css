@@ -90,3 +90,8 @@
 #vignette{z-index:1;}
 .brand-baseball{display:block;width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 2px 3px #001b30b0)}
 .aim-compass-track img.aim-pointer{width:55px;height:61px;object-fit:contain;display:block;max-width:none;filter:drop-shadow(0 2px 6px #00aaffad);pointer-events:none}
+
+/* 0.12 — contención sólida incluso en la transición de versiones del service worker. */
+.brand-mark{flex:0 0 42px;min-width:42px;max-width:42px;overflow:hidden}
+.brand-mark .brand-baseball{width:34px!important;height:34px!important;max-width:34px;max-height:34px;object-fit:contain}
+#character-overlay{position:absolute!important;inset:0;width:100%!important;height:100%!important;z-index:1;pointer-events:none}

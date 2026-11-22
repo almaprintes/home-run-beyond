@@ -11,16 +11,16 @@
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css"/>
+<link rel="stylesheet" href="./style.css?v=0.12.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
 <div id="app">
   <canvas id="world" aria-label="Escenario 3D de béisbol con estadio y ciudad"></canvas>
-  <canvas id="character-overlay" aria-hidden="true"></canvas>
+  <canvas id="character-overlay" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none"></canvas>
   <div id="vignette"></div>
   <header id="hud" class="layer">
-    <div class="brand"><span class="brand-mark"><img class="brand-baseball" src="./assets/baseball.webp" alt=""/></span><span>HOME RUN<small>BEYOND</small></span></div>
+    <div class="brand"><span class="brand-mark" style="display:grid;place-items:center;width:42px;height:42px;max-width:42px;max-height:42px;overflow:hidden;flex:0 0 42px"><img class="brand-baseball" src="./assets/baseball.webp" alt="" width="34" height="34" style="width:34px;height:34px;max-width:34px;max-height:34px;object-fit:contain"/></span><span>HOME RUN<small>BEYOND</small></span></div>
     <div class="cash"><span class="coin">✦</span><span id="money">0</span><button id="shop-open" class="plus" aria-label="Tienda">＋</button></div>
   </header>
   <div class="layer run-info" id="run-info">
@@ -47,7 +47,7 @@
       <span class="aim-edge">↖</span>
       <span class="aim-straight">RECTO</span>
       <span class="aim-edge">↗</span>
-      <img id="aim-pointer" class="aim-pointer" src="./assets/aim-center.webp" alt=""/>
+      <img id="aim-pointer" class="aim-pointer" src="./assets/aim-center.webp" alt="" width="55" height="61" style="width:55px;height:61px;max-width:55px;object-fit:contain"/>
     </div>
     <strong id="aim-vector">RECTO</strong>
   </div>
@@ -78,7 +78,7 @@
       <div class="modal-head"><div><small>EL VESTUARIO</small><h2>Personaliza tu estilo</h2></div><button class="x" id="shop-close" aria-label="Cerrar">×</button></div>
       <div class="modal-intro">Cosméticos sin ventajas competitivas. Desbloquea colores y estelas con las monedas de tus batazos.</div>
       <div id="shop-items" class="shop-items"></div>
-      <div class="foot-note">Versión 0.7 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
+      <div class="foot-note">Versión 0.12 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -93,6 +93,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="./src/main.js?v=0.12.0"></script>
 </body>
 </html>
