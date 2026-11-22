@@ -2,6 +2,13 @@
 // Se integra una vez por fotograma real, no en los subpasos acelerados del vuelo.
 const TAU=Math.PI*2;
 export const BALL_RADIUS=1.45;
+// Grip only affects the visual transition between airborne backspin and
+// rolling topspin. The translational restitution/friction of the game stays intact.
+export const SPIN_GRIP=Object.freeze({
+ grass:24,dirt:19,road:18,asphalt:18,paving:19,concrete:18,
+ solid:18,brick:18,roof:18,rubber:30,water:5,swamp:7,puddle:9
+});
+
 export function rotateQuaternion(q,v){
  const [x,y,z,w]=q;
  const tx=2*(y*v[2]-z*v[1]),ty=2*(z*v[0]-x*v[2]),tz=2*(x*v[1]-y*v[0]);
@@ -35,7 +42,13 @@ export function spinTarget(ball,contact=false){
 export function initBallSpin(ball){
  if(!ball)return null;
  const rate=spinTarget(ball,false);
- ball.spin={angle:0,tilt:0,rate,contact:false,impacts:0,orientation:[0,0,0,1]};
+ ball.spin={
+  angle:0,tilt:0,rate,contact:false,impacts:0,orientation:[0,0,0,1],
+  // State survives small rebounds; otherwise every hop re-enables backspin.
+  groundEngaged:false,groundMaterial:'grass',
+  // Separate presentation angle: 22x simulated flight can alias physical rotation.
+  visualOrientation:[0,0,0,1],visualRate:-Math.min(12,Math.abs(rate))
+ };
  return ball.spin;
 }
 export function onSpinImpact(ball,normal={x:0,y:1,z:0},material='solid'){
@@ -44,6 +57,7 @@ export function onSpinImpact(ball,normal={x:0,y:1,z:0},material='solid'){
  // El cambio al tocar suelo se vuelve inmediatamente visible, incluso en rebotes.
  const ground=normal.y>.5,wet=['water','swamp','puddle'].includes(material);
  spin.contact=ground;
+ if(ground){spin.groundEngaged=true;spin.groundMaterial=material;}
  spin.impacts++;
  const desired=wet?spinTarget(ball,true)*.18:spinTarget(ball,ground);
  // No reseteamos el ángulo: evitamos saltos de costura en los impactos.
@@ -57,16 +71,17 @@ export function advanceBallSpin(ball,dt,contact=false){
  const step=Math.max(0,Math.min(.05,Number(dt)||0));
  const wet=ball.wetTime>0;
  const speed=Math.hypot(Number(ball.vx)||0,Number(ball.vy)||0,Number(ball.vz)||0);
- let target=spinTarget(ball,contact);
+ const rolling=contact||spin.groundEngaged;
+ let target=spinTarget(ball,rolling);
  if(wet)target*=.18;
  if(speed<.75)target=0;
- const responsiveness=contact?18:12;
+ const responsiveness=rolling?18:12;
  spin.rate+=(target-spin.rate)*(1-Math.exp(-step*responsiveness));
  // Siempre avanza con tiempo real, incluso con simulación acelerada 22×.
  spin.angle=(spin.angle+spin.rate*step)%TAU;
  // Airborne backspin about the horizontal axis perpendicular to travel.
  const vx=Number(ball.vx)||0,vz=Number(ball.vz)||0;
- spinQuaternion(spin,[vz,0,-vx],-Math.abs(spin.rate)*step);
+ spinQuaternion(spin,[vz,0,-vx],(spin.groundEngaged?1:-1)*Math.abs(spin.rate)*step);
  spin.tilt=(spin.tilt+Math.min(4,Math.abs(spin.rate)*.24)*step)%TAU;
  spin.contact=!!contact;
  return spin;
@@ -78,6 +93,8 @@ export function integratePhysicalSpin(ball,previous,dt,contact=false,material='g
  if(!ball)return null;
  const spin=ball.spin||initBallSpin(ball);
  if(!contact)return advanceBallSpin(ball,dt,false);
+ spin.groundEngaged=true;
+ spin.groundMaterial=material;
  const dx=(Number(ball.x)||0)-(Number(previous?.x)||0);
  const dz=(Number(ball.z)||0)-(Number(previous?.z)||0);
  const travel=Math.hypot(dx,dz);
@@ -96,11 +113,34 @@ export function integratePhysicalSpin(ball,previous,dt,contact=false,material='g
  spin.contact=true;
  spin.rollAngle=(spin.rollAngle||0)+delta;
  spin.rollHeading=Math.atan2(dx,dz);
- // The approved 2D baseball graphic is projected onto a virtual sphere.
- // Its image-space orientation is opposite to a physical texture unwrap: invert
- // the rendered angular phase so forward rolling reads FORWARD on iPhone.
- // The scalar rollAngle/roll speed remain distance / radius and unchanged.
- spinQuaternion(spin,[dz,0,-dx],-distance*traction/radius);
+ // No-slip rolling has omega = up × v / radius. Unlike airborne backspin,
+ // its rotation axis points in the FORWARD rolling direction.
+ spinQuaternion(spin,[dz,0,-dx],distance*traction/radius);
  spin.tilt=(spin.tilt+.15*delta)%(2*Math.PI);
+ return spin;
+}
+
+// Render once per real animation frame rather than integrating 22x gameplay
+// time directly into a 60 Hz picture: otherwise the wheel stroboscopically
+// appears to reverse direction while the real angular momentum is correct.
+// Contact friction gradually reverses the backspin into forward topspin;
+// after the FIRST ground bounce this mode persists through tiny airborne hops.
+export function advanceVisualSpin(ball,frameDt){
+ if(!ball)return null;
+ const spin=ball.spin||initBallSpin(ball);
+ const dt=Math.max(0,Math.min(.05,Number(frameDt)||0));
+ const vx=Number(ball.vx)||0,vz=Number(ball.vz)||0;
+ const speed=Math.hypot(vx,vz);
+ const material=spin.groundMaterial||'grass';
+ const sign=spin.groundEngaged?1:-1;
+ const wet=['water','swamp','puddle'].includes(material);
+ let target=sign*Math.min(12.5,speed/BALL_RADIUS);
+ if(wet&&spin.groundEngaged)target*=.18;
+ if(speed<.35)target=0;
+ const grip=spin.groundEngaged?(SPIN_GRIP[material]||19):9;
+ spin.visualRate+=(target-spin.visualRate)*(1-Math.exp(-grip*dt));
+ const holder={orientation:spin.visualOrientation||[0,0,0,1]};
+ spinQuaternion(holder,[vz,0,-vx],spin.visualRate*dt);
+ spin.visualOrientation=holder.orientation;
  return spin;
 }

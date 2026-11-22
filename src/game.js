@@ -1,12 +1,12 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.20.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.20.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.20.0';
-import {GameAudio} from './audio.js?v=0.20.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.20.0';
-import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.20.0';
-import {BatterSprites} from './sprites.js?v=0.20.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.20.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin} from './ball-spin.js?v=0.20.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.21.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.21.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.21.0';
+import {GameAudio} from './audio.js?v=0.21.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.21.0';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.21.0';
+import {BatterSprites} from './sprites.js?v=0.21.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.21.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.21.0';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
  constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.impactFX=new ImpactEffects();this.contactHold=0;this.visualSwingElapsed=0;this.fxCamera=null;this.rewardPending=false;
@@ -277,6 +277,10 @@ export class BaseballGame{
    this.liveSeconds+=dt;
    const speed=Math.hypot(this.ball.vx,this.ball.vz);const mult=clamp(speed/58,1,22);const total=dt*mult;const substeps=Math.ceil(total/.026);
    for(let i=0;i<substeps&&this.state==='flight';i++)this.simulateStep(total/substeps);
+   // Always present spin at real display frame rate, not accelerated physics time.
+   // First ground impact permanently switches the visible axis from backspin to
+   // rolling topspin, including small airborne hops between bounces.
+   advanceVisualSpin(this.ball,dt);
    this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
    if(this.liveSeconds>23)this.finishShot();
  }

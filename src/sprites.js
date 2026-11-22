@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.20.0';
-import {surfaceBelowBall} from './world.js?v=0.20.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.20.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.21.0';
+import {surfaceBelowBall} from './world.js?v=0.21.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.21.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -46,7 +46,7 @@ export function projectToScreen(camera,target,point,width,height,fov=62){
 // CURRENT camera: a forward roll cannot look like a sideways coin spin.
 export const BALL_SURFACE_SIZE=64;
 export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE){
- const view=lookAt(camera,target),qu=spin?.orientation||[0,0,0,1];
+ const view=lookAt(camera,target),qu=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
  const qx=-qu[0],qy=-qu[1],qz=-qu[2],qw=qu[3];
  const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
        xt=view[2],yt=view[6],zt=view[10];
