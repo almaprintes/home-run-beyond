@@ -13,7 +13,8 @@ test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'swinging',swingElapsed:.04}),'contact');
  assert.equal(selectBatterPose({state:'swinging',swingElapsed:.1}),'follow');
  assert.equal(selectBatterPose({state:'flight'}),null);
- assert.equal(selectBatterPose({state:'rest'}),null);
+ assert.equal(selectBatterPose({state:'rest',ball:{z:120}}),null,'el bateador no sigue la pelota durante el resultado');
+ assert.equal(selectBatterPose({state:'rest',ball:null}),'ready','tras un strike el bateador permanece visible');
 });
 test('todos los recortes originales son WebP locales y legibles',()=>{
  assert.equal(Object.keys(BATTER_ASSETS).length,11);
