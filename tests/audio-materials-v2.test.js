@@ -44,7 +44,7 @@ test('audio de bate y materiales usa buffers de ruido filtrado, no pitidos de os
 
 test('mundo sin z-fighting de césped superpuesto y con las nuevas superficies',()=>{
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(world,/r\.field\(viewX,h-\.18,mid,4200,204,terrainBaseColor\(mid\),0,'grass'\)/);
+ assert.match(world,/r\.field\(WORLD_CENTER_X,worldHeight\(WORLD_CENTER_X,zz\)-\.18,zz,WORLD_WIDTH,50\.3,/);
  assert.doesNotMatch(world,/r\.field\(0,h-\.22,mid,300,199/);
  assert.match(world,/r\.field\(0,\.15,z,285,11/);
  assert.match(world,/setMaterial\?\.\('metal'\)/);
