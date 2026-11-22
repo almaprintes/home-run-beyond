@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('la versión 0.12 evita cachear CSS y JavaScript viejos bajo la misma URL',()=>{
+test('la versión 0.13 evita cachear CSS y JavaScript viejos bajo la misma URL',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
@@ -13,10 +13,10 @@ test('la versión 0.12 evita cachear CSS y JavaScript viejos bajo la misma URL',
  for(const src of ['game.js','world.js','sprites.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.12.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.13.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v12-20261122-atomic-assets-refresh/);
+ assert.match(sw,/hrb-v13-20261122-materials-ball-integration/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.doesNotMatch(sw,/caches\.match\(e\.request\)\.then\(c=>c\|\|fetch/);
  assert.match(sw,/caches\.match\(request\)/);

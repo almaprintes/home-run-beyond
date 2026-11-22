@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.12.0';
+import {lerp} from './engine.js?v=0.13.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -7,7 +7,12 @@ const roofs=['#f19a6b','#e4c688','#8db3c6','#df6b68','#efb851','#7fb3b5','#dcb0c
 const walls=['#e8cfac','#f2dab2','#bdcdd5','#dfb9a9','#d6d8c4','#b7cdda','#f1b591'];
 const treeColors=['#4e9c6c','#72bd77','#398f77','#57ab86','#9abf61'];
 function line(r,ax,az,bx,bz,y,width,col){let dx=bx-ax,dz=bz-az;r.box((ax+bx)/2,y,(az+bz)/2,width,.06,Math.hypot(dx,dz),col,Math.atan2(dx,dz))}
-function tree(r,x,z,h=7,seed=1){r.pole(x,h*.25,z,.55,h*.5,'#815a42');const c=choose(seed,treeColors);r.cone(x,h*.64,z,h*.28,h*.66,c);r.cone(x,h*.91,z,h*.24,h*.55,c)}
+function tree(r,x,z,h=7,seed=1){
+ r.setMaterial?.('wood');r.pole(x,h*.25,z,.55,h*.5,'#815a42');
+ r.setMaterial?.('grass');const c=choose(seed,treeColors);
+ r.cone(x,h*.64,z,h*.28,h*.66,c);r.cone(x,h*.91,z,h*.24,h*.55,c);
+ r.setMaterial?.('plain');
+}
 function bush(r,x,z,s=2){r.ball(x,s*.38,z,s,'#43835e')}
 export function riverAt(z){return z>1620&&z<1740}
 export function roadAt(z){return z>155&&Math.abs((z+35)%200-100)<14}
@@ -105,6 +110,24 @@ export function traceBuildingCollision(from,to,radius=1.45){
  }
  return nearest;
 }
+// Altura de la superficie visible situada debajo de la pelota. Misma geometría
+// de cubiertas y casetas que se utiliza para las colisiones, nunca sombras flotantes.
+export function surfaceBelowBall(ball){
+ const x=Number(ball?.x),z=Number(ball?.z),y=Number(ball?.y);
+ if(!Number.isFinite(x)||!Number.isFinite(z)||!Number.isFinite(y))return {y:0,type:'grass'};
+ let floor=groundAt(x,z);
+ const imin=Math.max(-5,Math.floor(x/60)-1),imax=Math.min(5,Math.ceil(x/60)+1);
+ const jmin=Math.max(0,Math.floor((z-270)/60)-1),jmax=Math.min(24,Math.ceil((z-270)/60)+1);
+ for(let j=jmin;j<=jmax;j++)for(let i=imin;i<=imax;i++){
+  const building=buildingAt(i,j);if(!building)continue;
+  for(const box of buildingBoxes(building)){
+   if(x<box.min[0]||x>box.max[0]||z<box.min[2]||z>box.max[2])continue;
+   const top=box.max[1];
+   if(top<=y+1.5&&top>floor.y)floor={y:top,type:box.kind==='roof'?'roof':box.kind==='vent'?'concrete':'building'};
+  }
+ }
+ return floor;
+}
 // API de compatibilidad: solo devuelve un edificio realmente existente.
 export function collideBuilding(pos){
  if(!pos)return null;
@@ -143,11 +166,18 @@ function treeObscuresBall(cam,ball,x,z,h){
 function city(r,x,z,idx,row,lod,ghost=false){
  const b=buildingAt(idx,row);if(!b)return;
  if(ghost)r.setLayer?.('ghost');
- const paint=b.color;const y=b.h*.5;const col=paint;r.box(x,y,z,b.w,b.h,b.d,col);r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
+ const paint=b.color;const y=b.h*.5;const col=paint;
+ r.setMaterial?.('brick');r.box(x,y,z,b.w,b.h,b.d,col);
+ r.setMaterial?.('roof');r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);
+ r.setMaterial?.('concrete');r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
+ r.setMaterial?.('plain');
  if(lod<2){const winColor=rand(idx,row)>.5?'#9fe0dc':'#fbdf9b';const levels=Math.min(4,Math.floor(b.h/7));for(let t=0;t<levels;t++){const yy=3+t*7;for(let s of [-1,1]){r.box(x+s*b.w*.23,yy,z+b.d*.5+.16,3.6,3.3,.27,winColor);r.box(x+s*(b.w*.5+.1),yy,z, .26,3.3,3.6,winColor)}}}
  r.setLayer?.('opaque');
 }
-function road(r,x,z,w,d){r.box(x,.035,z,w,.09,d,'#364f5c');r.box(x,.1,z,w*.022,.025,d,'#e5c48b')}
+function road(r,x,z,w,d){
+ r.setMaterial?.('asphalt');r.box(x,.035,z,w,.09,d,'#364f5c');
+ r.setMaterial?.('plain');r.box(x,.1,z,w*.022,.025,d,'#e5c48b');
+}
 export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const cam=[viewX,viewY,viewZ];
  const drawTree=(x,z,h,seed)=>{
@@ -157,7 +187,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const maxR=viewZ<3000?370:700;const start=Math.max(0,Math.floor((viewZ-maxR)/200)-1),end=Math.floor((viewZ+maxR)/200)+1;
  for(let chunk=start;chunk<=end;chunk++){
    const mid=chunk*200+100;if(mid>0){const h=worldHeight(viewX,mid);const g=mid<1750?'#7fbb74':mid<3600?'#86b784':'#95b78a';r.field(0,h-.23,mid,2500,202,g);r.field(0,h-.22,mid,300,199,mid<1900?'#81bd75':'#93bf79')}
-   if(chunk*200<1750&&(chunk+1)*200>1620){r.field(0,-.09,1680,2500,120,'#4badd1');for(let x=-720;x<720;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
+   if(chunk*200<1750&&(chunk+1)*200>1620){r.field(0,-.09,1680,2500,120,'#4badd1',0,'water');for(let x=-720;x<720;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
    if(chunk>0){road(r,0,chunk*200+65,880,24);for(let x=-420;x<420;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
     if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=((j*173+time*(12+j%3*7)+500)%850)-425,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
    }
@@ -169,10 +199,11 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  for(const patch of WET_PATCHES){
   if(Math.abs(patch.z-viewZ)>700)continue;
   const yy=worldHeight(patch.x,patch.z)+.12;
-  r.add('ball',patch.x,yy,patch.z,patch.rx*2,.10,patch.rz*2,
+  r.setMaterial?.('water');r.add('ball',patch.x,yy,patch.z,patch.rx*2,.10,patch.rz*2,
     patch.type==='swamp'?'#597f71':'#62a8b4');
   r.add('ball',patch.x-patch.rx*.15,yy+.05,patch.z+patch.rz*.12,patch.rx*.95,.045,patch.rz*.7,
     patch.type==='swamp'?'#779b75':'#8bcaca');
+  r.setMaterial?.('plain');
  }
  if(viewZ>1800){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;for(let i=-5;i<=5;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)drawTree(x,z,z>3600?12:8,i*99+j);
  if(rand(i*31,j*19)>.87){
@@ -183,10 +214,10 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
 }
 function sky(r,camZ,camX,camY){if(camY>240) return;for(let i=0;i<11;i++){const z=camZ-230+((i*107+700)%900),x=camX+((i*193)%800)-400,y=100+(i%4)*22;const a=12+(i%3)*8;r.ball(x,y,z,a,'#f5faff');r.ball(x+10,y+3,z-3,a*.72,'#ffffff');r.ball(x-12,y-2,z+2,a*.85,'#e7f6ff')}}
 function stadium(r){r.field(0,.014,38,285,290,'#448e60');for(let i=0;i<11;i++){const z=-40+i*24;r.field(0,.018,z,285,11,i%2?'#559e70':'#4c9368')}
- r.field(0,.13,18,54,54,'#b77e52',PI/4);r.field(0,.16,18,43,43,'#c58b5e',PI/4);r.field(0,.19,18,29,29,'#64a46a',PI/4);
+ r.field(0,.13,18,54,54,'#b77e52',PI/4,'dirt');r.field(0,.16,18,43,43,'#c58b5e',PI/4,'dirt');r.field(0,.19,18,29,29,'#64a46a',PI/4,'grass');
  line(r,0,0,29,25,.21,.35,'#f5f0d6');line(r,0,0,-29,25,.21,.35,'#f5f0d6');line(r,29,25,0,50,.21,.28,'#f5f0d6');line(r,-29,25,0,50,.21,.28,'#f5f0d6');
  for(const [x,z] of [[0,0],[29,25],[-29,25],[0,50]])r.box(x,.26,z,2,.11,2,'#f9faf4',PI/4);
- r.pole(0,.6,21,4,1.1,'#be865a');r.field(0,.75,21,2.2,1,'#f6f3e8');
+ r.setMaterial?.('dirt');r.pole(0,.6,21,4,1.1,'#be865a');r.setMaterial?.('plain');r.field(0,.75,21,2.2,1,'#f6f3e8');
  for(let i=0;i<=38;i++){const a=-1.52+i*3.04/38,x=121*Math.sin(a),z=121*Math.cos(a);r.pole(x,3.9,z,.65,8,'#2a6572');if(i<38){const b=-1.52+(i+1)*3.04/38,nx=121*Math.sin(b),nz=121*Math.cos(b);line(r,x,z,nx,nz,2,1.9,i%5===0?'#ff9b52':'#285d67');}
  if(i%2===0){const bx=137*Math.sin(a),bz=137*Math.cos(a);r.box(bx,4.2,bz,13,7,10,'#315b71',a);r.box(bx,7.9,bz,14,1.2,11,'#e6a95c',a);r.box(bx,10,bz,13,1.3,12,'#264259',a);}}
  // Tribunas detrás del home plate.

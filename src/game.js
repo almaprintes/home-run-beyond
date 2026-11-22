@@ -1,10 +1,10 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.12.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.12.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.12.0';
-import {GameAudio} from './audio.js?v=0.12.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.12.0';
-import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.12.0';
-import {BatterSprites} from './sprites.js?v=0.12.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.13.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.13.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.13.0';
+import {GameAudio} from './audio.js?v=0.13.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.13.0';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.13.0';
+import {BatterSprites} from './sprites.js?v=0.13.0';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
  constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
@@ -128,12 +128,13 @@ export class BaseballGame{
   el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;
   this.audio.swing();
  }
- launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0};this.ball=b;this.distance=0;this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  simulateStep(dt){
   const b=this.ball;
   if(!b||this.state!=='flight')return;
   const radius=1.45,prev={x:b.x,y:b.y,z:b.z};
+  b.impactAge=(b.impactAge??99)+dt;
   b.vy-=9.81*dt;
   const next={x:b.x+b.vx*dt,y:b.y+b.vy*dt,z:b.z+b.vz*dt};
   const hit=traceBuildingCollision(prev,next,radius);
@@ -167,6 +168,7 @@ export class BaseballGame{
    }
    b.lastCollision=n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
    if(inward>1){
+    b.impactAge=0;b.impactMaterial=mat;
     b.bounces++;
     if(b.bounces<=5)this.audio.land();
    }
@@ -186,6 +188,7 @@ export class BaseballGame{
     b.vx*=retention;b.vz*=retention;
     b.vy=Math.max(0,b.vy)*.04;
     b.lastCollision=type==='water'?'¡AL AGUA!':type==='swamp'?'¡PANTANO!':'¡CHARCO!';
+    if(!(b.wetTime>0)){b.impactAge=0;b.impactMaterial=type;}
     b.wetTime=(b.wetTime||0)+dt;
     touching=true;
    }else{
@@ -193,6 +196,7 @@ export class BaseballGame{
     if(normalImpact>.9){
      b.vy=normalImpact*(type==='road'?.78:.39);
      b.vz*=type==='road'?.92:.70;b.vx*=type==='road'?.92:.70;
+     b.impactAge=0;b.impactMaterial=type;
      b.bounces++;
      if(b.bounces<=5)this.audio.land();
     }else{
@@ -230,10 +234,8 @@ export class BaseballGame{
    el('aim-heading').textContent=aimDegrees(this.aimAngle);
    const value=this.aimAngle*180/Math.PI;
    el('aim-pointer').style.left=(50-value/52*45)+'%';
-   const direction=value>8?'left':value< -8?'right':'center';
-   const asset='./assets/aim-'+direction+'.webp';
-   if(el('aim-pointer').getAttribute('src')!==asset)el('aim-pointer').setAttribute('src',asset);
-   el('aim-pointer').style.transform='translate(-50%,-50%)';
+   // Una única flecha aprobada rota continuamente; no salta entre tres imágenes.
+   el('aim-pointer').style.transform='translate(-50%,-50%) rotate('+(-value).toFixed(2)+'deg)';
    el('aim-vector').textContent=Math.abs(value)<5?'RECTO':value>0?'HACIA LA IZQUIERDA':'HACIA LA DERECHA';
  }
  if(this.state==='swinging'){this.swingElapsed+=dt;this.swing=.42+.58*clamp(this.swingElapsed/.17,0,1);if(this.swingElapsed>=.12)this.launch()}

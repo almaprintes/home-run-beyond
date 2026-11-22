@@ -1,4 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.12.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.13.0';
+import {surfaceBelowBall} from './world.js?v=0.13.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.13.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -112,12 +114,46 @@ export class BatterSprites{
    const b=game.ball;
    const p=projectToScreen(camera,target,[b.x,b.y,b.z],width,height,zoom);
    if(p&&p.x>-160&&p.x<width+160&&p.y>-160&&p.y<height+160){
-    const edge=projectToScreen(camera,target,[b.x+3,b.y,b.z],width,height,zoom);
-    const size=Math.max(22,Math.min(118,edge?Math.abs(edge.x-p.x)*1.5:34));
+    const edge=projectToScreen(camera,target,[b.x+1.45,b.y,b.z],width,height,zoom);
+    const radiusPx=edge?Math.hypot(edge.x-p.x,edge.y-p.y):15;
+    const size=ballSpriteDiameter(radiusPx,width);
+    // Sombra proyectada sobre la superficie física: hierba, asfalto, tejado o agua.
+    const surface=surfaceBelowBall(b);
+    const shadow=projectToScreen(camera,target,[b.x,surface.y+.08,b.z],width,height,zoom);
+    if(shadow&&shadow.x>-80&&shadow.x<width+80&&shadow.y>-80&&shadow.y<height+80){
+     const altitude=Math.max(0,b.y-surface.y);
+     ctx.save();
+     ctx.globalAlpha=ballShadowOpacity(altitude);
+     ctx.fillStyle=surface.type==='water'||surface.type==='swamp'||surface.type==='puddle'?'#d4f4e7':'#071820';
+     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=Math.min(16,size*.45);
+     ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,size*.66,size*.23,0,0,Math.PI*2);ctx.fill();
+     ctx.restore();
+    }
+    const speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
+    if(speed>15&&typeof ctx.createLinearGradient==='function'){
+     const tail=projectToScreen(camera,target,
+      [b.x-(b.vx||0)*.047,b.y-(b.vy||0)*.047,b.z-(b.vz||0)*.047],
+      width,height,zoom);
+     if(tail&&Math.hypot(p.x-tail.x,p.y-tail.y)>3){
+      ctx.save();const grad=ctx.createLinearGradient(tail.x,tail.y,p.x,p.y);
+      grad.addColorStop(0,'rgba(255,250,225,0)');
+      grad.addColorStop(1,'rgba(255,247,217,.46)');
+      ctx.strokeStyle=grad;ctx.lineWidth=Math.min(6,size*.14);
+      ctx.lineCap='round';ctx.beginPath();ctx.moveTo(tail.x,tail.y);ctx.lineTo(p.x,p.y);ctx.stroke();
+      ctx.restore();
+     }
+    }
     ctx.save();ctx.translate(p.x,p.y);
-    ctx.rotate((game.clock||0)*.38);
+    ctx.rotate((game.clock||0)*.32);
     ctx.drawImage(this.images.ball,-size*.5,-size*.5,size,size);
     ctx.restore();
+    const impact=ballImpactOpacity(b.impactAge);
+    if(impact>0&&typeof ctx.stroke==='function'){
+     ctx.save();ctx.globalAlpha=impact;
+     ctx.strokeStyle=b.impactMaterial==='water'?'#a5f0fc':'#ffe1ae';
+     ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(p.x,p.y,size*(.63+(1-impact)*.65),0,Math.PI*2);ctx.stroke();
+     ctx.restore();
+    }
    }
   }
  }
