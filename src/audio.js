@@ -89,7 +89,7 @@ export class GameAudio{
  hit(q){this.sound('bat',q==='perfect'?.38:q==='excellent'?.32:q==='good'?.26:.16)}
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  miss(){this.sound('swing',.09)}
- // Voz grabada localmente: en iOS no dependemos de speechSynthesis.
+ // Voz grabada localmente: en iOS no dependemos del sintetizador de voz.
  // Comparte AudioContext con los efectos del bate, y se precarga al tocar jugar.
  prepareStrike(){
   if(!this.enabled)return Promise.resolve(false);
