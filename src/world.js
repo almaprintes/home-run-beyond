@@ -237,9 +237,9 @@ export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
  r.add('ball',x,5.70,z,2.06,.43,2.03,cap);
  r.box(x+.72,5.57,z+.58,1.57,.20,1.1,cap,.55);
  // Cara y gorra apuntadas al costado del campo para verse desde la cámara diagonal.
- r.ball(x+.78,5.04,z+.38,.15,'#202638');
- r.ball(x+.87,5.04,z-.26,.12,'#202638');
- r.box(x+.89,4.74,z+.05,.10,.12,.48,'#9d6147');
+ r.ball(x-.81,5.04,z+.38,.15,'#202638');
+ r.ball(x-.87,5.04,z-.26,.12,'#202638');
+ r.box(x-.91,4.74,z+.05,.10,.12,.48,'#9d6147');
  const hand=[x+.92-.44*s,4.32-.14*s,z-1.0+1.04*s];
  const leftShoulder=[x-.84,4.03,z+.12],rightShoulder=[x+.90,4.15,z+.26];
  const leftElbow=[x-.15,3.80,z-1.12+.44*s];
@@ -249,12 +249,12 @@ export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
  limb(r,rightElbow,[hand[0]+.08,hand[1]-.12,hand[2]-.08],.26,skin);
  r.ball(hand[0],hand[1],hand[2],.58,'#e8b588');
  // Bate largo alzado detrás del hombro, visible durante la espera y el golpe.
- const tip=[x+1.68-2.05*s,7.72-3.02*s,z-3.55+7.6*s];
+ const tip=[x+1.5-1.75*s,8.10-3.4*s,z-1.25+5.8*s];
  const shaft=[hand[0]+(tip[0]-hand[0])*.34,
               hand[1]+(tip[1]-hand[1])*.34,
               hand[2]+(tip[2]-hand[2])*.34];
  limb(r,hand,shaft,.18,'#44352d');
- limb(r,shaft,tip,.36,batColor);
+ limb(r,shaft,tip,.47,batColor);
  r.ball(hand[0],hand[1],hand[2],.36,'#f3d6a5');
  r.ball(tip[0],tip[1],tip[2],.71,batColor);
  r.box(hand[0],hand[1]-.13,hand[2],.46,.19,.46,'#d8b484');
@@ -269,19 +269,25 @@ export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e')
  }
 }
 export function drawAimArrow(r,angle=0,quality='good'){
- const color=quality==='perfect'?'#74ffcc':quality==='excellent'?'#8ff5d5':quality==='miss'?'#ff9b83':'#ffd27f';
- const x=-2.3,z=1,y=1.55,len=27;
- const dirX=Math.sin(angle),dirZ=Math.cos(angle);
- const tipX=x+dirX*len,tipZ=z+dirZ*len;
- // Esta orientación es la misma que se aplica al vector físico X/Z de la pelota.
- r.box(x+dirX*len*.47,y,z+dirZ*len*.47,1.20,.30,len*.94,color,angle);
+ const color=quality==='perfect'?'#6cffd0':quality==='excellent'?'#92f6e7':quality==='miss'?'#ff9c91':'#ffe082';
+ const x=-2.3,z=-.75,y=6.0,len=35;
+ const dx=Math.sin(angle),dz=Math.cos(angle);
+ const tx=x+dx*len,tz=z+dz*len;
+ r.setLayer?.('overlay');
+ // Gran flecha suspendida sobre el campo, siempre visible por encima de la geometría.
+ r.box(x+dx*len*.46,y,z+dz*len*.46,1.85,.46,len*.91,color,angle);
  for(const side of [-1,1]){
-  const hx=tipX-Math.sin(angle+side*.60)*7;
-  const hz=tipZ-Math.cos(angle+side*.60)*7;
-  const dx=tipX-hx,dz=tipZ-hz;
-  r.box((hx+tipX)/2,y,(hz+tipZ)/2,1.6,.35,Math.hypot(dx,dz),color,Math.atan2(dx,dz));
+  const px=tx-Math.sin(angle+side*.64)*8.5;
+  const pz=tz-Math.cos(angle+side*.64)*8.5;
+  const vx=tx-px,vz=tz-pz;
+  r.box((px+tx)/2,y,(pz+tz)/2,2.65,.55,Math.hypot(vx,vz),color,Math.atan2(vx,vz));
  }
- r.ball(tipX,y+.20,tipZ,2.1,color);
+ r.ball(tx,y+.15,tz,2.75,color);
+ for(let i=1;i<=3;i++){
+  const pos=i*7;
+  r.box(x+dx*pos,y+.45,z+dz*pos,1.4,.30,1.25,'#ffffff',angle);
+ }
+ r.setLayer?.('opaque');
 }
 export function drawBaseball(r,x,y,z,spin=0){
  // Pelota de béisbol inequívoca: esfera blanca suave, costuras rojas y puntadas.

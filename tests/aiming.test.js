@@ -52,7 +52,7 @@ test('mantener pausa el pitcher y suelta aplica el rumbo calculado',()=>{
 test('la flecha se renderiza en 3D y apunta igual que el vector físico',()=>{
  const calls=[],r={box:(...args)=>calls.push(args),ball(){}};
  drawAimArrow(r,Math.PI/5,'perfect');
- assert.equal(calls.length,3);
+ assert.equal(calls.length,6);
  assert.ok(Math.abs(calls[0][7]-Math.PI/5)<1e-10);
  const shot=redirectShot(calculateShot({power:1,swing:1,reflex:1},0),Math.PI/5);
  assert.ok(shot.vx>0);
@@ -66,4 +66,26 @@ test('control de pulsación larga y liberación con captura táctil',()=>{
  assert.match(css,/\.pitch-surface\{touch-action:none\}/);
  assert.match(game,/setPointerCapture\(e.pointerId\)/);
  assert.match(game,/window.addEventListener\('pointerup',release\)/);
+});
+
+test('apuntado muestra brújula y flecha en primera plana',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
+ assert.match(html,/id="aim-compass"/);
+ assert.match(html,/id="aim-pointer"/);
+ assert.match(html,/id="aim-vector"/);
+ assert.match(css,/\.aim-compass\{/);
+ assert.match(game,/el\('aim-pointer'\)\.style\.left=/);
+ assert.match(game,/el\('aim-compass'\)\.hidden=false/);
+ assert.match(game,/el\('aim-compass'\)\.hidden=true/);
+ assert.match(world,/r\.setLayer\?\.\('overlay'\)/);
+});
+test('el encuadre queda detrás y a la izquierda del bateador',()=>{
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ assert.match(game,/desiredCam=\[-6\.7,7\.5\+bob,-20\.5\]/);
+ assert.match(game,/desiredTarget=\[-\.8,3\.5,12\]/);
+ const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
+ assert.match(world,/const tip=\[x\+1\.5-1\.75\*s,8\.10-3\.4\*s/);
 });
