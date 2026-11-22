@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
+<meta name="theme-color" content="#091a2a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Home Run"/>
+<meta name="description" content="Home Run Beyond: un golpe, un récord, un mundo sin límites."/>
+<link rel="manifest" href="./manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="./icons/icon-192.png"/>
+<link rel="icon" href="./icons/icon-192.png"/>
+<link rel="stylesheet" href="./style.css"/>
+<title>Home Run Beyond ⚾</title>
+</head>
+<body>
+<div id="app">
+  <canvas id="world" aria-label="Escenario 3D de béisbol con estadio y ciudad"></canvas>
+  <div id="vignette"></div>
+  <header id="hud" class="layer">
+    <div class="brand"><span class="brand-mark">⚾</span><span>HOME RUN<small>BEYOND</small></span></div>
+    <div class="cash"><span class="coin">✦</span><span id="money">0</span><button id="shop-open" class="plus" aria-label="Tienda">＋</button></div>
+  </header>
+  <div class="layer run-info" id="run-info">
+    <div class="distance-label">DISTANCIA</div><div class="distance"><span id="distance">0</span><small>m</small></div>
+    <div id="record-badge" class="record-badge" hidden>✦ NUEVO RÉCORD</div>
+    <div class="impact" id="impact"></div>
+  </div>
+  <div class="layer toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="layer region" id="region">ESTADIO · 0 KM</div>
+  <section class="layer controls" id="controls">
+    <div class="status-pill" id="status-pill">⚾ LISTO PARA BATEAR</div>
+    <button id="action" class="hit-button"><span id="action-icon">⚾</span><span id="action-title">¡JUGAR!</span><small id="action-sub">UN DEDO · UN GOLPE</small></button>
+    <div id="tip" class="tip">Elige el instante exacto para conseguir un golpe perfecto</div>
+  </section>
+  <div id="aim" class="layer aim" hidden><div class="aim-ring"><span>✦</span></div></div>
+  <section class="layer result" id="result" hidden>
+    <div class="result-panel">
+      <div class="result-eyebrow">RESULTADO DEL GOLPE</div>
+      <div id="result-quality" class="result-quality">¡EXCELENTE!</div>
+      <div class="result-distance"><span id="result-meters">0</span><small> METROS</small></div>
+      <div id="best-label" class="best-label">MEJOR MARCA: 0 M</div>
+      <div class="reward-row"><div><span class="coin">✦</span> <strong id="result-coins">0</strong> monedas</div><span id="reward-note">Recompensa obtenida</span></div>
+      <button id="again" class="main-button">OTRO BATAZO <span>➜</span></button>
+      <div class="result-note">Mejora tus habilidades para llegar todavía más lejos</div>
+    </div>
+  </section>
+  <div class="layer upgrades" id="upgrades">
+    <div class="upgrades-top"><div><strong>ENTRENA A TU BATEADOR</strong><span>Mejora las tres habilidades</span></div><button id="sound" aria-label="Activar o desactivar sonido" class="audio">♫</button></div>
+    <div class="upgrade-grid">
+      <button class="upgrade" id="up-power"><span class="upgrade-icon">💪</span><span class="upgrade-name">POTENCIA</span><span class="upgrade-level" id="level-power">NIV. 1</span><span class="upgrade-cost"><span class="coin">✦</span> <span id="cost-power">80</span></span></button>
+      <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-cost"><span class="coin">✦</span> <span id="cost-swing">85</span></span></button>
+      <button class="upgrade" id="up-reflex"><span class="upgrade-icon">🎯</span><span class="upgrade-name">REFLEJOS</span><span class="upgrade-level" id="level-reflex">NIV. 1</span><span class="upgrade-cost"><span class="coin">✦</span> <span id="cost-reflex">70</span></span></button>
+    </div>
+    <div class="footer-stats"><div>RÉCORD <strong id="best-hud">0 m</strong></div><div>GOLPES <strong id="shots-hud">0</strong></div><div>REGIÓN <strong id="region-hud">ESTADIO</strong></div></div>
+  </div>
+  <section class="layer modal-shell" id="shop" hidden>
+    <div class="modal">
+      <div class="modal-head"><div><small>EL VESTUARIO</small><h2>Personaliza tu estilo</h2></div><button class="x" id="shop-close" aria-label="Cerrar">×</button></div>
+      <div class="modal-intro">Cosméticos sin ventajas competitivas. Desbloquea colores y estelas con las monedas de tus batazos.</div>
+      <div id="shop-items" class="shop-items"></div>
+      <div class="foot-note">Versión 0.1 · Juego gratuito sin anuncios implementados · Todo el progreso se guarda en este dispositivo.</div>
+    </div>
+  </section>
+  <section class="layer modal-shell" id="welcome" hidden>
+    <div class="modal onboarding">
+      <div class="onboard-icon">⚾</div>
+      <div class="eyebrow">CRAFTRACE STUDIO PRESENTA</div>
+      <h1>HOME RUN <em>BEYOND</em></h1>
+      <p>Un pitcher. Un botón. Una pelota capaz de cruzar ciudades.</p>
+      <div class="onboard-steps"><span>1 · ESPERA EL LANZAMIENTO</span><span>2 · BATEA EN EL MOMENTO PERFECTO</span><span>3 · GANA MONEDAS Y MEJORA</span></div>
+      <button id="start" class="main-button">¡AL CAMPO! <span>➜</span></button>
+    </div>
+  </section>
+  <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
