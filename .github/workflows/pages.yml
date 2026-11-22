@@ -32,5 +32,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
+      - name: Esperar a que GitHub registre el artefacto
+        run: sleep 20
       - id: deployment
         uses: actions/deploy-pages@v4

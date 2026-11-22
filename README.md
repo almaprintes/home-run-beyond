@@ -31,15 +31,15 @@ npm run check
 npm test
 ```
 
-## Publicar en GitHub Pages
+## Publicación mediante GitHub Actions
 
-1. Crea un repositorio nuevo (nombre recomendado: `home-run-beyond`, separado de otros juegos).
-2. Sube **todo el contenido de esta carpeta a la raíz de `main`**, incluida `.github/workflows/pages.yml`.
-3. En GitHub → Settings → Pages → Build and deployment, elige **GitHub Actions** como origen.
-4. Verifica en **Actions** que pasan los trabajos `validate` y `publish`.
-5. Abre `https://<usuario>.github.io/home-run-beyond/` desde el iPhone y añade el sitio a la pantalla de inicio.
+Repositorio: https://github.com/almaprintes/home-run-beyond
 
-No se usa Vercel; el flujo de publicación principal es GitHub Actions.
+Cada nuevo commit en `main` inicia el workflow `.github/workflows/pages.yml`, que comprueba el código y publica la PWA con GitHub Pages. Para la primera publicación, configura **Settings → Pages → Build and deployment → Source: GitHub Actions** si aún no está seleccionada. Verifica el estado de cada ejecución en https://github.com/almaprintes/home-run-beyond/actions.
+
+Cuando el trabajo `publish` termine correctamente, la dirección será https://almaprintes.github.io/home-run-beyond/ . Para instalar en iPhone, usa Safari → Compartir → Añadir a pantalla de inicio.
+
+No se usa Vercel en este proyecto.
 
 ## Arquitectura
 
