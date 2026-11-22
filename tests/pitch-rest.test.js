@@ -10,7 +10,7 @@ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
 test('el lanzamiento utiliza superficie transparente y toque de pantalla completa',()=>{
  assert.match(markup,/id="pitch-surface"[^>]*hidden/);
  assert.match(css,/\.pitch-surface\{[^}]*inset:0;[^}]*background:transparent/);
- assert.match(game,/el\('pitch-surface'\)\.addEventListener\('pointerdown'/);
+ assert.match(game,/pitchSurface\.addEventListener\('pointerdown'/);
  assert.match(game,/startPitch\(\)\{[^}]*el\('pitch-surface'\)\.hidden=false/);
  assert.match(game,/startPitch\(\)\{[^}]*el\('controls'\)\.hidden=true/);
  assert.match(game,/swingBat\([^)]*\)\{[^}]*el\('pitch-surface'\)\.hidden=true/);
