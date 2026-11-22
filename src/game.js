@@ -30,7 +30,7 @@ export class BaseballGame{
  const beginHold=e=>{
   if(e.pointerType==='mouse'&&e.button!==0)return;
   if(this.state==='ready'){e.preventDefault();this.onAction();return}
-  if(this.state!=='pitching'||this.activePointer!==null)return;
+  if(this.state!=='pitching'||this.strikeCalled||this.activePointer!==null)return;
   e.preventDefault();
   this.activePointer=e.pointerId;
   try{e.currentTarget.setPointerCapture?.(e.pointerId)}catch{}
@@ -124,7 +124,7 @@ export class BaseballGame{
   this.audio.tone(420,.12,'sine',.065,0,-140);
  }
  freezeSwing(auto=false){
-  if(this.state!=='pitching')return;
+  if(this.state!=='pitching'||this.strikeCalled)return;
   const contactTime=this.pitchElapsed+batSpeedMs(this.save.levels.swing)/1000;
   const deltaMs=(contactTime-.91*this.pitchDuration)*1000;
   this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs);

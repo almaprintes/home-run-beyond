@@ -19,8 +19,8 @@ export const BATTER_ASSETS=Object.freeze({
  spark:'./assets/hit-spark.webp'
 });
 
-export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0}={}){
- if(state==='ready')return 'ready';
+export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null}={}){
+ if(state==='ready'||state==='rest'&&!ball)return 'ready';
  if(state==='pitching')return pitch>.72?'loaded':pitch>.12?'watch':'ready';
  if(state==='aiming')return 'loaded'; // La flecha se renderiza aparte, con pivote fijo y giro continuo.
  if(state==='swinging'||state==='whiff')return swingElapsed<.073?'contact':swingElapsed<.48?'follow':'ready';

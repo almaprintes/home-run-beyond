@@ -38,6 +38,7 @@ test('sin tocar, bola pasa por detrás y canta STRIKE una sola vez sin dar moned
  assert.equal(els.get('result-coins').textContent,'+0');
  assert.equal(els.get('result-meters').textContent,'0');
  assert.equal(els.get('again').hidden,false);
+ assert.equal(selectBatterPose({state:'rest',ball:null}),'ready','el jugador no desaparece al fallar');
  assert.equal(JSON.stringify(g.save),before,'una bola no bateada no altera el progreso');
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  assert.match(world,/throwProgress<1\.26/);
