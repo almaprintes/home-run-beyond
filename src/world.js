@@ -191,7 +191,7 @@ export function drawAimArrow(r,angle=0,quality='good'){
  r.ball(tipX,y+.20,tipZ,2.1,color);
 }
 export function drawWorld(r,cam,game){const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();sky(r,z,x,cam[1]);drawTerrain(r,z,x,cam[1],game.clock||0);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor);
- if(game.state==='aiming')drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
+ if(game.state==='aiming'||game.state==='swinging')drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}
