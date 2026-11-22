@@ -117,11 +117,44 @@ export function collideBuilding(pos){
   }
  return null;
 }
-function city(r,x,z,idx,row,lod){const b=buildingAt(idx,row);if(!b)return;const paint=b.color;const y=b.h*.5;const col=paint;r.box(x,y,z,b.w,b.h,b.d,col);r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
+// Segmento cámara → pelota; válido incluso si la cámara nace dentro del obstáculo.
+export function segmentBlockedByBox(cam,ball,box){
+ if(!cam||!ball||!box)return false;
+ const p=Array.isArray(cam)?cam:[cam.x,cam.y,cam.z],q=[ball.x,ball.y,ball.z];
+ let tMin=0,tMax=1;
+ for(let a=0;a<3;a++){
+  const dir=q[a]-p[a];
+  if(!Number.isFinite(dir)||!Number.isFinite(p[a]))return false;
+  if(Math.abs(dir)<1e-9){if(p[a]<box.min[a]||p[a]>box.max[a])return false;continue}
+  const t0=(box.min[a]-p[a])/dir,t1=(box.max[a]-p[a])/dir;
+  tMin=Math.max(tMin,Math.min(t0,t1));
+  tMax=Math.min(tMax,Math.max(t0,t1));
+  if(tMin>tMax)return false;
+ }
+ return tMin<=1&&tMax>=0;
+}
+export function buildingObscuresBall(cam,ball,building){
+ return !!(ball&&building&&buildingBoxes(building).some(box=>segmentBlockedByBox(cam,ball,box)));
+}
+function treeObscuresBall(cam,ball,x,z,h){
+ const radius=Math.max(4,h*.35);
+ return segmentBlockedByBox(cam,ball,{min:[x-radius,0,z-radius],max:[x+radius,h*1.48,z+radius]});
+}
+function city(r,x,z,idx,row,lod,ghost=false){
+ const b=buildingAt(idx,row);if(!b)return;
+ if(ghost)r.setLayer?.('ghost');
+ const paint=b.color;const y=b.h*.5;const col=paint;r.box(x,y,z,b.w,b.h,b.d,col);r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
  if(lod<2){const winColor=rand(idx,row)>.5?'#9fe0dc':'#fbdf9b';const levels=Math.min(4,Math.floor(b.h/7));for(let t=0;t<levels;t++){const yy=3+t*7;for(let s of [-1,1]){r.box(x+s*b.w*.23,yy,z+b.d*.5+.16,3.6,3.3,.27,winColor);r.box(x+s*(b.w*.5+.1),yy,z, .26,3.3,3.6,winColor)}}}
+ r.setLayer?.('opaque');
 }
 function road(r,x,z,w,d){r.box(x,.035,z,w,.09,d,'#364f5c');r.box(x,.1,z,w*.022,.025,d,'#e5c48b')}
-export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0){const maxR=viewZ<3000?370:700;const start=Math.max(0,Math.floor((viewZ-maxR)/200)-1),end=Math.floor((viewZ+maxR)/200)+1;
+export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
+ const cam=[viewX,viewY,viewZ];
+ const drawTree=(x,z,h,seed)=>{
+  if(focusBall&&treeObscuresBall(cam,focusBall,x,z,h))r.setLayer?.('ghost');
+  tree(r,x,z,h,seed);r.setLayer?.('opaque');
+ };
+ const maxR=viewZ<3000?370:700;const start=Math.max(0,Math.floor((viewZ-maxR)/200)-1),end=Math.floor((viewZ+maxR)/200)+1;
  for(let chunk=start;chunk<=end;chunk++){
    const mid=chunk*200+100;if(mid>0){const h=worldHeight(viewX,mid);const g=mid<1750?'#7fbb74':mid<3600?'#86b784':'#95b78a';r.field(0,h-.23,mid,2500,202,g);r.field(0,h-.22,mid,300,199,mid<1900?'#81bd75':'#93bf79')}
    if(chunk*200<1750&&(chunk+1)*200>1620){r.field(0,-.09,1680,2500,120,'#4badd1');for(let x=-720;x<720;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
@@ -129,7 +162,9 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0){const maxR=viewZ<300
     if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=((j*173+time*(12+j%3*7)+500)%850)-425,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
    }
  }
- if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-5;i<=5;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;if(!buildingAt(i,j)){tree(r,x,z,8+rand(n+5)*6,n);tree(r,x+15,z+12,5+rand(n+7)*6,n+32)}else city(r,x,z,i,j,lod);r.box(x+24,.08,z+25,8,.15,8,'#87c77b')}}}
+ if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-5;i<=5;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
+ if(!b){drawTree(x,z,8+rand(n+5)*6,n);drawTree(x+15,z+12,5+rand(n+7)*6,n+32)}
+ else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b));r.box(x+24,.08,z+25,8,.15,8,'#87c77b')}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
  for(const patch of WET_PATCHES){
   if(Math.abs(patch.z-viewZ)>700)continue;
@@ -139,8 +174,11 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0){const maxR=viewZ<300
   r.add('ball',patch.x-patch.rx*.15,yy+.05,patch.z+patch.rz*.12,patch.rx*.95,.045,patch.rz*.7,
     patch.type==='swamp'?'#779b75':'#8bcaca');
  }
- if(viewZ>1800){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;for(let i=-5;i<=5;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)tree(r,x,z,z>3600?12:8,i*99+j);
- if(rand(i*31,j*19)>.87)r.cone(x,y+11,z,20,32,'#879a74')}}}
+ if(viewZ>1800){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;for(let i=-5;i<=5;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)drawTree(x,z,z>3600?12:8,i*99+j);
+ if(rand(i*31,j*19)>.87){
+  if(focusBall&&treeObscuresBall(cam,focusBall,x,z,32))r.setLayer?.('ghost');
+  r.cone(x,y+11,z,20,32,'#879a74');r.setLayer?.('opaque');
+ }}}}
  // Una vista al horizonte no tiene por qué cargar el mundo completo.
 }
 function sky(r,camZ,camX,camY){if(camY>240) return;for(let i=0;i<11;i++){const z=camZ-230+((i*107+700)%900),x=camX+((i*193)%800)-400,y=100+(i%4)*22;const a=12+(i%3)*8;r.ball(x,y,z,a,'#f5faff');r.ball(x+10,y+3,z-3,a*.72,'#ffffff');r.ball(x-12,y-2,z+2,a*.85,'#e7f6ff')}}
@@ -245,13 +283,39 @@ export function drawAimArrow(r,angle=0,quality='good'){
  }
  r.ball(tipX,y+.20,tipZ,2.1,color);
 }
-export function drawWorld(r,cam,game){const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();sky(r,z,x,cam[1]);drawTerrain(r,z,x,cam[1],game.clock||0);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor);
+export function drawBaseball(r,x,y,z,spin=0){
+ // Pelota de béisbol inequívoca: esfera blanca suave, costuras rojas y puntadas.
+ // Su propia pasada de profundidad mantiene el balón visible tras los obstáculos.
+ r.setLayer?.('overlay');
+ r.add('baseball',x,y,z,3.35,3.35,3.35,'#fffdf5');
+ const radius=1.74,segments=15;
+ for(const meridian of [-.83,.83,2.31,3.97]){
+  const seam=(theta,offset=0)=>{
+   const phi=meridian+.19*Math.sin(theta*2)+offset+spin*.07;
+   const st=Math.sin(theta);
+   return [x+radius*st*Math.cos(phi),y+radius*Math.cos(theta),z+radius*st*Math.sin(phi)];
+  };
+  let prev=seam(.2);
+  for(let i=1;i<=segments;i++){
+   const theta=.2+(Math.PI-.4)*i/segments,next=seam(theta);
+   limb(r,prev,next,.068,'#b52f38');prev=next;
+  }
+  for(let i=2;i<=segments-2;i+=2){
+   const theta=.2+(Math.PI-.4)*i/segments;
+   limb(r,seam(theta,-.105),seam(theta,.105),.050,'#df4549');
+  }
+ }
+ r.setLayer?.('opaque');
+}
+export function drawWorld(r,cam,game){
+ const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
+ sky(r,z,x,cam[1]);
+ drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor);
  if(game.state==='aiming'||game.state==='swinging')drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}
   for(let i=6;i>=1;i--){let q=(i/6)*.07;const xx=b.x-b.vx*q,yy=b.y-b.vy*q+.5*9.81*q*q,zz=b.z-b.vz*q;const ss=1.5*(1-i/8);r.ball(xx,Math.max(.4,yy),zz,ss,i>3?'#ffc58e':'#fcead2')}
-  r.ball(b.x,b.y,b.z,3.0,'#e6b9a0');r.ball(b.x,b.y,b.z,2.6,'#ffffff');r.box(b.x+.85,b.y+.2,b.z+.85,.17,.16,1.6,'#d45b50',.65);
-  r.ball(b.x,b.y-.65,b.z,3,'#fff8e2');
+  drawBaseball(r,b.x,b.y,b.z,(game.clock||0)*2.5);
  }
 }

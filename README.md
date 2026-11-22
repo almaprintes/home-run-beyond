@@ -73,3 +73,7 @@ El panel de resultado se presenta en una tarjeta compacta, sin oscurecer la pant
 ## Mecánica de apuntado 0.7
 
 La cámara de bateo está detrás del bateador a altura próxima a la de su cabeza. Mientras se pulsa la superficie táctil, el instante y la calidad del bateo quedan congelados, y una flecha tridimensional recorre lateralmente ±52°. Soltar congela el ángulo y lanza la pelota con ese rumbo, conservando su rapidez inicial horizontal. Se admiten toques, ratón y teclado; el botón principal permanece bajo la zona de visión para no tapar al pitcher.
+
+## Visibilidad y pelota 0.9
+
+Los edificios, árboles y estructuras cuya caja espacial corte la línea de visión entre la cámara y la pelota se dibujan translúcidos durante el vuelo. El motor tiene tres capas: geometría opaca, obstáculos semitransparentes y una pasada final de profundidad reservada al béisbol, por lo que el balón no desaparece aunque la cámara quede dentro de un edificio. La pelota se genera con una esfera 3D de mayor resolución, costuras curvas rojas y puntadas procedurales (sin texturas ni archivos externos). Los obstáculos conservan sus colisiones originales. La caché de la PWA cambia de versión sin alterar el guardado local.
