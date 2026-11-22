@@ -174,7 +174,62 @@ function person(r,x,z,team,phase=0,batting=false,batColor='#e7b56e'){const bob=b
  r.box(x,3.2+bob,z+1.0,.65,.18,.15,'#fff0d4');
  }else{r.pole(x-1.35,3.13+bob,z+.3,.29,1.5,palette.skin,0,-.1,-.35);r.pole(x+1.35,3.1+bob,z+.3,.29,1.5,palette.skin,0,-.1,.35);r.ball(x-1.6,2.7+bob,z+.65,.65,'#89533b')}
 }
-export function drawActors(r,throwProgress=0,swingProgress=0,batColor="#e7b56e"){person(r,-2.3,-5,'batter',swingProgress,true,batColor);person(r,0,21,'pitcher',throwProgress*3,false);if(throwProgress>0 && throwProgress<1){const t=throwProgress;const z=20.5-25.4*t, y=2.5+.35*Math.sin(t*PI);r.ball(0,y,z,.72,'#fffefa');r.add('ball',0,y,z,.77,.77,.77,'#ffffff');}}
+// Cilindro orientado entre dos puntos: brazos y bate procedurales de perfil.
+function limb(r,a,b,radius,color){
+ const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],len=Math.hypot(dx,dy,dz);
+ if(len<1e-5)return;
+ const rx=Math.atan2(dz,dy),rz=-Math.asin(Math.max(-1,Math.min(1,dx/len)));
+ r.pole((a[0]+b[0])*.5,(a[1]+b[1])*.5,(a[2]+b[2])*.5,radius,len,color,0,rx,rz);
+}
+export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
+ const p=Math.max(0,Math.min(1,phase)),s=p*p*(3-2*p),skin='#bc815f';
+ const shirt='#feaa45',cap='#152e50',pants='#fcf7e8';
+ // Postura lateral de bateo: piernas abiertas, rodillas flexionadas y hombros girados.
+ r.add('ball',x,.06,z,3.1,.08,2.2,'#285a4b');
+ for(const side of [-1,1]){
+  const fx=x+side*1.04,fz=z+side*.43;
+  limb(r,[x+side*.6,2.03,z],[fx,1.0,fz],.34,pants);
+  limb(r,[fx,1.0,fz],[fx+side*.22,.33,fz+.13],.30,pants);
+  r.box(fx+side*.30,.24,fz+.33,1.2,.46,1.55,'#1d344e',.25);
+ }
+ r.box(x,2.5,z,2.35,.33,1.45,'#203c55',.70);
+ r.box(x,3.25,z,2.40,2.25,1.55,shirt,.78);
+ r.box(x+.83,3.23,z+.18,.21,.8,.75,'#fff0d4',.78);
+ r.ball(x,5.03,z,1.90,skin);
+ r.add('ball',x,5.70,z,2.06,.43,2.03,cap);
+ r.box(x+.72,5.57,z+.58,1.57,.20,1.1,cap,.55);
+ // Cara y gorra apuntadas al costado del campo para verse desde la cámara diagonal.
+ r.ball(x+.78,5.04,z+.38,.15,'#202638');
+ r.ball(x+.87,5.04,z-.26,.12,'#202638');
+ r.box(x+.89,4.74,z+.05,.10,.12,.48,'#9d6147');
+ const hand=[x+.92-.44*s,4.32-.14*s,z-1.0+1.04*s];
+ const leftShoulder=[x-.84,4.03,z+.12],rightShoulder=[x+.90,4.15,z+.26];
+ const leftElbow=[x-.15,3.80,z-1.12+.44*s];
+ const rightElbow=[x+1.39-.35*s,3.94,z-.48+.58*s];
+ limb(r,leftShoulder,leftElbow,.31,skin);limb(r,leftElbow,hand,.28,skin);
+ limb(r,rightShoulder,rightElbow,.32,skin);
+ limb(r,rightElbow,[hand[0]+.08,hand[1]-.12,hand[2]-.08],.26,skin);
+ r.ball(hand[0],hand[1],hand[2],.58,'#e8b588');
+ // Bate largo alzado detrás del hombro, visible durante la espera y el golpe.
+ const tip=[x+1.68-2.05*s,7.72-3.02*s,z-3.55+7.6*s];
+ const shaft=[hand[0]+(tip[0]-hand[0])*.34,
+              hand[1]+(tip[1]-hand[1])*.34,
+              hand[2]+(tip[2]-hand[2])*.34];
+ limb(r,hand,shaft,.18,'#44352d');
+ limb(r,shaft,tip,.36,batColor);
+ r.ball(hand[0],hand[1],hand[2],.36,'#f3d6a5');
+ r.ball(tip[0],tip[1],tip[2],.71,batColor);
+ r.box(hand[0],hand[1]-.13,hand[2],.46,.19,.46,'#d8b484');
+}
+export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e'){
+ drawBatter(r,-2.3,-5,swingProgress,batColor);
+ person(r,0,21,'pitcher',throwProgress*3,false);
+ if(throwProgress>0 && throwProgress<1){
+  const t=throwProgress,z=20.5-25.4*t,y=2.5+.35*Math.sin(t*PI);
+  r.ball(0,y,z,.72,'#fffefa');
+  r.add('ball',0,y,z,.77,.77,.77,'#ffffff');
+ }
+}
 export function drawAimArrow(r,angle=0,quality='good'){
  const color=quality==='perfect'?'#74ffcc':quality==='excellent'?'#8ff5d5':quality==='miss'?'#ff9b83':'#ffd27f';
  const x=-2.3,z=1,y=1.55,len=27;

@@ -16,6 +16,11 @@ export function sanitizeSave(raw){const s=initialSave();if(!raw||typeof raw!=='o
  s.bonusClaims=Number.isSafeInteger(raw.bonusClaims)?clamp(raw.bonusClaims,0,Math.floor(s.paidUpgrades/BONUS_EVERY)):0;
  return s;}
 export const formatInt=n=>Math.round(n).toLocaleString('es-ES');
+// Distancia longitudinal desde el bateador: si el balón vuelve hacia atrás, resta metros.
+export function forwardDistance(ball){
+ const z=Number(ball?.z);
+ return Number.isFinite(z)?Math.max(0,z):0;
+}
 export function upgradeCost(level,key){const bases={power:80,swing:85,reflex:70};if(!(key in bases))throw Error('Unknown skill');let l=clamp(level,1,MAX_LEVEL);return Math.floor(bases[key]*(1+0.19*(l-1)+0.008*(l-1)*(l-1)) /5)*5}
 export function upgrade(save,key){if(!(key in save.levels)||save.levels[key]>=MAX_LEVEL)return false;const price=upgradeCost(save.levels[key],key);if(save.coins<price)return false;save.coins-=price;save.levels[key]++;save.paidUpgrades=(save.paidUpgrades||0)+1;return true}
 export function bonusCredits(save){return Math.max(0,Math.floor((save.paidUpgrades||0)/BONUS_EVERY)-(save.bonusClaims||0))}

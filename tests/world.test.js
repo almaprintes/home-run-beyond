@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {rand,groundAt,roadAt,riverAt,areaAt,collideBuilding,drawWorld,buildingAt,traceBuildingCollision,wetAreaAt} from '../src/world.js';
+import {rand,groundAt,roadAt,riverAt,areaAt,collideBuilding,drawWorld,buildingAt,traceBuildingCollision,wetAreaAt,drawBatter} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 const worldAPI=()=>({buildingAt,traceBuildingCollision,groundAt,wetAreaAt});
 import {lookAt,perspective,mul4} from '../src/engine.js';
@@ -119,4 +119,32 @@ test('rebotes sucesivos en superficie sólida no terminan por contador de impact
  assert.ok(game.simElapsed>0);
  // Un golpe puede terminar al reposar, nunca al sumar un número prefijado de choques.
  assert.ok(!/buildingHits>=4|bounces>=4/.test(BaseballGame.prototype.simulateStep.toString()));
+});
+
+test('bateador de perfil con piernas, brazos, bate grande y rostro visible',()=>{
+ const models=[],r={
+  add(...args){models.push({kind:'add',args})},
+  pole(...args){models.push({kind:'pole',args})},
+  box(...args){models.push({kind:'box',args})},
+  ball(...args){models.push({kind:'ball',args})}
+ };
+ drawBatter(r,-2.3,-5,0,'#aabbcc');
+ assert.ok(models.length>=25,'faltan piezas del bateador');
+ const batPieces=models.filter(m=>m.kind==='pole'&&m.args[5]==='#aabbcc');
+ assert.equal(batPieces.length,1,'un barril grueso visible para el bate');
+ assert.ok(batPieces[0].args[3]>=.3&&batPieces[0].args[4]>2);
+ const eyes=models.filter(m=>m.kind==='ball'&&m.args[4]==='#202638');
+ assert.ok(eyes.length>=2,'los ojos miran hacia la cámara lateral');
+});
+test('durante el swing el bate pasa por delante del cuerpo',()=>{
+ const tip=(phase)=>{
+  let coords;const r={add(){},pole(){},box(){},ball(x,y,z,size,col){
+   if(size===.71&&col==='#8abcde')coords=[x,y,z];
+  }};
+  drawBatter(r,-2.3,-5,phase,'#8abcde');return coords;
+ };
+ const waiting=tip(0),aiming=tip(.42),end=tip(1);
+ assert.ok(waiting&&aiming&&end);
+ assert.ok(end[2]>aiming[2]&&aiming[2]>waiting[2]);
+ assert.ok(waiting[1]>end[1]);
 });

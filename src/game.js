@@ -1,12 +1,12 @@
 import {Renderer,CanvasRenderer,lerp} from './engine.js';
 import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js';
 import {GameAudio} from './audio.js';
 import {hasRewardedAds,showRewardedAd} from './rewarded.js';
 import {aimSweep,redirectShot,aimDegrees} from './aiming.js';
 const el=id=>document.getElementById(id);
 export class BaseballGame{
- constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-2.3,5.5,-16];this.target=[-1.2,3.3,21];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
+ constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[7.5,5.35,-13.3];this.target=[-0.65,3.45,20];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.rewardPending=false;
  try{this.save=sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY)))}catch{this.save=initialSave()}
  this.audio.enabled=this.save.sound;this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
  try{this.renderer=new Renderer(el('world'))}catch(e){console.warn('WebGL2 no disponible; utilizando reserva gráfica 2D',e);this.renderer=new CanvasRenderer(el('world'))}this.renderer.game=this;
@@ -213,9 +213,9 @@ export class BaseballGame{
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }
- finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,Math.max(1,b?.maxZ||0));this.persist();this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
+ finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b));this.persist();this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
- resetAndPitch(){el('result').hidden=true;this.camera=[-2.3,5.5,-16];this.target=[-1.2,3.3,21];this.startPitch()}
+ resetAndPitch(){el('result').hidden=true;this.camera=[7.5,5.35,-13.3];this.target=[-0.65,3.45,20];this.startPitch()}
  update(dt){this.clock+=dt;if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)el('toast').classList.remove('show')}
  if(this.state==='pitching'){this.pitchElapsed+=dt;this.pitch=clamp(this.pitchElapsed/this.pitchDuration,0,1);if(this.pitchElapsed>this.pitchDuration+.22)this.swingBat(true);
  const aim=this.pitch>.69&&this.pitch<.96;el('aim').hidden=!aim;el('aim').style.scale=String(1+Math.min(.4,(this.save.levels.reflex-1)*.003));el('aim').style.opacity=String(aim?clamp((this.pitch-.69)*6,.3,1):0);
@@ -231,7 +231,7 @@ export class BaseballGame{
    this.liveSeconds+=dt;
    const speed=Math.hypot(this.ball.vx,this.ball.vz);const mult=clamp(speed/58,1,22);const total=dt*mult;const substeps=Math.ceil(total/.026);
    for(let i=0;i<substeps&&this.state==='flight';i++)this.simulateStep(total/substeps);
-   this.distance=this.ball?.maxZ||0;el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
+   this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
    if(this.liveSeconds>23)this.finishShot();
  }
  const flight=this.state==='flight'||this.state==='rest';let desiredCam,desiredTarget,zoom;
@@ -239,9 +239,9 @@ export class BaseballGame{
  else{
   const bob=Math.sin(this.clock*.4)*.10;
   if(this.state==='aiming'){
-   desiredCam=[-2.3,5.25+bob,-12.4];desiredTarget=[-1.3,3.25,20];zoom=61;
+   desiredCam=[7.2,5.25+bob,-12.5];desiredTarget=[-1.0,3.4,19];zoom=58;
   }else{
-   desiredCam=[-2.3,5.65+bob,-17];desiredTarget=[-.8,3.4,21];zoom=62;
+   desiredCam=[7.5,5.35+bob,-13.3];desiredTarget=[-.65,3.45,20];zoom=60;
   }
  }
  const smooth=1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
