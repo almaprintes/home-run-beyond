@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.13.0';
-import {surfaceBelowBall} from './world.js?v=0.13.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.13.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.14.0';
+import {surfaceBelowBall} from './world.js?v=0.14.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.14.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -80,8 +80,8 @@ export class BatterSprites{
   const ctx=this.ctx,dimensions=this.resize();
   if(!ctx||!dimensions)return;
   const {width,height}=dimensions;
-  const camera=game.camera,target=game.target;
-  const pose=selectBatterPose(game);
+  const camera=game.fxCamera||game.camera,target=game.target;
+  const pose=selectBatterPose({...game,swingElapsed:game.visualSwingElapsed??game.swingElapsed});
   const sprite=this.images[pose];
   if(this.ready&&sprite){
    const foot=projectToScreen(camera,target,[-2.3,.10,-5],width,height,zoom);
@@ -96,20 +96,21 @@ export class BatterSprites{
     ctx.fillStyle='rgba(4,22,31,.26)';
     ctx.beginPath();ctx.ellipse(foot.x,foot.y+2,widthPx*.26,Math.max(5,heightPx*.022),0,0,Math.PI*2);ctx.fill();
     if(game.state==='swinging'&&this.images.trail){
-     ctx.globalAlpha=Math.max(0,.78-(game.swingElapsed||0)*5);
+     ctx.globalAlpha=Math.max(0,.78-(game.visualSwingElapsed??game.swingElapsed??0)*5);
      ctx.drawImage(this.images.trail,originX-18,originY+heightPx*.23,widthPx*1.7,heightPx*.54);
      ctx.globalAlpha=1;
     }
     // Son las poses aprobadas: preparados, apuntado a ambos lados y swing.
     ctx.drawImage(sprite,originX,originY,widthPx,heightPx);
-    if(game.state==='swinging'&&(game.swingElapsed||0)<.085&&this.images.spark){
-     const alpha=Math.max(0,1-(game.swingElapsed||0)*11);
+    if(game.state==='swinging'&&(game.visualSwingElapsed??game.swingElapsed??0)<.085&&this.images.spark){
+     const alpha=Math.max(0,1-(game.visualSwingElapsed??game.swingElapsed??0)*11);
      ctx.globalAlpha=alpha;
      ctx.drawImage(this.images.spark,originX+widthPx*.75,originY+heightPx*.39,Math.min(100,widthPx*.58),Math.min(100,widthPx*.58));
     }
     ctx.restore();
    }
   }
+  game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);
   if(this.ballLoaded&&game.ball&&(game.state==='flight'||game.state==='landing')){
    const b=game.ball;
    const p=projectToScreen(camera,target,[b.x,b.y,b.z],width,height,zoom);

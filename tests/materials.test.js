@@ -74,5 +74,5 @@ test('fragment shader proyecta UV de mundo y preserva transparencias de rayos X'
  assert.match(code,/vWorld\.xz/);
  assert.match(code,/gl\.uniform1f\(this\.uniforms\.uOpacity,\.18\)/);
  assert.match(code,/vertices\.length\/20/);
- assert.match(code,/atlas\.src='\.\/assets\/materials-atlas\.png\?v=0\.13\.0'/);
+ assert.match(code,/atlas\.src='\.\/assets\/materials-atlas\.png\?v=0\.14\.0'/);
 });
