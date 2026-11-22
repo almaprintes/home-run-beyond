@@ -1,7 +1,7 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.25.0';
-import {surfaceBelowBall} from './world.js?v=0.25.0';
-import {SWEEP_MAX_RAD} from './aiming.js?v=0.25.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.25.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.26.0';
+import {surfaceBelowBall} from './world.js?v=0.26.0';
+import {SWEEP_MAX_RAD} from './aiming.js?v=0.26.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.26.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -23,7 +23,7 @@ export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0}={}){
  if(state==='ready')return 'ready';
  if(state==='pitching')return pitch>.72?'loaded':pitch>.12?'watch':'ready';
  if(state==='aiming')return 'loaded'; // La flecha se renderiza aparte, con pivote fijo y giro continuo.
- if(state==='swinging')return swingElapsed<.073?'contact':'follow';
+ if(state==='swinging'||state==='whiff')return swingElapsed<.073?'contact':swingElapsed<.48?'follow':'ready';
  return null;
 }
 
@@ -189,7 +189,7 @@ export class BatterSprites{
     }
     // Son las poses aprobadas: preparados, apuntado a ambos lados y swing.
     ctx.drawImage(sprite,originX,originY,widthPx,heightPx);
-    if(game.state==='swinging'&&(game.visualSwingElapsed??game.swingElapsed??0)<.085&&this.images.spark){
+    if(game.state==='swinging'&&game.pendingShot?.quality!=='miss'&&(game.visualSwingElapsed??game.swingElapsed??0)<.085&&this.images.spark){
      const alpha=Math.max(0,1-(game.visualSwingElapsed??game.swingElapsed??0)*11);
      ctx.globalAlpha=alpha;
      ctx.drawImage(this.images.spark,originX+widthPx*.75,originY+heightPx*.39,Math.min(100,widthPx*.58),Math.min(100,widthPx*.58));

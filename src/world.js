@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.25.0';
+import {lerp} from './engine.js?v=0.26.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -359,8 +359,8 @@ export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
 export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',hideBatter=false){
  if(!hideBatter)drawBatter(r,-2.3,-5,swingProgress,batColor);
  person(r,0,21,'pitcher',throwProgress*3,false);
- if(throwProgress>0 && throwProgress<1){
-  const t=throwProgress,z=20.5-25.4*t,y=2.5+.35*Math.sin(t*PI);
+ if(throwProgress>0 && throwProgress<1.26){
+  const t=throwProgress,z=20.5-25.4*t,y=2.5+.35*Math.sin(Math.min(t,1)*PI);
   r.ball(-4.5*t,y,z,.72,'#fffefa');
   r.add('ball',-4.5*t,y,z,.77,.77,.77,'#ffffff');
  }
@@ -413,7 +413,7 @@ export function drawBaseball(r,x,y,z,spin=0){
 export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
- drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,game.pitch||0,game.swing||0,game.batColor,!!game.spriteReady);
+ drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady);
  if(game.state==='aiming'&&!game.sprites?.images?.['aim-center'])drawAimArrow(r,game.aimAngle||0,game.pendingShot?.quality||'good');
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;

@@ -86,6 +86,21 @@ export class GameAudio{
  hit(q){this.sound('bat',q==='perfect'?.38:q==='excellent'?.32:q==='good'?.26:.16)}
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  miss(){this.sound('swing',.09)}
+ strike(){
+  if(!this.enabled)return;
+  // Voz nativa del dispositivo: sin descargar voces ni depender de conexión.
+  try{
+   const synth=globalThis.speechSynthesis;
+   const Speech=globalThis.SpeechSynthesisUtterance;
+   if(!synth||!Speech)return;
+   const call=new Speech('Strike!');
+   call.lang='en-US';call.rate=.88;call.pitch=.87;call.volume=1;
+   const voice=synth.getVoices?.().find(v=>/^en(-|_)/i.test(v.lang||''));
+   if(voice)call.voice=voice;
+   this.strikeUtterance=call;
+   synth.cancel?.();synth.speak(call);
+  }catch(error){console.warn('Voz de strike no disponible',error)}
+ }
  impact(material='concrete',strength=20){
   if(!this.enabled)return;
   this.init();if(!this.ctx)return;

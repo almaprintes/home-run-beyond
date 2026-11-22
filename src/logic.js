@@ -27,7 +27,7 @@ export function bonusCredits(save){return Math.max(0,Math.floor((save.paidUpgrad
 export function bonusProgress(save){return (save.paidUpgrades||0)%BONUS_EVERY}
 export function claimBonus(save,key){if(!(key in save.levels)||save.levels[key]>=MAX_LEVEL||bonusCredits(save)<1)return false;save.levels[key]++;save.bonusClaims=(save.bonusClaims||0)+1;return true}
 export function timingQuality(deltaMs,reflexLevel){const ms=Math.abs(deltaMs);const perfect=48+Math.min(130,(reflexLevel-1)*.72),excellent=132+Math.min(220,(reflexLevel-1)*1.25),good=280+Math.min(320,(reflexLevel-1)*1.45);if(ms<=perfect)return 'perfect';if(ms<=excellent)return 'excellent';if(ms<=good)return 'good';if(ms<=490)return 'weak';return 'miss'}
-export const qualityNames={perfect:'¡PERFECTO!',excellent:'¡EXCELENTE!',good:'¡BUEN GOLPE!',weak:'GOLPE FLOJO',miss:'¡CASI!' };
+export const qualityNames={perfect:'¡PERFECTO!',excellent:'¡EXCELENTE!',good:'¡BUEN GOLPE!',weak:'GOLPE FLOJO',miss:'¡FUERA DE TIEMPO!' };
 export const qualityFactor={perfect:1.24,excellent:1.06,good:.87,weak:.61,miss:.38};
 export function batSpeedMs(level){return Math.max(54,165-Math.sqrt(Math.max(1,level)-1)*8)}
 export function speedForSkills(levels){return 22.5+3.5*Math.pow(levels.power,.68)+1.5*Math.pow(levels.swing,.68)}

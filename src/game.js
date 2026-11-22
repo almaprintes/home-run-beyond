@@ -1,12 +1,12 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.25.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.25.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.25.0';
-import {GameAudio} from './audio.js?v=0.25.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.25.0';
-import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.25.0';
-import {BatterSprites} from './sprites.js?v=0.25.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.25.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.25.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.26.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.26.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.26.0';
+import {GameAudio} from './audio.js?v=0.26.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.26.0';
+import {aimSweep,redirectShot,aimDegrees} from './aiming.js?v=0.26.0';
+import {BatterSprites} from './sprites.js?v=0.26.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.26.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.26.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -15,7 +15,7 @@ export function groundRollRetention(type,dt){
  return Math.exp(-friction*Math.max(0,Number(dt)||0));
 }
 export class BaseballGame{
- constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.impactFX=new ImpactEffects();this.contactHold=0;this.visualSwingElapsed=0;this.fxCamera=null;this.rewardPending=false;
+ constructor(){this.state='ready';this.pitch=0;this.swing=0;this.pitchElapsed=0;this.swingElapsed=0;this.pitchDuration=1.52;this.simElapsed=0;this.distance=0;this.ball=null;this.pendingShot=null;this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.clock=0;this.last=0;this.fpsClock=0;this.frames=0;this.fps=60;this.qualityClock=0;this.stopped=false;this.toastTimer=0;this.toastText='';this.shake=0;this.audio=new GameAudio();this.impactFX=new ImpactEffects();this.contactHold=0;this.visualSwingElapsed=0;this.fxCamera=null;this.rewardPending=false;this.strikeCalled=false;
  try{this.save=sanitizeSave(JSON.parse(localStorage.getItem(SAVE_KEY)))}catch{this.save=initialSave()}
  this.audio.enabled=this.save.sound;this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
  try{this.renderer=new Renderer(el('world'))}catch(e){console.warn('WebGL2 no disponible; utilizando reserva gráfica 2D',e);this.renderer=new CanvasRenderer(el('world'))}this.renderer.game=this;
@@ -106,6 +106,7 @@ export class BaseballGame{
 
  startPitch(){
   this.state='pitching';this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;
+  this.strikeCalled=false;this.swingElapsed=0;this.visualSwingElapsed=0;
   el('app').classList.remove('resting','aiming');el('again').hidden=true;
   el('pitch-surface').hidden=false;el('aim-feedback').hidden=true;
   el('pitch-touch-label').textContent='MANTÉN PULSADO PARA BATEAR';
@@ -141,9 +142,44 @@ export class BaseballGame{
   this.pendingShot=redirectShot(this.pendingShot,auto?0:this.aimAngle);
   this.state='swinging';el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;
   el('app').classList.remove('aiming');
-  this.swingElapsed=0;this.visualSwingElapsed=0;this.contactHold=hitStopDuration(this.pendingShot.quality);this.swing=.42;
+  this.swingElapsed=0;this.visualSwingElapsed=0;this.contactHold=this.pendingShot.quality==='miss'?0:hitStopDuration(this.pendingShot.quality);this.swing=.42;
   el('action').classList.remove('pitch');el('controls').hidden=true;el('aim').hidden=true;
   this.audio.swing();
+ }
+ // Una bola no tocada nunca se convierte en un batazo lento.
+ resolveSwing(){
+  if(this.pendingShot?.quality==='miss'){
+   this.state='whiff';this.swing=1;
+   el('region').textContent='SWING AL AIRE';
+   return;
+  }
+  this.launch();
+ }
+ // La bola sin contacto cruza el home y continúa detrás del bateador.
+ advancePitch(dt){
+  if(this.state!=='pitching'&&this.state!=='whiff')return;
+  this.pitchElapsed+=Math.max(0,dt);
+  const progress=this.pitchElapsed/this.pitchDuration;
+  this.pitch=clamp(progress,0,1);
+  if(progress>=1.08&&!this.strikeCalled){
+   this.strikeCalled=true;this.audio?.strike?.();
+   el('status-pill').textContent='⚾ ¡STRIKE!';
+   el('region').textContent='¡STRIKE!';
+  }
+  if(progress>=1.26)this.finishStrike();
+ }
+ finishStrike(){
+  if(this.state!=='pitching'&&this.state!=='whiff')return;
+  this.state='rest';this.activePointer=null;this.ball=null;this.distance=0;
+  el('app').classList.add('resting');el('app').classList.remove('aiming');
+  el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;el('again').hidden=false;
+  el('result').hidden=false;el('upgrades').hidden=false;el('controls').hidden=true;
+  el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
+  el('record-badge').hidden=true;el('result-quality').textContent='¡STRIKE!';
+  el('result-meters').textContent='0';el('result-coins').textContent='+0';
+  el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';
+  el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
+  this.drawUI();
  }
  launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0};this.ball=b;initBallSpin(b);this.distance=0;this.impactFX?.spawnBat({x:b.x,y:b.y,z:b.z,quality:hit.quality});this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
@@ -257,9 +293,15 @@ export class BaseballGame{
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
  resetAndPitch(){el('result').hidden=true;this.impactFX?.clear();this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.startPitch()}
  update(dt){this.clock+=dt;this.impactFX?.update(dt);if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)el('toast').classList.remove('show')}
- if(this.state==='pitching'){this.pitchElapsed+=dt;this.pitch=clamp(this.pitchElapsed/this.pitchDuration,0,1);if(this.pitchElapsed>this.pitchDuration+.22)this.swingBat(true);
- const aim=this.pitch>.69&&this.pitch<.96;el('aim').hidden=!aim;el('aim').style.scale=String(1+Math.min(.4,(this.save.levels.reflex-1)*.003));el('aim').style.opacity=String(aim?clamp((this.pitch-.69)*6,.3,1):0);
- el('status-pill').textContent=this.pitch>.7?'🎯 ¡AHORA, AHORA!':'⚾ VIENE EL LANZAMIENTO';}
+ if(this.state==='pitching'||this.state==='whiff')this.advancePitch(dt);
+ if(this.state==='pitching'){
+  const aim=this.pitch>.69&&this.pitch<.96;el('aim').hidden=!aim;el('aim').style.scale=String(1+Math.min(.4,(this.save.levels.reflex-1)*.003));el('aim').style.opacity=String(aim?clamp((this.pitch-.69)*6,.3,1):0);
+  if(!this.strikeCalled)el('status-pill').textContent=this.pitch>.7?'🎯 ¡AHORA, AHORA!':'⚾ VIENE EL LANZAMIENTO';
+ }
+ if(this.state==='whiff'){
+  this.swingElapsed+=dt;this.visualSwingElapsed=this.swingElapsed;
+  this.swing=.42+.58*clamp(this.swingElapsed/.17,0,1);
+ }
  if(this.state==='aiming'){
    // La calidad y el instante del lanzamiento no cambian hasta que el dedo se suelta.
    this.aimElapsed+=dt;
@@ -275,7 +317,7 @@ export class BaseballGame{
    this.visualSwingElapsed=this.swingElapsed<=.05?this.swingElapsed:Math.max(.05,this.swingElapsed-hold);
    this.swing=.42+.58*clamp(this.visualSwingElapsed/.17,0,1);
    // Never delay a released hit because of a cosmetic hit-stop.
-   if(this.swingElapsed>=.09)this.launch();
+   if(this.swingElapsed>=.09)this.resolveSwing();
  }
  if(this.state==='flight'){
    this.liveSeconds+=dt;
