@@ -264,8 +264,8 @@ export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',
  person(r,0,21,'pitcher',throwProgress*3,false);
  if(throwProgress>0 && throwProgress<1){
   const t=throwProgress,z=20.5-25.4*t,y=2.5+.35*Math.sin(t*PI);
-  r.ball(0,y,z,.72,'#fffefa');
-  r.add('ball',0,y,z,.77,.77,.77,'#ffffff');
+  r.ball(-4.5*t,y,z,.72,'#fffefa');
+  r.add('ball',-4.5*t,y,z,.77,.77,.77,'#ffffff');
  }
 }
 export function drawAimArrow(r,angle=0,quality='good'){

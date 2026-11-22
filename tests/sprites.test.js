@@ -34,18 +34,18 @@ test('el bateador completo y el punto de contacto caben en iPhone vertical',()=>
  const width=707,height=1536;
  const foot=projectToScreen(cam,target,[-2.3,.1,-5],width,height);
  const crown=projectToScreen(cam,target,[-2.3,8.2,-5],width,height);
- const pitch=projectToScreen(cam,target,[0,2.5,-4.7],width,height);
+ const pitch=projectToScreen(cam,target,[-4.5,2.5,-4.7],width,height);
  assert.ok(foot&&crown&&pitch);
  assert.ok(foot.x>0&&foot.x<width);
  assert.ok(foot.y>height*.4&&foot.y<height*.94);
- assert.ok(crown.y<foot.y&&pitch.x>foot.x);
+ assert.ok(crown.y<foot.y&&pitch.x>foot.x,'la bola debe estar delante del bateador y no a su espalda');
  assert.ok(pitch.y>0&&pitch.y<height);
 });
 test('la pelota se genera frente al bate y en el punto final del lanzamiento',()=>{
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(game,/const b=\{x:0,y:2\.5,z:-4\.7/);
- assert.match(world,/z=20\.5-25\.4\*t/);
+ assert.match(game,/const b=\{x:-4\.5,y:2\.5,z:-4\.7/);
+ assert.match(world,/z=20\.5-25\.4\*t/);assert.match(world,/r\.ball\(-4\.5\*t,y,z/);
  assert.match(game,/this\.sprites\?\.draw\(this,zoom\)/);
  assert.match(world,/!!game\.spriteReady/);
  assert.match(world,/!game\.sprites\?\.ballLoaded/);
