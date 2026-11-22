@@ -24,7 +24,8 @@ test('hit-stop se aplica por calidad sin cambiar la física',()=>{
  const js=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.match(js,/this\.contactHold=hitStopDuration\(this\.pendingShot\.quality\)/);
  assert.match(js,/this\.visualSwingElapsed=this\.swingElapsed/);
- assert.match(js,/if\(this\.swingElapsed>=\.09\)this\.launch\(\)/);
+ assert.match(js,/if\(this\.swingElapsed>=\.09\)this\.resolveSwing\(\)/);
+ assert.match(js,/resolveSwing\(\)\{[\s\S]*?this\.launch\(\)/);
 });
 
 test('100 colisiones seguidas no exceden los límites y desaparecen al terminar',()=>{
