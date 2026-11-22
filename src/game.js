@@ -78,37 +78,65 @@ export class BaseballGame{
   const next={x:b.x+b.vx*dt,y:b.y+b.vy*dt,z:b.z+b.vz*dt};
   const hit=traceBuildingCollision(before,next,radius);
   if(hit){
-   // Colisión continua contra fachadas, cubiertas y casetas, con la misma geometría visible.
+   // Una cubierta no debe mantener indefinidamente una pelota de baja energía.
    const n=hit.normal,eps=.09;
+   const speedBefore=Math.hypot(b.vx,b.vy,b.vz);
+   const inward=-(b.vx*n.x+b.vy*n.y+b.vz*n.z);
    b.x=hit.point.x+n.x*eps;b.y=hit.point.y+n.y*eps;b.z=hit.point.z+n.z*eps;
-   const normalSpeed=b.vx*n.x+b.vy*n.y+b.vz*n.z;
-   if(normalSpeed<0){
-    const rebound=n.y>.5?.40:.30,friction=n.y>.5?.80:.72;
-    b.vx=(b.vx-(1+rebound)*normalSpeed*n.x)*friction;
-    b.vy=(b.vy-(1+rebound)*normalSpeed*n.y)*friction;
-    b.vz=(b.vz-(1+rebound)*normalSpeed*n.z)*friction;
+   b.buildingHits=(b.buildingHits||0)+1;
+   b.firstBuildingZ ??= b.z;
+   b.afterBuildingTime ??= 0;
+   b.lastCollision=n.y>.5?'REBOTE EN TEJADO':hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
+   // Apoyada en una azotea: detener en vez de simular micro-rebotes invisibles.
+   if(n.y>.5 && (speedBefore<4.5 ||
+       (b.buildingHits>1&&speedBefore<9&&inward<3.5))){
+    b.vx=0;b.vy=0;b.vz=0;
+    b.maxZ=Math.max(b.maxZ,b.z);
+    this.finishShot();return;
+   }
+   if(inward>0){
+    const rebound=n.y>.5?.38:.28,friction=n.y>.5?.77:.68;
+    b.vx=(b.vx-(1+rebound)*(-inward)*n.x)*friction;
+    b.vy=(b.vy-(1+rebound)*(-inward)*n.y)*friction;
+    b.vz=(b.vz-(1+rebound)*(-inward)*n.z)*friction;
    }else{
-    b.vx*=.65;b.vy*=.65;b.vz*=.65;
+    // Si aparece una penetración previa, resolverla sin reinyectar energía.
+    b.vx*=.45;b.vy*=.45;b.vz*=.45;
    }
    b.bounces++;
-   b.buildingHits=(b.buildingHits||0)+1;
-   b.lastCollision=n.y>.5?'REBOTE EN TEJADO':hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
    if(b.buildingHits<=3)this.audio.land();
-   // No dejar la bola oscilando dentro de edificios cercanos.
-   if(b.buildingHits>=4||Math.hypot(b.vx,b.vy,b.vz)<3){this.finishShot();return}
-  }else{b.x=next.x;b.y=next.y;b.z=next.z}
+   if(b.buildingHits>=4||Math.hypot(b.vx,b.vy,b.vz)<3.5){
+    b.maxZ=Math.max(b.maxZ,b.z);
+    this.finishShot();return;
+   }
+  }else{
+   b.x=next.x;b.y=next.y;b.z=next.z;
+  }
   b.maxZ=Math.max(b.maxZ,b.z);
   this.simElapsed+=dt;
   const ground=groundAt(b.x,b.z);
   if(b.y<=ground.y+radius){
    b.y=ground.y+radius;b.bounces++;
-   if(ground.type==='water'){b.lastCollision='¡AL AGUA!';this.finishShot();return;}
+   if(ground.type==='water'){b.lastCollision='¡AL AGUA!';this.finishShot();return}
    const bounce=ground.type==='road'?.61:.37;
    b.vy=Math.abs(b.vy)*bounce;
    b.vz*=ground.type==='road'?.72:.58;b.vx*=.58;
    b.lastCollision=ground.type==='road'?'REBOTE EN ASFALTO':'REBOTE EN CÉSPED';
    if(b.bounces<=3)this.audio.land();
    if(b.bounces>=4||Math.abs(b.vz)<3||Math.abs(b.vy)<1.8){this.finishShot();return}
+  }
+  if(b.buildingHits>0){
+   b.afterBuildingTime=(b.afterBuildingTime||0)+dt;
+   const moved=Math.hypot(b.x-before.x,b.y-before.y,b.z-before.z);
+   // Cuando la bola no se desplaza realmente, no esperar los 23 s de vuelo.
+   if(moved<Math.max(.018,dt*1.35))b.stillAfterHit=(b.stillAfterHit||0)+dt;
+   else b.stillAfterHit=Math.max(0,(b.stillAfterHit||0)-dt*.5);
+   if(b.stillAfterHit>.48 ||
+     (b.afterBuildingTime>1.5&&Math.hypot(b.vx,b.vy,b.vz)<5.5) ||
+     (b.afterBuildingTime>3.0&&Math.abs(b.z-b.firstBuildingZ)<12)){
+    b.lastCollision='PELOTA DETENIDA';
+    this.finishShot();return;
+   }
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }

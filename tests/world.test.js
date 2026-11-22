@@ -58,3 +58,44 @@ test('golpe contra pared real rebota y no atraviesa el edificio',()=>{
  assert.ok(game.ball.vz<0,'la pared no invirtió la componente de velocidad');
  assert.ok(game.ball.buildingHits===1);
 });
+
+test('una pelota casi parada sobre un tejado termina el golpe sin espera',()=>{
+ const b=buildingAt(0,3)||buildingAt(0,2)||buildingAt(0,1);
+ assert.ok(b);
+ const game=Object.create(BaseballGame.prototype);
+ game.state='flight';game.simElapsed=0;
+ // Fuera de la caseta de azotea, sobre la superficie sólida.
+ const x=b.x+b.w*.33,z=b.z;
+ game.ball={x,y:b.h+1.4+1.45+.12,z,vx:0,vy:-2,vz:.2,bounces:0,buildingHits:0,maxZ:0};
+ game.audio={land(){}};
+ let finished=false;
+ game.finishShot=()=>{finished=true;game.state='rest'};
+ let steps=0;
+ for(;steps<180&&!finished;steps++)game.simulateStep(1/60);
+ assert.equal(finished,true,'el techo dejó la bola suspendida más de tres segundos');
+ assert.ok(steps<150,'la física tardó demasiado en detectar el aterrizaje');
+ assert.ok(game.ball.y>b.h,'la bola atravesó el tejado');
+});
+
+test('colisiones repetidas en azoteas y casetas terminan antes del timeout general',()=>{
+ const buildings=[];
+ for(let j=0;j<=24;j++)for(let i=-5;i<=5;i++){
+  const b=buildingAt(i,j);
+  if(b)buildings.push(b);
+ }
+ let settled=0;
+ for(const b of buildings.slice(0,100)){
+  for(const useVent of [false,true]){
+   const game=Object.create(BaseballGame.prototype);
+   game.state='flight';game.simElapsed=0;game.audio={land(){}};
+   const x=b.x+(useVent?0:b.w*.34),z=b.z;
+   const ceiling=b.h+(useVent?3:1.4);
+   game.ball={x,y:ceiling+1.45+.10,z,vx:.8,vy:-1.8,vz:.8,bounces:0,buildingHits:0,maxZ:0};
+   game.finishShot=()=>{game.state='rest';settled++};
+   for(let step=0;step<180&&game.state==='flight';step++)game.simulateStep(1/60);
+   assert.notEqual(game.state,'flight',`bola atrapada en edificio ${b.i},${b.j} (${useVent?'caseta':'techo'})`);
+   assert.ok(Number.isFinite(game.ball.y));
+  }
+ }
+ assert.equal(settled,Math.min(buildings.length,100)*2);
+});
