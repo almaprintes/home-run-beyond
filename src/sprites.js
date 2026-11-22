@@ -53,7 +53,7 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
  for(let row=0;row<size;row++){
   const screenY=1-2*(row+.5)/size;
   for(let col=0;col<size;col++){
-   const screenX=2*(col+.5)/size;
+   const screenX=2*(col+.5)/size-1;
    const rr=screenX*screenX+screenY*screenY;
    const dest=(row*size+col)*4;
    if(rr>=1){output[dest+3]=0;continue}
