@@ -150,8 +150,8 @@ test('el juego calcula el spin en subpasos físicos, no tras acelerar 22 veces',
  assert.match(source,/integratePhysicalSpin\(b,prev,dt,touching/);
  assert.doesNotMatch(source,/advanceBallSpin\(this\.ball,dt/);
  const game=Object.create(BaseballGame.prototype);
- const ground=groundAt(990,800);
- game.state='flight';game.ball={x:990,y:ground.y+BALL_RADIUS,z:800,
+ const ground=groundAt(90,800);
+ game.state='flight';game.ball={x:90,y:ground.y+BALL_RADIUS,z:800,
   vx:0,vy:0,vz:12,bounces:0,maxZ:800};
  game.simElapsed=0;
  game.finishShot=()=>{};
@@ -163,8 +163,8 @@ test('el juego calcula el spin en subpasos físicos, no tras acelerar 22 veces',
 });
 
 test('primera colisión con el suelo sale del modo backspin incluso si todavía rebota',()=>{
- const g=groundAt(990,800);
- const b={x:990,y:g.y+BALL_RADIUS+.12,z:800,vx:0,vy:-15,vz:44,bounces:0,maxZ:800};
+ const g=groundAt(90,800);
+ const b={x:90,y:g.y+BALL_RADIUS+.12,z:800,vx:0,vy:-15,vz:44,bounces:0,maxZ:800};
  initBallSpin(b);
  const game=Object.create(BaseballGame.prototype);
  game.state='flight';game.ball=b;game.simElapsed=0;game.audio={impact(){}};

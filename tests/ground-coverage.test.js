@@ -1,80 +1,58 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {drawTerrain,drawWorld,terrainCoverage} from '../src/world.js';
-import {Renderer,MATERIAL_IDS} from '../src/engine.js';
+import {WORLD_CENTER_X,WORLD_WIDTH,WORLD_HALF_WIDTH} from '../src/biomes.js';
 import {readFileSync} from 'node:fs';
-
-function captureTerrain(z,y=65,x=0){
- const fields=[],counters={detail:0};
- const r={
-  setMaterial(){},setLayer(){},
-  field(px,py,pz,w,d,color,rotation=0,material='grass'){
-   fields.push({x:px,y:py,z:pz,w,d,color,material});
-  },
-  add(){counters.detail++},box(){counters.detail++},
-  ball(){counters.detail++},pole(){counters.detail++},cone(){counters.detail++}
- };
+function capture(z=700,y=65,x=0){
+ const fields=[],stats={detail:0};
+ const r={setMaterial(){},setLayer(){},field(px,py,pz,w,d,color,rotation=0,material='grass'){fields.push({x:px,y:py,z:pz,w,d,color,material})},
+  add(){stats.detail++},box(){stats.detail++},ball(){stats.detail++},pole(){stats.detail++},cone(){stats.detail++}};
  drawTerrain(r,z,x,y,0,null);
- return {fields,counters};
+ return {fields,detail:stats.detail};
 }
-const contains=(field,x,z)=>Math.abs(x-field.x)<=field.w/2 &&
-                                Math.abs(z-field.z)<=field.d/2;
-
-test('ciudad 0.70 km: el terreno cubre de forma continua carreteras, edificios y horizonte',()=>{
- const camera={x:600,y:72,z:650};
- const {fields}=captureTerrain(camera.z,camera.y,camera.x);
- const ground=fields.filter(f=>f.material==='grass'&&f.w>=3000);
- assert.ok(ground.length>=13,'se sigue cortando el suelo a pocos cientos de metros');
- for(const z of [50,270,427,507,650,704,900,1300,1750,2050,2550]){
-  assert.ok(ground.some(f=>contains(f,600,z)), 'suelo ausente en z='+z);
+const contains=(f,x,z)=>Math.abs(x-f.x)<=f.w/2&&Math.abs(z-f.z)<=f.d/2;
+test('el terreno cubre todo el corredor legal y el horizonte, sin ser infinito lateralmente',()=>{
+ const {fields}=capture(650,72,200);
+ const underlays=fields.filter(f=>f.w===WORLD_WIDTH&&f.d>=9000);
+ assert.equal(underlays.length,1);
+ assert.equal(underlays[0].x,WORLD_CENTER_X);
+ for(const x of [WORLD_CENTER_X-298,0,WORLD_CENTER_X+298]){
+  for(const z of [50,270,507,650,900,1300,1750,2550])
+   assert.ok(fields.some(f=>contains(f,x,z)),`terreno ausente en ${x}/${z}`);
  }
- assert.ok(ground.every(f=>f.color!=='#4badd1'),'césped confundido con agua');
- assert.ok(ground.every(f=>f.y<5),'campo urbano elevado incorrectamente');
+ assert.ok(fields.every(f=>f.w<=600),'existen planos superiores a los 600 m');
 });
-
-test('cámara alta o desviada lateralmente mantiene el suelo bajo la pelota',()=>{
- for(const [x,y,z] of [[-900,25,520],[1190,180,740],[1500,340,1150],[2500,500,3400]]){
-  const {fields}=captureTerrain(z,y,x);
-  const ground=fields.filter(f=>f.material==='grass'&&f.w>=3000);
-  const coverage=terrainCoverage(z,y);
+test('cámara a diferentes alturas mantiene suelo acotado y no cambia su eje',()=>{
+ for(const [x,y,z] of [[-290,25,520],[289,180,740],[0,340,1150],[100,500,3400]]){
+  const {fields}=capture(z,y,x),coverage=terrainCoverage(z,y);
   assert.ok(coverage.ahead>=1900&&coverage.behind>=750);
-  for(const testZ of [z,z+500,z+950,z+1500]){
-   assert.ok(ground.some(f=>contains(f,x,testZ)), 'zona azul a '+x+'/'+testZ);
-  }
+  const base=fields.find(f=>f.w===WORLD_WIDTH&&f.d>=9000);
+  assert.ok(base);
+  for(const zz of [z,z+500,z+950,z+1500])
+   assert.ok(contains(base,WORLD_CENTER_X+290,zz));
+  assert.ok(fields.every(f=>f.x-f.w/2>=WORLD_CENTER_X-WORLD_HALF_WIDTH-.01));
+  assert.ok(fields.every(f=>f.x+f.w/2<=WORLD_CENTER_X+WORLD_HALF_WIDTH+.01));
  }
 });
-
-test('el radio de detalle no crece con el horizonte y protege FPS de iPhone',()=>{
- const a=captureTerrain(700,75,0),b=captureTerrain(700,380,0);
- const grassA=a.fields.filter(f=>f.material==='grass'&&f.w>=3000);
- const grassB=b.fields.filter(f=>f.material==='grass'&&f.w>=3000);
- assert.ok(grassB.length>grassA.length,'el terreno debe ampliarse cuando sube cámara');
- assert.ok(b.counters.detail<12000,'demasiada geometría extra al ampliar el terreno');
- const bounds=terrainCoverage(700,380);
- assert.equal(bounds.detail,370,'los detalles deben seguir limitados a su radio habitual');
+test('mantener renderizado local y bandas longitudinales suaves protege los FPS',()=>{
+ const a=capture(700,75),b=capture(700,380);
+ assert.ok(b.fields.length>a.fields.length,'la cámara alta debe ver más terreno');
+ assert.ok(b.detail<12000);
+ const coverage=terrainCoverage(700,380);
+ assert.equal(coverage.detail,370);
+ const strips=a.fields.filter(f=>f.w===WORLD_WIDTH&&f.d<100);
+ assert.ok(strips.length>30,'biomas no pueden cambiar solo cada 200 m');
 });
-
-test('niebla del suelo diferenciada y framebuffer opaco',()=>{
- const engine=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
- assert.match(engine,/if\(vMaterial==1 \|\| vMaterial==8\)/);
- assert.match(engine,/\.34\*smoothstep\(uFogDistance\*\.95,uFogDistance\*6\.,vFog\)/);
- assert.match(engine,/gl\.clearColor\(0\.48,\.76,\.84,1\)/);
- const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(world,/r\.field\(viewX,h-\.18,mid,4200,204,terrainBaseColor\(mid\),0,'grass'\)/);
- assert.match(world,/if\(Math\.abs\(mid-viewZ\)>coverage\.detail\+160\)continue/);
-});
-
-test('el terreno se mantiene opaco durante vuelo y permite la transparencia solo en los edificios',()=>{
- const planes=[];
- const r={
-  layer:'opaque',fogDistance:0,begin(){},
-  setLayer(layer){this.layer=layer},
-  setMaterial(){},
-  field(x,y,z,w,d,color,rot,material='grass'){planes.push({layer:this.layer,material,z})},
-  add(){},box(){},ball(){},pole(){},cone(){}
- };
+test('césped, fondo y paredes no se vuelven transparentes en vuelo',()=>{
+ const fields=[],r={layer:'opaque',fogDistance:0,begin(){},setLayer(layer){this.layer=layer},
+  setMaterial(){},field(x,y,z,w,d,color,rot,material='grass'){fields.push({layer:this.layer,material,w})},
+  add(){},box(){},ball(){},pole(){},cone(){}};
  drawWorld(r,[0,60,690],{state:'flight',ball:{x:0,y:20,z:710},clock:2,liveSeconds:1});
- const grass=planes.filter(f=>f.material==='grass');
- assert.ok(grass.length>=12);
- assert.ok(grass.every(f=>f.layer==='opaque'),'terreno transparente durante el vuelo');
+ assert.ok(fields.length>=20);
+ assert.ok(fields.every(f=>f.layer==='opaque'));
+ const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
+ assert.match(world,/WORLD_WIDTH,50\.3/);
+ assert.match(world,/drawSideBoundaries\(r,viewZ,viewY\)/);
+ const engine=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
+ assert.match(engine,/gl\.clearColor\(0\.48,\.76,\.84,1\)/);
 });

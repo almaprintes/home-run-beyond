@@ -1,12 +1,13 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.29.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.29.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.29.0';
-import {GameAudio} from './audio.js?v=0.29.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.29.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.29.0';
-import {BatterSprites} from './sprites.js?v=0.29.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.29.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.29.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.30.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.30.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.30.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.30.0';
+import {GameAudio} from './audio.js?v=0.30.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.30.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.30.0';
+import {BatterSprites} from './sprites.js?v=0.30.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.30.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.30.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -200,13 +201,16 @@ export class BaseballGame{
   b.impactAge=(b.impactAge??99)+dt;
   b.vy-=9.81*dt;
   const next={x:b.x+b.vx*dt,y:b.y+b.vy*dt,z:b.z+b.vz*dt};
-  const hit=traceBuildingCollision(prev,next,radius);
+  const buildingHit=traceBuildingCollision(prev,next,radius);
+   const boundaryHit=traceSideBoundary(prev,next,radius);
+   const hit=boundaryHit&&(!buildingHit||boundaryHit.t<=buildingHit.t)?boundaryHit:buildingHit;
   let touching=false;
   if(hit){
    // El material determina el rebote; ningún número de impactos termina la partida.
    const n=hit.normal,mat=hit.material||'concrete';
-   const restitution=mat==='rubber'?.16:mat==='solid'?.80:.71;
-   const tangentRetention=mat==='rubber'?.48:mat==='solid'?.92:.86;
+   const sideHit=hit.kind==='side-boundary';
+    const restitution=sideHit?.26:mat==='rubber'?.16:mat==='solid'?.80:.71;
+   const tangentRetention=sideHit?.64:mat==='rubber'?.48:mat==='solid'?.92:.86;
    b.x=hit.point.x+n.x*.075;
    b.y=hit.point.y+n.y*.075;
    b.z=hit.point.z+n.z*.075;
@@ -229,7 +233,7 @@ export class BaseballGame{
     b.vx*=rollingDrag;b.vz*=rollingDrag;
     touching=true;
    }
-   b.lastCollision=n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
+   b.lastCollision=sideHit?'CHOQUE CON '+hit.obstacle.toUpperCase():n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
    if(inward>1){
     b.impactAge=0;b.impactMaterial=mat;
     b.bounces++;
@@ -239,7 +243,9 @@ export class BaseballGame{
   }else{
    b.x=next.x;b.y=next.y;b.z=next.z;
   }
-  b.maxZ=Math.max(b.maxZ,b.z);
+  b.x=clamp(b.x,WORLD_CENTER_X-WORLD_HALF_WIDTH+radius,
+    WORLD_CENTER_X+WORLD_HALF_WIDTH-radius);
+   b.maxZ=Math.max(b.maxZ,b.z);
   this.simElapsed+=dt;
   const ground=groundAt(b.x,b.z);
   if(b.y<=ground.y+radius){

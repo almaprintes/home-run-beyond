@@ -1,4 +1,5 @@
-import {lerp} from './engine.js?v=0.29.0';
+import {lerp} from './engine.js?v=0.30.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.30.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -14,10 +15,10 @@ function tree(r,x,z,h=7,seed=1){
  r.setMaterial?.('plain');
 }
 function bush(r,x,z,s=2){r.ball(x,s*.38,z,s,'#43835e')}
-export const RIVER_HALF_WIDTH=540;
+export const RIVER_HALF_WIDTH=245;
 export function riverAt(z,x=0){return z>1620&&z<1740&&Math.abs(x)<=RIVER_HALF_WIDTH}
-export function roadAt(z){return z>155&&Math.abs((z+35)%200-100)<14}
-export function areaAt(z){if(z<115)return 'ESTADIO';if(z<460)return 'BARRIOS';if(z<1550)return 'CIUDAD';if(z<1950)return 'RÍO Y PUERTO';if(z<3600)return 'COLINAS';if(z<10000)return 'GRAN VALLE';return 'MUNDO ABIERTO'}
+export function roadAt(z){return z>155&&z<2000&&Math.abs((z+35)%200-100)<14}
+export function areaAt(z){return biomeAt(z).name}
 function worldHeight(x,z){if(z<1850)return 0;if(z<3600){const a=Math.sin(z*.004+x*.013)*.65+Math.sin(z*.015-x*.009)*.3;return Math.max(0,a*4)}return Math.max(0,(Math.sin(x*.009+z*.004)+Math.sin(x*.004-z*.007))*.8)}
 const WET_PATCHES=[
  {x:15,z:2140,rx:72,rz:55,type:'swamp'},
@@ -36,7 +37,7 @@ export function groundAt(x,z){
  const wet=wetAreaAt(x,z);
  if(wet)return {y:worldHeight(x,z),type:wet};
  if(roadAt(z))return {y:0,type:'road'};
- return {y:worldHeight(x,z),type:'grass'};
+ return {y:worldHeight(x,z),type:biomeAt(z).ground};
 }
 function buildingData(i,j){
  const n=i*89+j*791,h=10+rand(n+1)*39,w=18+rand(n+2)*15,d=17+rand(n+3)*23;
@@ -47,7 +48,7 @@ function buildingData(i,j){
 // Única fuente de verdad para los edificios visibles y sus colisiones.
 // La cuadrícula también genera árboles y huecos para carreteras/río.
 export function buildingAt(i,j){
- if(!Number.isInteger(i)||!Number.isInteger(j)||i< -5||i>5||j<0||j>24)return null;
+ if(!Number.isInteger(i)||!Number.isInteger(j)||i< -4||i>4||j<0||j>24)return null;
  const x=i*60,z=270+j*60,n=i*11+j*191;
  if(riverAt(z)||roadAt(z)||rand(n)<.16)return null;
  return {x,z,i,j,...buildingData(i,j)};
@@ -199,12 +200,72 @@ export function terrainPatchMaterial(chunk,index){
  if(chunk>=1&&chunk<=7)return n<3?'paving':n<5?'dirt':'grass';
  return n<2?'dirt':'grass';
 }
-export function terrainBaseColor(z){
- if(z<200)return '#538f59';
- if(z<1550)return '#659c63';
- if(z<1850)return '#83a66a';
- if(z<3600)return '#739d6b';
- return '#759a68';
+export function terrainBaseColor(z){return biomeColorAt(z)}
+export function groundVisualMaterial(z){
+ const blend=biomeTransitionAt(z);
+ const selected=blend.active&&rand(Math.floor(z/20),72)<blend.t?blend.to:blend.from;
+ return selected.ground==='sand'?'dirt':selected.ground==='rock'?'concrete':
+        selected.ground==='snow'?'plain':'grass';
+}
+// Paredes contextuales: x fijo ±300, transición de color y altura por smoothstep.
+export function drawSideBoundaries(r,viewZ,viewY=0){
+ const coverage=terrainCoverage(viewZ,viewY);
+ const first=Math.floor((viewZ-coverage.behind-50)/32);
+ const last=Math.ceil((viewZ+coverage.ahead+50)/32);
+ for(let j=Math.max(-4,first);j<=last;j++){
+  const z=j*32+16;
+  for(const side of [-1,1]){
+   const profile=boundaryProfileAt(z,side);
+   const edge=WORLD_CENTER_X+side*WORLD_HALF_WIDTH;
+   const x=edge+side*profile.thickness/2,h=profile.height;
+   r.setMaterial?.(profile.material);
+   r.box(x,h/2,z,profile.thickness,h,32.15,profile.color);
+   r.setMaterial?.('plain');
+   r.box(x,h+.65,z,profile.thickness+1,1.15,32,profile.trim);
+   if(Math.abs(z-viewZ)>coverage.detail+170)continue;
+   // Alternar detalles viejos/nuevos en la transición evita un corte decorativo.
+   const decor=rand(j*13,side*73)<profile.blend?profile.decorTo:profile.decorFrom;
+   if(decor==='stands')r.box(x,h*.75,z,profile.thickness+3,4,23,'#385668');
+   else if(decor==='urban'||decor==='city'){
+    for(const shift of [-8,9])r.box(x-side*(profile.thickness*.26),h*.66,z+shift,1.4,6,7,'#bcd9de');
+   }else if(decor==='port'){
+    for(const k of [-9,0,9])r.box(x-side*(profile.thickness*.31),h*.47,z+k,2.5,5,12,'#d6a564');
+   }else if(decor==='forest'){
+    const xx=edge-side*9;
+    tree(r,xx,z,10+rand(j,side)*9,j*37+side);
+   }else if(decor==='cliff')r.box(x-side*(profile.thickness*.22),h*.46,z+8,6,h*.22,14,profile.trim);
+  }
+ }
+ r.setMaterial?.('plain');
+}
+function drawFarBiomeProps(r,viewZ,viewY,focusBall,drawTree){
+ const coverage=terrainCoverage(viewZ,viewY);
+ const first=Math.max(36,Math.floor((viewZ-coverage.detail-150)/40));
+ const last=Math.floor((viewZ+coverage.detail+150)/40);
+ for(let j=first;j<=last;j++){
+  const z=j*40+20,transition=biomeTransitionAt(z);
+  for(let k=0;k<3;k++){
+   // Mezcla espacial a escala de objetos, no una fila entera de golpe.
+   const biome=transition.active&&rand(j*17+k*29,11)<transition.t?transition.to:transition.from;
+   const x=WORLD_CENTER_X+(-185+k*185)+rand(j*17+k*29,3)*30-15;
+   const n=j*59+k*197,h=worldHeight(x,z);
+   if(biome.id==='hills'||biome.id==='valley'||biome.id==='pines'){
+    if(rand(n,7)>.28)drawTree(x,z,biome.id==='pines'?19:12,n);
+    if(rand(n,5)>.70)r.box(x,h+2,z+14,8,4,8,'#8d987e');
+   }else if(biome.id==='port'){
+    r.setMaterial?.('metal');r.box(x,h+4,z,15,8,19,choose(n,['#537b87','#c7805b','#d8b66f']));r.setMaterial?.('plain');
+   }else if(biome.id==='mountain'||biome.id==='volcano'||biome.id==='canyon'){
+    const c=biome.id==='volcano'?'#444345':biome.id==='canyon'?'#bd7560':'#969b97';
+    r.box(x,h+6,z,16+rand(n)*16,12+rand(n,2)*15,19,c,rand(n,1));
+   }else if(biome.id==='desert'){
+    r.setMaterial?.('dirt');r.cone(x,h+3,z,11,6,'#d8b47c');
+    if(rand(n,4)>.5){r.pole(x+12,h+3,z,1.1,6,'#65936e');r.ball(x+12,h+7,z,2,'#65936e')}
+    r.setMaterial?.('plain');
+   }else if(biome.id==='tundra'||biome.id==='glacier'){
+    r.box(x,h+5,z,13,9,14,biome.id==='glacier'?'#b6dfed':'#d1d9d7',rand(n,1));
+   }
+  }
+ }
 }
 export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const cam=[viewX,viewY,viewZ];
@@ -217,48 +278,57 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  const end=Math.floor((viewZ+coverage.ahead)/200)+1;
  // Una sola capa verde de seguridad debajo de todas las calles y edificios:
  // nunca debe verse el color cian del framebuffer como si fuera suelo.
- r.field(viewX,-.60,viewZ+500,9000,9000,'#608a5c',0,'grass');
+ r.field(WORLD_CENTER_X,-.60,viewZ+500,WORLD_WIDTH,9000,terrainBaseColor(viewZ),0,'grass');
  for(let chunk=start;chunk<=end;chunk++){
    const mid=chunk*200+100;
    if(mid>0){
-    const h=worldHeight(viewX,mid);
-    r.field(viewX,h-.18,mid,4200,204,terrainBaseColor(mid),0,'grass');
+    const h=worldHeight(WORLD_CENTER_X,mid);
+    for(let band=0;band<4;band++){
+     const zz=chunk*200+band*50+25;
+     r.field(WORLD_CENTER_X,worldHeight(WORLD_CENTER_X,zz)-.18,zz,WORLD_WIDTH,50.3,
+      terrainBaseColor(zz),0,groundVisualMaterial(zz));
+    }
     // Cerca de la cámara, el césped alterna tierra seca y solares pavimentados.
     // Pocas parcelas grandes: más legibles que cientos de puntitos con shimmer.
     if(Math.abs(mid-viewZ)<coverage.detail+320 && !riverAt(mid)){
-     const xOrigin=Math.floor(viewX/320)*320;
-     for(let i=-4;i<=4;i++){
+     const xOrigin=WORLD_CENTER_X;
+     for(let i=-2;i<=2;i++){
       const seed=chunk*61+i*131;
-      const mat=terrainPatchMaterial(chunk,i);
-      const col=mat==='paving'?'#afa894':mat==='dirt'?'#ab926d':
-                  rand(seed,9)<.5?'#5e9a60':'#82b079';
-      const xx=xOrigin+i*320+rand(seed,2)*70-35;
+      const originalMat=terrainPatchMaterial(chunk,i);
+      const mat=mid>5500?groundVisualMaterial(mid):originalMat;
+      const col=mid>5500
+        ?mixColors(terrainBaseColor(mid),rand(seed,9)<.5?'#dde2d6':'#53554e',.13)
+        :originalMat==='paving'?'#afa894':originalMat==='dirt'?'#ab926d':
+         rand(seed,9)<.5?'#5e9a60':'#82b079';
+      const xx=xOrigin+i*114+rand(seed,2)*25-12;
       const zz=mid+rand(seed,3)*95-47.5;
-      const ww=130+rand(seed,4)*155,dd=46+rand(seed,5)*64;
-      r.field(xx,h-.065,zz,ww,dd,col,rand(seed,6)*.35,mat);
+      const ww=95+rand(seed,4)*50,dd=46+rand(seed,5)*64;
+      const safeX=Math.max(WORLD_CENTER_X-WORLD_HALF_WIDTH+ww/2,
+       Math.min(WORLD_CENTER_X+WORLD_HALF_WIDTH-ww/2,xx));
+      r.field(safeX,h-.065,zz,ww,dd,col,0,mat);
      }
      if(chunk>0&&chunk<8){
       // Parcelas y aceras urbanas a ambos lados de la calzada.
       for(const side of [-1,1]){
-       r.field(side*265,h-.038,mid,150,130,'#aba99b',0,'paving');
-       r.field(side*365,h-.032,mid+38,68,46,'#a78765',0,'dirt');
+       r.field(WORLD_CENTER_X+side*235,h-.038,mid,110,130,'#aba99b',0,'paving');
+       r.field(WORLD_CENTER_X+side*258,h-.032,mid+38,60,46,'#a78765',0,'dirt');
       }
      }
     }
    }
-   // El cauce ocupa realmente 1.080 m de anchura, NO toda la ciudad.
+   // El cauce ocupa 490 m dentro del corredor de 600 m.
    // Las orillas de tierra quedan alrededor, encima del césped.
    if(chunk*200<1750&&(chunk+1)*200>1620){
-    r.field(0,-.07,1680,1460,154,'#a49b72',0,'dirt');
-    r.field(0,-.015,1680,RIVER_HALF_WIDTH*2,118,'#3d9ab4',0,'water');
+    r.field(WORLD_CENTER_X,-.07,1680,590,154,'#a49b72',0,'dirt');
+    r.field(WORLD_CENTER_X,-.015,1680,RIVER_HALF_WIDTH*2,118,'#3d9ab4',0,'water');
    }
    if(Math.abs(mid-viewZ)>coverage.detail+160)continue;
-   if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-520;x<=520;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
-   if(chunk>0){road(r,0,chunk*200+65,880,24);for(let x=-420;x<420;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
-    if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=((j*173+time*(12+j%3*7)+500)%850)-425,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
+   if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-220;x<=220;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
+   if(chunk>0&&roadAt(chunk*200+65)){road(r,WORLD_CENTER_X,chunk*200+65,560,24);for(let x=-270;x<270;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
+    if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=WORLD_CENTER_X+((j*173+time*(12+j%3*7)+540)%520)-260,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
    }
  }
- if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-5;i<=5;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
+ if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-4;i<=4;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
  if(!b){drawTree(x,z,8+rand(n+5)*6,n);drawTree(x+15,z+12,5+rand(n+7)*6,n+32)}
  else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b));r.box(x+24,.13,z+25,8,.20,8,'#b9b8ad',0,0,0,'paving')}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
@@ -271,11 +341,13 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
     patch.type==='swamp'?'#779b75':'#8bcaca');
   r.setMaterial?.('plain');
  }
- if(viewZ>1800){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;for(let i=-5;i<=5;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)drawTree(x,z,z>3600?12:8,i*99+j);
+ if(viewZ>1800&&viewZ<6600){let startJ=Math.max(0,Math.floor((viewZ-500-1900)/70)),endJ=Math.floor((viewZ+500-1900)/70);for(let j=startJ;j<=endJ;j++){const z=1900+j*70;if(z>6100)continue;for(let i=-3;i<=3;i++){const x=i*80;const y=worldHeight(x,z);if(rand(i,j)>.28)drawTree(x,z,z>3600?12:8,i*99+j);
  if(rand(i*31,j*19)>.87){
   if(focusBall&&treeObscuresBall(cam,focusBall,x,z,32))r.setLayer?.('ghost');
   r.cone(x,y+11,z,20,32,'#879a74');r.setLayer?.('opaque');
  }}}}
+ drawFarBiomeProps(r,viewZ,viewY,focusBall,drawTree);
+ drawSideBoundaries(r,viewZ,viewY);
  // Una vista al horizonte no tiene por qué cargar el mundo completo.
 }
 function sky(r,camZ,camX,camY){if(camY>240) return;for(let i=0;i<11;i++){const z=camZ-230+((i*107+700)%900),x=camX+((i*193)%800)-400,y=100+(i%4)*22;const a=12+(i%3)*8;r.ball(x,y,z,a,'#f5faff');r.ball(x+10,y+3,z-3,a*.72,'#ffffff');r.ball(x-12,y-2,z+2,a*.85,'#e7f6ff')}}
