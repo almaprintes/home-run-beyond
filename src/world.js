@@ -1,4 +1,4 @@
-import {lerp} from './engine.js?v=0.16.0';
+import {lerp} from './engine.js?v=0.17.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -352,7 +352,7 @@ export function drawBaseball(r,x,y,z,spin=0){
  const radius=1.74,segments=15;
  for(const meridian of [-.83,.83,2.31,3.97]){
   const seam=(theta,offset=0)=>{
-   const phi=meridian+.19*Math.sin(theta*2)+offset+spin*.07;
+   const phi=meridian+.19*Math.sin(theta*2)+offset+spin;
    const st=Math.sin(theta);
    return [x+radius*st*Math.cos(phi),y+radius*Math.cos(theta),z+radius*st*Math.sin(phi)];
   };
@@ -377,6 +377,6 @@ export function drawWorld(r,cam,game){
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
   if(game.liveSeconds<.46){for(let k=0;k<20;k++){const a=k*Math.PI*2/20,rad=(1-game.liveSeconds/.46)*7+game.liveSeconds*14;r.ball(-2.3+Math.cos(a)*rad,2.2+Math.sin(a)*rad,game.liveSeconds*18,.75+(.46-game.liveSeconds),'#ffda79')}}
   for(let i=6;i>=1;i--){let q=(i/6)*.07;const xx=b.x-b.vx*q,yy=b.y-b.vy*q+.5*9.81*q*q,zz=b.z-b.vz*q;const ss=1.5*(1-i/8);r.ball(xx,Math.max(.4,yy),zz,ss,i>3?'#ffc58e':'#fcead2')}
-  if(!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,(game.clock||0)*2.5);
+  if(!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,b.spin?.angle||0);
  }
 }

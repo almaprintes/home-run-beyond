@@ -1,6 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.16.0';
-import {surfaceBelowBall} from './world.js?v=0.16.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.16.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.17.0';
+import {surfaceBelowBall} from './world.js?v=0.17.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.17.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -145,7 +145,9 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
-    ctx.rotate((game.clock||0)*.32);
+    // Giro físico real: costuras visibles en vuelo, rebote, retroceso y rodadura.
+    // Conservamos exactamente el arte de la pelota aprobado.
+    ctx.rotate(b.spin?.angle??0);
     ctx.drawImage(this.images.ball,-size*.5,-size*.5,size,size);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);
