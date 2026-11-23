@@ -1,5 +1,5 @@
-import {lerp} from './engine.js?v=0.38.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.38.0';
+import {lerp} from './engine.js?v=0.39.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.39.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -325,7 +325,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
    if(Math.abs(mid-viewZ)>coverage.detail+160)continue;
    if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-220;x<=220;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
    if(chunk>0&&roadAt(chunk*200+65)){road(r,WORLD_CENTER_X,chunk*200+65,560,24);for(let x=-270;x<270;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
-    if(Math.abs(chunk*200+65-viewZ)<370)for(let j=0;j<6;j++){const x=WORLD_CENTER_X+((j*173+time*(12+j%3*7)+540)%520)-260,zz=chunk*200+65+(j%2?5.5:-5.5),col=choose(chunk*19+j,['#f0ad6e','#f6e1ba','#8ac4c9','#ec736a','#d9bded']);r.box(x,1.55,zz,7.5,2.8,4.5,col);r.box(x-1.5,3,zz,3.4,1.4,4.1,'#b8d8d4');for(let k of [-1,1])r.ball(x+k*2.4,.68,zz+2.2,1.25,'#263a4c')}
+    // Las carrocerías LEGO ya no se generan: sprites reales TDR sobre el asfalto.
    }
  }
  if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-4;i<=4;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);

@@ -1,14 +1,14 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.38.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.38.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.38.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.38.0';
-import {GameAudio} from './audio.js?v=0.38.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.38.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.38.0';
-import {BatterSprites} from './sprites.js?v=0.38.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.38.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.38.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.38.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.39.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.39.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.39.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.39.0';
+import {GameAudio} from './audio.js?v=0.39.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.39.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.39.0';
+import {BatterSprites} from './sprites.js?v=0.39.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.39.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.39.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.39.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -427,6 +427,8 @@ export class BaseballGame{
      b.vz*=type==='road'?.92:.70;b.vx*=type==='road'?.92:.70;
      b.impactAge=0;b.impactMaterial=type;
      b.bounces++;
+     // Compresión visual breve, independiente de la física acelerada.
+     b.bounceVisual=1;
      onSpinImpact(b,{x:0,y:1,z:0},type);
      this.emitCollision(type,{x:b.x,y:b.y,z:b.z},normalImpact,{x:0,y:1,z:0});
     }else{
@@ -494,6 +496,7 @@ export class BaseballGame{
    this.liveSeconds+=dt;
    const speed=Math.hypot(this.ball.vx,this.ball.vz);const mult=clamp(speed/58,1,22);const total=dt*mult;const substeps=Math.ceil(total/.026);
    for(let i=0;i<substeps&&this.state==='flight';i++)this.simulateStep(total/substeps);
+   if(this.ball)this.ball.bounceVisual=Math.max(0,(this.ball.bounceVisual||0)-dt*5.5);
    // Always present spin at real display frame rate, not accelerated physics time.
    // First ground impact permanently switches the visible axis from backspin to
    // rolling topspin, including small airborne hops between bounces.

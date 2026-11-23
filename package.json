@@ -1,13 +1,13 @@
 {
   "name": "home-run-beyond",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "private": true,
   "type": "module",
   "description": "Home Run Beyond — juego de bateo 3D procedural PWA",
   "scripts": {
     "dev": "node tools/serve.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/engine.js && node --check src/world.js && node --check src/game.js && node --check src/logic.js && node --check src/audio.js && node --check src/main.js && node --check src/rewarded.js && node --check src/aiming.js && node --check src/sprites.js && node --check src/cosmetic-render.js && node --check src/cosmetic-catalog.js && node --check src/cosmetic-art.js && node --check src/baked-assets.js && node --check src/ball-visuals.js && node --check src/ball-spin.js && node --check src/impact-fx.js"
+    "check": "node --check src/engine.js && node --check src/world.js && node --check src/game.js && node --check src/logic.js && node --check src/audio.js && node --check src/main.js && node --check src/rewarded.js && node --check src/aiming.js && node --check src/sprites.js && node --check src/traffic.js && node --check src/cosmetic-render.js && node --check src/cosmetic-catalog.js && node --check src/cosmetic-art.js && node --check src/baked-assets.js && node --check src/ball-visuals.js && node --check src/ball-spin.js && node --check src/impact-fx.js"
   },
   "engines": {
     "node": ">=18"

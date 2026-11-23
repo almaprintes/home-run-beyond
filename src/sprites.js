@@ -1,8 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.38.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.38.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.38.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.38.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.38.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.39.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.39.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.39.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.39.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.39.0';
+import {TRAFFIC_VEHICLES,visibleRoadTraffic,drawTrafficSprites} from './traffic.js?v=0.39.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -43,7 +44,31 @@ export function projectToScreen(camera,target,point,width,height,fov=62){
 // Inverse projection of the original approved baseball image onto a rotating
 // sphere. Rolling uses the WORLD axis (up × ground motion), projected into the
 // CURRENT camera: a forward roll cannot look like a sideways coin spin.
-export const BALL_SURFACE_SIZE=64;
+export const BALL_SURFACE_SIZE=96;
+// Una fotografía recortada de una pelota tiene esquinas transparentes.
+// Se rellena únicamente la COPIA UV en memoria, proyectando los píxeles
+// vecinos del cuero hacia las esquinas; la imagen original nunca se altera.
+export function opaqueBaseballPixels(data,w,h){
+ const filled=new Uint8ClampedArray(data);
+ const cx=(w-1)/2,cy=(h-1)/2;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const idx=(y*w+x)*4;
+  if(filled[idx+3]>=250){filled[idx+3]=255;continue}
+  const dx=x-cx,dy=y-cy;
+  let sample=-1;
+  for(let fraction=.98;fraction>=.01;fraction-=.03){
+   const sx=Math.max(0,Math.min(w-1,Math.round(cx+dx*fraction)));
+   const sy=Math.max(0,Math.min(h-1,Math.round(cy+dy*fraction)));
+   const pos=(sy*w+sx)*4;
+   if(data[pos+3]>=245){sample=pos;break}
+  }
+  if(sample<0)sample=(Math.round(cy)*w+Math.round(cx))*4;
+  filled[idx]=data[sample];filled[idx+1]=data[sample+1];
+  filled[idx+2]=data[sample+2];filled[idx+3]=255;
+ }
+ return filled;
+}
+
 export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE){
  const view=lookAt(camera,target),qu=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
  const qx=-qu[0],qy=-qu[1],qz=-qu[2],qw=qu[3];
@@ -94,7 +119,10 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     const outCanvas=document.createElement('canvas');
     outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
     const outCtx=outCanvas.getContext('2d');
-    cache.image=image;cache.source=srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.image=image;
+    const sourceImage=srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.source={width:sourceImage.width,height:sourceImage.height,
+     data:opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
     cache.canvas=outCanvas;cache.context=outCtx;
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
@@ -116,7 +144,7 @@ export class BatterSprites{
   this.canvas=canvas;
   this.ctx=canvas?.getContext?.('2d',{alpha:true})||null;
   this.images={};this.ready=false;this.ballLoaded=false;
-  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.styledPoses=new Map();this.styledBalls=new Map();this.bakedImages=new Map();this.bakedRequests=new Map();this.equipmentReady=false;
+  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.trafficImages=new Map();this.styledPoses=new Map();this.styledBalls=new Map();this.bakedImages=new Map();this.bakedRequests=new Map();this.equipmentReady=false;
  }
  load(){
   if(!this.ctx||typeof Image==='undefined')return Promise.resolve(false);
@@ -126,7 +154,12 @@ export class BatterSprites{
    picture.onerror=()=>{console.warn('Asset no disponible',url);resolve(false)};
    picture.src=url;
   }));
-  return Promise.all(loaders).then(()=>{
+  return Promise.all([...loaders,...TRAFFIC_VEHICLES.map(vehicle=>new Promise(resolve=>{
+   const pic=new Image();
+   pic.onload=()=>{this.trafficImages.set(vehicle.id,pic);resolve(true)};
+   pic.onerror=()=>{console.warn('Vehículo TDR no disponible',vehicle.id);resolve(false)};
+   pic.decoding='async';pic.src=vehicle.src;
+  }))]).then(()=>{
    this.ready=!!this.images.ready;
    this.ballLoaded=!!this.images.ball;
    return this.ready;
@@ -207,10 +240,18 @@ export class BatterSprites{
  drawEquippedBall(ctx,game,size,spin,camera,target){
   const image=this.getStyledBall(game.save);
   if(!image)return;
-  // Restore the creator-approved 3D baseball stitches in every frame.
-  // The complete sprite is the source of truth for the pitcher, flight and
-  // rolling; projecting its circular RGBA edge as UV distorts the stitching.
-  ctx.rotate(spin?.angle||0);
+  const item=BALL_STYLES.find(ball=>ball.id===game.save?.equippedBall)||BALL_STYLES[0];
+  // La pelota aprobada permanece perfecta al salir del pitcher y en vuelo.
+  // Sólo al tocar el suelo el giro físico necesita proyección esférica.
+  // Su copia UV se rellena internamente, SIN alterar el dibujo original.
+  const planar=Math.hypot(game.ball?.vx||0,game.ball?.vz||0);
+  if(item.design==='baseball'&&spin?.groundEngaged&&planar>1.3&&camera&&target){
+   drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
+   return;
+  }
+  // En el aire no gira como moneda sobre el plano de la pantalla.
+  // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
+  if(item.design!=='baseball')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
  }
  resize(){
@@ -232,6 +273,12 @@ export class BatterSprites{
   if(!ctx||!dimensions)return;
   const {width,height}=dimensions;
   const camera=game.fxCamera||game.camera,target=game.target;
+  // Coches de TDR proyectados sobre las mismas carreteras; eliminar bloques
+  // de Lego también significa que ningún objeto 3D falso tapa sus carrocerías.
+  if(this.trafficImages.size&&typeof ctx.transform==='function'&&typeof ctx.moveTo==='function'&&game.state!=='menu'){
+   drawTrafficSprites(ctx,camera,target,width,height,zoom,projectToScreen,
+    this.trafficImages,visibleRoadTraffic(game.ball?.z??game.target?.[2]??0,game.clock||0));
+  }
   const pose=selectBatterPose({...game,swingElapsed:game.visualSwingElapsed??game.swingElapsed});
   const sprite=this.getStyledPose(pose,game.save);
   if(this.ready&&sprite){
@@ -311,6 +358,8 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
+    const bounce=Math.max(0,Math.min(1,b.bounceVisual||0));
+    if(bounce)ctx.scale(1+.08*bounce,1-.11*bounce);
     this.drawEquippedBall(ctx,game,size,b.spin,camera,target);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);

@@ -34,7 +34,8 @@ test('el creador usa la pelota original sin sustituir sus costuras tridimensiona
  assert.doesNotMatch(ballArt,/def draw_seams/);
  const draw=sprite.slice(sprite.indexOf(' drawEquippedBall('),sprite.indexOf(' resize(){'));
  assert.match(draw,/ctx\.drawImage\(image,-size\*\.5,-size\*\.5,size,size\)/);
- assert.doesNotMatch(draw,/shadeRollingSurface|drawSpinningBaseball|bakedBallTextureUrl/);
+ assert.match(draw,/drawSpinningBaseball/,'el giro terrestre es una esfera, no una moneda');
+ assert.doesNotMatch(draw,/bakedBallTextureUrl/,'nunca volver a la UV procedural sin costuras originales');
  const original=new URL('../assets/baseball.webp',import.meta.url);
  assert.ok(existsSync(original));
  assert.ok(statSync(original).size>1000);
@@ -53,5 +54,5 @@ test('misma imagen equipada sale del pitcher y llega al bate',()=>{
   assert.equal(painted.at(-1)[3],32,id);
  }
  assert.equal(painted.length,26);
- assert.equal(rotations.length,26);
+ assert.equal(rotations.length,18,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
 });
