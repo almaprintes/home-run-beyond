@@ -1,9 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.39.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.39.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.39.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.39.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.39.0';
-import {TRAFFIC_VEHICLES,visibleRoadTraffic,drawTrafficSprites} from './traffic.js?v=0.39.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.40.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.40.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.40.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.40.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.40.0';
+import {TRAFFIC_VEHICLES,visibleRoadTraffic,drawTrafficSprites} from './traffic.js?v=0.40.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -139,6 +139,21 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
  ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
 }
 
+// Las imágenes de Taller son grandes: escalarlas una sola vez evita 30+ MB de
+// texturas decodificadas durante la carrera, sin sacrificar detalle en pantalla.
+export function downsampleTrafficSprite(image,maxWidth=512){
+ const w=image?.naturalWidth||image?.width,h=image?.naturalHeight||image?.height;
+ if(typeof document==='undefined'||!(w>maxWidth&&h>0))return image;
+ try{
+  const canvas=document.createElement('canvas');
+  canvas.width=maxWidth;canvas.height=Math.max(1,Math.round(h*maxWidth/w));
+  const ctx=canvas.getContext('2d',{alpha:true});
+  if(!ctx)return image;
+  ctx.imageSmoothingQuality='high';ctx.drawImage(image,0,0,canvas.width,canvas.height);
+  return canvas;
+ }catch{return image}
+}
+
 export class BatterSprites{
  constructor(canvas){
   this.canvas=canvas;
@@ -156,7 +171,7 @@ export class BatterSprites{
   }));
   return Promise.all([...loaders,...TRAFFIC_VEHICLES.map(vehicle=>new Promise(resolve=>{
    const pic=new Image();
-   pic.onload=()=>{this.trafficImages.set(vehicle.id,pic);resolve(true)};
+   pic.onload=()=>{this.trafficImages.set(vehicle.id,downsampleTrafficSprite(pic));resolve(true)};
    pic.onerror=()=>{console.warn('Vehículo TDR no disponible',vehicle.id);resolve(false)};
    pic.decoding='async';pic.src=vehicle.src;
   }))]).then(()=>{

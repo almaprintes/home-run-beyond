@@ -1,4 +1,4 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.39.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.40.0';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;

@@ -8,24 +8,25 @@ import {opaqueBaseballPixels,BALL_SURFACE_SIZE,BatterSprites} from '../src/sprit
 import {BaseballGame,groundRollRetention} from '../src/game.js';
 import {groundAt} from '../src/world.js';
 
-test('los seis coches son exactamente los assets cenitales reales de TDR, no bloques',()=>{
+test('los seis coches usan las seis vistas originales 3/4 de TDR, no sprites cenitales',()=>{
  const originalShas={
-  helix_spark:'0cc8716e04e19ba0659de81d9aba8c5997d5b3c7',
-  avenir_gripline:'78ada66357544c404ffa892ff763b365b9490c7d',
-  veloce_flash:'c2f2159418aa6d04bc9eda2a8b4a9a991ccca7ed',
-  crown_axis:'14c14a2423171c5f7d207e02f86d342f18dfb3fc',
-  forge_hammer:'52f4fb84ecb1581b13e64a19518153672679d739',
-  helix_comet:'451265554f9b876593867f9db303c2b4d2e567f7'
+  helix_spark:'e18b5add0f0d6f54afdd19d9dbea0ec48b505f3e',
+  avenir_gripline:'27477dde99580e6d5a7d1dcd31052af84b715ed3',
+  veloce_flash:'69581f8df103255eab1d913f20b037057c1dcc55',
+  crown_axis:'b68c3c8b970778d6267b5dfe09f3135db4f74cf7',
+  forge_hammer:'f67cf51b6a96b50973e8432d67cc8149a062829b',
+  helix_comet:'5e880b039b196fa068557770b0704f1c2e0876d9'
  };
  assert.equal(TRAFFIC_VEHICLES.length,6);
  for(const car of TRAFFIC_VEHICLES){
+  assert.match(car.src,/\/three-quarter\//,car.id+' no utiliza vista de Taller');
   const p=new URL('../'+car.src.slice(2),import.meta.url);
   assert.ok(existsSync(p),car.id);
   const data=readFileSync(p);
   assert.equal(data.toString('ascii',0,4),'RIFF');
   assert.equal(data.toString('ascii',8,12),'WEBP');
   const objectHash=createHash('sha1').update('blob '+data.length+'\0').update(data).digest('hex');
-  assert.equal(objectHash,originalShas[car.id],car.id+' no coincide con TDR');
+  assert.equal(objectHash,originalShas[car.id],car.id+' no coincide con el render 3/4 de TDR');
  }
 });
 test('el tráfico avanza en sentidos opuestos por dos carriles sin desplazamiento lateral',()=>{
@@ -57,21 +58,27 @@ test('la orientación del sprite corresponde a la dirección y conserva las prop
  assert.ok(Math.abs((rp.topRight[2]-rp.topLeft[2])-right.width)<1e-9);
  assert.ok(Math.abs((rp.topLeft[0]-rp.bottomLeft[0])-right.length)<1e-9);
 });
-test('el render usa quads proyectados de los coches originales, sin moverlos como cubos',()=>{
- const car=roadTraffic(265,4)[0];
- const images=new Map([[car.id,{naturalWidth:180,naturalHeight:320}]]);
+test('la vista 3/4 es vertical, se orienta según el carril y nunca se aplasta sobre el suelo',()=>{
+ const right={...roadTraffic(265,4)[0],x:0,z:265};
+ const left={...roadTraffic(265,4)[1],x:8,z:265};
+ const images=new Map([[right.id,{naturalWidth:1536,naturalHeight:1024}],
+  [left.id,{naturalWidth:1536,naturalHeight:1024}]]);
  const calls=[];
  const ctx={
   save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},
   fill(){calls.push('shadow')},
-  transform(...args){calls.push(['transform',...args])},
-  drawImage(...args){calls.push(['car',...args])},
+  transform(){calls.push('flat-quad')},
+  translate(...args){calls.push(['translate',...args])},
+  rotate(...args){calls.push(['rotate',...args])},
+  scale(...args){calls.push(['scale',...args])},
+  drawImage(...args){calls.push(['car',...args])}
  };
- const project=(camera,target,p)=>({x:p[0]*1.2+300,y:p[2]*.8});
- const painted=drawTrafficSprites(ctx,[0,0,0],[0,0,0],800,600,62,project,images,[car]);
- assert.equal(painted,1);
- assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='car').length,1);
- assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='transform').length,1);
+ const project=(camera,target,p)=>({x:300+p[0]*3,y:250+p[2]*.22-p[1]*3});
+ const painted=drawTrafficSprites(ctx,[0,20,0],[0,0,300],800,600,62,project,images,[right,left]);
+ assert.equal(painted,2);
+ assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='car').length,2);
+ assert.equal(calls.filter(x=>x==='flat-quad').length,0,'no pegar el coche a la carretera');
+ assert.ok(calls.some(x=>Array.isArray(x)&&x[0]==='scale'&&x[1]===-1),'girar el coche del carril opuesto');
  const src=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  assert.doesNotMatch(src,/for\(let k of \[-1,1\]\)r\.ball\(x\+k\*2\.4/);
 });
