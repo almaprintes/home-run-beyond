@@ -28,9 +28,9 @@ test('catálogo cerrado de 100 cosméticos con IDs únicos en cada categoría',(
  assert.equal(OUTFIT_CATALOG.length,33);
  assert.equal(BALL_CATALOG.length,32);
  assert.equal(ALL_COSMETIC_COUNT,100);
- assert.equal(COSMETICS,BAT_CATALOG);
- assert.equal(OUTFITS,OUTFIT_CATALOG);
- assert.equal(BALL_STYLES,BALL_CATALOG);
+ assert.deepEqual(COSMETICS,BAT_CATALOG);
+ assert.deepEqual(OUTFITS,OUTFIT_CATALOG);
+ assert.deepEqual(BALL_STYLES,BALL_CATALOG);
  for(const list of [BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG]){
   assert.equal(new Set(list.map(i=>i.id)).size,list.length);
   for(const item of list){
