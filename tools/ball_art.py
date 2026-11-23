@@ -68,34 +68,53 @@ def circle_mask():
     return mask
 
 
-def draw_seams(d, base=SIZE, stroke=(194,62,60,255)):
-    """Two continuous baseball seam arcs and short angled cross-stitches."""
-    left=[];right=[]
-    for y in range(27,134,3):
-        t=(y-27)/106
-        bow=math.sin(math.pi*t)
-        left.append((61-14*bow,y))
-        right.append((99+14*bow,y))
-    d.line(left,stroke,2.5);d.line(right,stroke,2.5)
-    for y in range(35,127,11):
-        bow=math.sin(math.pi*(y-27)/106)
-        xl=61-14*bow;xr=99+14*bow
-        d.line([(xl-4,y-4),(xl+5,y+4)],stroke,1.65)
-        d.line([(xr-5,y+4),(xr+4,y-4)],stroke,1.65)
+# The approved creator-supplied baseball is the single source of truth for
+# ALL eight baseball skins. Never procedurally recreate its stitches.
+from pathlib import Path
+
+APPROVED_BASEBALL = Path(__file__).resolve().parent.parent / "assets" / "baseball.webp"
 
 
-def baseball_uv(item):
-    """Fully opaque UV source: never sample transparent rounded corners."""
-    img=Image.new("RGBA", (DIAM, DIAM), rgba(item["color"]))
-    p=Painter(img)
-    primary=rgba(item["accent"])
-    # Keep the stitching in the same positions as the circular icon.
-    draw_seams(p,stroke=primary)
-    return img.resize((SIZE,SIZE),Image.Resampling.LANCZOS)
+def restored_baseball(item):
+    """Keep original 3D stitches and leather shading; tint ONLY leather pixels."""
+    original = Image.open(APPROVED_BASEBALL).convert("RGBA")
+    original = original.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
+    if item["id"] == "classic":
+        return original   # Bit-for-bit the approved sprite after resizing.
+
+    color = rgb(item["color"])
+    result = original.copy()
+    source_px = original.load()
+    target_px = result.load()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            r, g, b, alpha = source_px[x, y]
+            if alpha == 0:
+                continue
+            # Preserve the original red 3D stitches, cross-seam shadows and
+            # outlines. Their geometry/shading must match the classic exactly.
+            red_thread = r > 82 and r > g * 1.21 and r > b * 1.16
+            if red_thread:
+                continue
+            # Target colour modifies only the white/off-white leather, while
+            # retaining original lighting, soft shadows and surface highlights.
+            light = (r * .25 + g * .65 + b * .10) / 246
+            light = max(.13, min(1.12, light))
+            shade = .22 + .79 * light
+            specular = max(0, light - .91) * 48
+            target_px[x, y] = (
+                min(255, round(color[0] * shade + specular)),
+                min(255, round(color[1] * shade + specular)),
+                min(255, round(color[2] * shade + specular)),
+                alpha,
+            )
+    return result
 
 
 def draw_ball(item):
     mode=item["design"]
+    if mode=="baseball":
+        return restored_baseball(item)
     color=rgba(item["color"])
     accent=rgba(item["accent"])
     if mode=="dice":
@@ -138,9 +157,7 @@ def draw_ball(item):
     details=Image.new("RGBA",(DIAM,DIAM))
     d=Painter(details)
 
-    if mode=="baseball":
-        draw_seams(d,stroke=accent)
-    elif mode=="rainbow":
+    if mode=="rainbow":
         colors=[(226,86,91,255),(249,167,76,255),(245,226,106,255),
                 (101,198,111,255),(82,169,218,255),(156,115,204,255)]
         for i,c in enumerate(colors):
@@ -282,19 +299,30 @@ def verify_ball(path, design):
                 if (x-80)**2+(y-80)**2<=50**2 and px[x,y][3]!=255:
                     raise ValueError(f"{path}: transparent core at {x},{y}: {px[x,y][3]}")
     if design=="baseball":
-        center=px[80,80]
-        if center[3]!=255:
-            raise ValueError(f"{path}: missing baseball surface")
-        # Stitches must be visible on the left and right of the sphere.
-        left=sum(1 for y in range(35,127) if any(
-            abs(px[x,y][0]-center[0])>26 or abs(px[x,y][1]-center[1])>26
-            for x in range(43,65)))
-        right=sum(1 for y in range(35,127) if any(
-            abs(px[x,y][0]-center[0])>26 or abs(px[x,y][1]-center[1])>26
-            for x in range(95,119)))
-        if left<12 or right<12:
-            raise ValueError(f"{path}: baseball seams incomplete ({left}, {right})")
-
+        # Regression test against the ORIGINAL physical stitching art.
+        reference=Image.open(APPROVED_BASEBALL).convert("RGBA")
+        reference=reference.resize((SIZE,SIZE),Image.Resampling.LANCZOS)
+        original=reference.load()
+        seam_pixels=0
+        altered_stitches=0
+        for sy in range(16,145):
+            for sx in range(16,145):
+                rr,gg,bb,aa=original[sx,sy]
+                is_thread=aa>220 and rr>82 and rr>gg*1.21 and rr>bb*1.16
+                if is_thread:
+                    seam_pixels+=1
+                    if px[sx,sy]!=original[sx,sy]:
+                        altered_stitches+=1
+        if seam_pixels<70:
+            raise ValueError(f"{path}: missing original detailed red stitching ({seam_pixels}px)")
+        if altered_stitches:
+            raise ValueError(f"{path}: original stitching was modified in {altered_stitches} pixels")
+        if path.stem=="classic":
+            differences=sum(px[x,y]!=original[x,y]
+                            for y in range(25,135) for x in range(25,135)
+                            if (x-80)**2+(y-80)**2<=50**2)
+            if differences:
+                raise ValueError(f"{path}: classic baseball differs from approved artwork in {differences} pixels")
 
 def verify_uv(path):
     img=Image.open(path).convert("RGBA")

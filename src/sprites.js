@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.37.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.37.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.37.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.37.0';
-import {bakedAssetUrl,equippedAssetPaths,bakedBallTextureUrl,ballRenderMode,WEAPON_POSES} from './baked-assets.js?v=0.37.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.38.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.38.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.38.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.38.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.38.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -205,20 +205,11 @@ export class BatterSprites{
  // El mismo dibujo equipado se usa desde el lanzamiento del pitcher hasta
  // el último rebote. Nunca aparece una pelota blanca que se transforma al batear.
  drawEquippedBall(ctx,game,size,spin,camera,target){
-  const item=BALL_STYLES.find(b=>b.id===game.save?.equippedBall)||BALL_STYLES[0];
   const image=this.getStyledBall(game.save);
   if(!image)return;
-  // A sphere renderer must ONLY sample an opaque square UV texture:
-  // sampling a circular RGBA sprite reveals gaps/"inner core" while rolling.
-  if(ballRenderMode(item)==='baseball'&&spin?.orientation&&camera&&target){
-   const uv=this.bakedImages.get(bakedBallTextureUrl(item.id));
-   if(uv){
-    drawSpinningBaseball(ctx,uv,size,spin,camera,target,this.ballSurfaceCache);
-    return;
-   }
-  }
-  // All themed balls, and any missing UV, rotate their FULL finished sprite.
-  // Tennis, golf, Saturn, beach balls etc never inherit baseball stitching.
+  // Restore the creator-approved 3D baseball stitches in every frame.
+  // The complete sprite is the source of truth for the pitcher, flight and
+  // rolling; projecting its circular RGBA edge as UV distorts the stitching.
   ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
  }

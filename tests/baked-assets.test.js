@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from '../src/cosmetic-catalog.js';
-import {BAKED_ASSET_COUNT,OUTFIT_POSES,bakedAssetUrl,bakedBallTextureUrl,ballRenderMode,equippedAssetPaths,WEAPON_POSES} from '../src/baked-assets.js';
+import {BAKED_ASSET_COUNT,OUTFIT_POSES,bakedAssetUrl,ballRenderMode,equippedAssetPaths,WEAPON_POSES} from '../src/baked-assets.js';
 import {BatterSprites} from '../src/sprites.js';
 import {initialSave,calculateShot,coinRewardBreakdown,sanitizeSave,equipCosmetic} from '../src/logic.js';
 
@@ -17,16 +17,14 @@ function assertWebP(uri){
  assert.equal(buffer.toString('ascii',8,12),'WEBP',uri);
  return createHash('sha256').update(buffer).digest('hex');
 }
-test('405 imágenes WebP completas publicables, sin generación al renderizar ni overlays',()=>{
+test('397 imágenes WebP completas publicables, sin generación al renderizar ni overlays',()=>{
  const manifest=JSON.parse(readFileSync(abs('./assets/baked/manifest.json'),'utf8'));
- assert.equal(BAKED_ASSET_COUNT,405);
- assert.equal(manifest.counts.total,405);
+ assert.equal(BAKED_ASSET_COUNT,397);
+ assert.equal(manifest.counts.total,397);
  assert.equal(manifest.counts.outfitFrames,330);
  assert.equal(manifest.counts.bats,35);
  assert.equal(manifest.counts.balls,32);
- assert.equal(manifest.counts.ballTextures,8);
  assert.equal(manifest.counts.ballsValidated,32);
- assert.equal(manifest.counts.texturesValidated,8);
  assert.equal(manifest.verified,true);
  assert.deepEqual(manifest.poses,OUTFIT_POSES);
  assert.equal(OUTFIT_CATALOG.length,33);
@@ -41,7 +39,7 @@ test('405 imágenes WebP completas publicables, sin generación al renderizar ni
  for(const item of BAT_CATALOG)assertWebP(bakedAssetUrl('bat',item.id));
  for(const item of BALL_CATALOG){
   assertWebP(bakedAssetUrl('ball',item.id));
-  if(ballRenderMode(item)==='baseball')assertWebP(bakedBallTextureUrl(item.id));
+  assert.ok(['baseball','special'].includes(ballRenderMode(item)));
  }
 });
 test('cinco poses por uniforme y variantes reales de ropa distintas a los originales',()=>{
@@ -78,7 +76,7 @@ test('cada selección prepara las poses completas y su propio bate y pelota',()=
  assert.ok(options.includes(bakedAssetUrl('outfit','futbol_azulgrana','follow',true)));
  assert.ok(options.includes(bakedAssetUrl('bat','trucha')));
  assert.ok(options.includes(bakedAssetUrl('ball','luna')));
- assert.deepEqual(equippedAssetPaths('red','classic','classic'),[bakedAssetUrl('ball','classic'),bakedBallTextureUrl('classic')]);
+ assert.deepEqual(equippedAssetPaths('red','classic','classic'),[bakedAssetUrl('ball','classic')]);
  assert.throws(()=>bakedAssetUrl('outfit','../../bad','ready'));
 });
 test('el sprite completo se elige por pose, sin volver a pintar el cuerpo encima',()=>{
@@ -123,5 +121,5 @@ test('el código de juego no usa las superposiciones rectangulares anteriores',(
  assert.match(sprite,/bakedAssetUrl\('outfit',outfit\.id,pose/);
  assert.match(game,/img\.src=bakedAssetUrl\(this\.shopSection,item\.id\)/);
  assert.match(wf,/python tools\/build_cosmetics\.py/);
- assert.match(assets,/BAKED_ASSET_COUNT=405/);
+ assert.match(assets,/BAKED_ASSET_COUNT=397/);
 });

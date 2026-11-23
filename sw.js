@@ -1,4 +1,4 @@
-const CACHE='hrb-v37-20261123-opaque-ball-art';
+const CACHE='hrb-v38-20261123-original-baseball-restored';
 const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/engine.js','./src/world.js','./src/biomes.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js','./src/cosmetic-render.js','./src/cosmetic-catalog.js','./src/cosmetic-art.js','./src/baked-assets.js','./assets/baked/manifest.json','./src/impact-fx.js','./src/ball-visuals.js','./src/ball-spin.js','./assets/materials-atlas-v2.png',
  './assets/strike.mp3','./assets/baseball.webp',
  './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
@@ -6,10 +6,10 @@ const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/
  
  './assets/batter/contact.webp','./assets/batter/follow.webp',
  './icons/icon-192.png','./icons/icon-512.png',
- './style.css?v=0.37.0','./src/main.js?v=0.37.0','./src/game.js?v=0.37.0',
- './src/world.js?v=0.37.0','./src/biomes.js?v=0.37.0','./src/engine.js?v=0.37.0','./src/logic.js?v=0.37.0',
- './src/audio.js?v=0.37.0','./src/rewarded.js?v=0.37.0','./src/aiming.js?v=0.37.0',
- './src/sprites.js?v=0.37.0','./src/cosmetic-render.js?v=0.37.0','./src/cosmetic-catalog.js?v=0.37.0','./src/cosmetic-art.js?v=0.37.0','./src/baked-assets.js?v=0.37.0','./src/impact-fx.js?v=0.37.0','./src/ball-visuals.js?v=0.37.0','./src/ball-spin.js?v=0.37.0','./assets/materials-atlas-v2.png?v=0.37.0','./assets/strike.mp3?v=0.37.0'];
+ './style.css?v=0.38.0','./src/main.js?v=0.38.0','./src/game.js?v=0.38.0',
+ './src/world.js?v=0.38.0','./src/biomes.js?v=0.38.0','./src/engine.js?v=0.38.0','./src/logic.js?v=0.38.0',
+ './src/audio.js?v=0.38.0','./src/rewarded.js?v=0.38.0','./src/aiming.js?v=0.38.0',
+ './src/sprites.js?v=0.38.0','./src/cosmetic-render.js?v=0.38.0','./src/cosmetic-catalog.js?v=0.38.0','./src/cosmetic-art.js?v=0.38.0','./src/baked-assets.js?v=0.38.0','./src/impact-fx.js?v=0.38.0','./src/ball-visuals.js?v=0.38.0','./src/ball-spin.js?v=0.38.0','./assets/materials-atlas-v2.png?v=0.38.0','./assets/strike.mp3?v=0.38.0'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 // Red primero PARA TODOS LOS ASSETS: una PWA instalada nunca debe mezclar

@@ -1,13 +1,9 @@
 // Immutable addresses of real, complete pre-rendered cosmetic assets.
 // Generated from the five original poses by tools/build_cosmetics.py.
 export const OUTFIT_POSES=Object.freeze(['ready','watch','loaded','contact','follow']);
-export const BAKED_ASSET_COUNT=405;
+export const BAKED_ASSET_COUNT=397;
 export const BASEBALL_SKIN_IDS=new Set(['classic','sky','sun','mint','lilac','negra','dorada','rosa']);
 export function ballRenderMode(item){return item?.design==='baseball'?'baseball':'special'}
-export function bakedBallTextureUrl(id){
- if(!BASEBALL_SKIN_IDS.has(id))throw Error('No UV texture for this ball');
- return './assets/baked/ball-textures/'+id+'.webp';
-}
 export function bakedAssetUrl(category,id,pose='ready',withoutBat=false){
  if(!/^[a-z0-9_]+$/.test(String(id)))throw Error('Invalid cosmetic id');
  if(category==='outfit'){
@@ -28,7 +24,6 @@ export function equippedAssetPaths(outfitId,batId,ballId){
   files.push(bakedAssetUrl('bat',batId));
  }
  files.push(bakedAssetUrl('ball',ballId));
- if(BASEBALL_SKIN_IDS.has(ballId))files.push(bakedBallTextureUrl(ballId));
  return [...new Set(files)];
 }
 

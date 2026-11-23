@@ -237,7 +237,7 @@ def draw_bat(item):
             for i in range(6):d.arc((245+i*4,17+i*4,305-i*3,97-i*3),i*20,300,fill=(*a,200),width=2)
     return img
 
-from ball_art import draw_ball, baseball_uv, verify_ball, verify_uv
+from ball_art import draw_ball, verify_ball
 
 def save(img,path,lossless=False):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -259,31 +259,24 @@ def main():
                 save(bake_uniform(src,item,pose,nobat),path);total+=1
     for item in bats:
         save(draw_bat(item),OUT/"bats"/(item["id"]+".webp"));total+=1
-    uv=0
     for item in balls:
         path=OUT/"balls"/(item["id"]+".webp")
         save(draw_ball(item),path,lossless=True)
         verify_ball(path,item["design"])
         total+=1
-        if item["design"]=="baseball":
-            uv_path=OUT/"ball-textures"/(item["id"]+".webp")
-            save(baseball_uv(item),uv_path,lossless=True)
-            verify_uv(uv_path)
-            total+=1;uv+=1
-    if uv!=8:raise ValueError("Expected eight opaque baseball UV textures")
     manifest={
         "version":1,"generator":"tools/build_cosmetics.py",
         "counts":{"outfits":len(outfits),"outfitFrames":len(outfits)*len(POSES)*2,
-                  "bats":len(bats),"balls":len(balls),"ballTextures":uv,"ballsValidated":len(balls),"texturesValidated":uv,"total":total},
+                  "bats":len(bats),"balls":len(balls),"ballsValidated":len(balls),"total":total},
         "poses":list(POSES),
         "outfits":[i["id"] for i in outfits],
         "bats":[i["id"] for i in bats],
         "balls":[i["id"] for i in balls],
         "verified":all((OUT/"outfits"/item["id"]/(pose+".webp")).exists() for item in outfits for pose in POSES)
                     and all((OUT/"balls"/(item["id"]+".webp")).exists() for item in balls)
-                    and all((OUT/"ball-textures"/(item["id"]+".webp")).exists() for item in balls if item["design"]=="baseball")
+                    and all((OUT/"balls"/(item["id"]+".webp")).exists() for item in balls)
     }
     (OUT/"manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Baked",total,"WebP images; 32 opacity-checked balls + 8 fully opaque baseball UV textures")
+    print("Baked",total,"WebP images; 8 restored original-stitched baseball skins, 24 themed balls")
 
 if __name__=="__main__":main()
