@@ -57,7 +57,7 @@ export function synthImpulse(kind='bat',rate=22050){
 export class GameAudio{
  constructor(){
   this.ctx=null;this.enabled=true;this.buffers=new Map();this.lastImpactAt=-1e9;this.variant=0;
-  this.strikeBuffer=null;this.strikeLoad=null;this.pendingStrike=false;
+  this.strikeBuffer=null;this.strikeLoad=null;this.pendingStrike=false;this.voiceEnabled=true;
  }
  init(){if(!this.enabled)return;try{this.ctx??=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume()}catch{}}
  tone(hz,duration=.15,type='sine',volume=.14,offset=0,slide=0){
@@ -88,18 +88,24 @@ export class GameAudio{
  swing(){this.sound('swing',.20)}
  hit(q){this.sound('bat',q==='perfect'?.38:q==='excellent'?.32:q==='good'?.26:.16)}
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
+ // Pequeño motivo original y discreto para el menú: nada se reproduce durante el bateo.
+ menuMusic(){
+  if(!this.enabled)return;
+  for(const [hz,offset,duration] of [[261.63,0,.34],[329.63,.39,.35],[392,.83,.38],[523.25,1.33,.62]])
+   this.tone(hz,duration,'sine',.027,offset);
+ }
  miss(){this.sound('swing',.09)}
  // Voz grabada localmente: en iOS no dependemos del sintetizador de voz.
  // Comparte AudioContext con los efectos del bate, y se precarga al tocar jugar.
  prepareStrike(){
-  if(!this.enabled)return Promise.resolve(false);
+  if(!this.enabled||this.voiceEnabled===false)return Promise.resolve(false);
   this.init();
   if(this.strikeBuffer)return Promise.resolve(true);
   if(this.strikeLoad)return this.strikeLoad;
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.32.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.33.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();
@@ -134,7 +140,7 @@ export class GameAudio{
   }catch(error){console.warn('No se pudo reproducir Strike',error);return false}
  }
  strike(){
-  if(!this.enabled)return;
+  if(!this.enabled||this.voiceEnabled===false)return;
   this.init();
   if(this.strikeBuffer){this.playStrike();return;}
   this.pendingStrike=true;

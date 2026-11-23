@@ -3,7 +3,7 @@ export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
 export function skillMaxLevel(key){return key==='multiplier'?MULTIPLIER_MAX_LEVEL:MAX_LEVEL}
 export const BONUS_EVERY=5;
-export const DEFAULT_SAVE=Object.freeze({version:2,coins:170,best:0,shots:0,totalMeters:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',sound:true,seenIntro:false,achievements:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
+export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
 export function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
 export function initialSave(){return JSON.parse(JSON.stringify(DEFAULT_SAVE))}
 export function sanitizeSave(raw){
@@ -14,12 +14,28 @@ export function sanitizeSave(raw){
   if(Number.isFinite(n)&&n>=1&&n<=MAX_LEVEL)s.levels[k]=Math.floor(n);
  }
  s.owned=Array.isArray(raw.owned)?[...new Set(['classic',...raw.owned.filter(x=>typeof x==='string'&&x.length<60)])]:['classic'];
- s.equipped=s.owned.includes(raw.equipped)?raw.equipped:'classic';s.sound=raw.sound!==false;s.seenIntro=Boolean(raw.seenIntro);
+ s.equipped=s.owned.includes(raw.equipped)?raw.equipped:'classic';
+ // Guardados anteriores conservan el bate y reciben el uniforme y pelota base.
+ const safeOwned=(value,allowed,base)=>Array.isArray(value)?
+  [...new Set([base,...value.filter(id=>typeof id==='string'&&allowed.some(item=>item.id===id))])]:[base];
+ s.ownedOutfits=safeOwned(raw.ownedOutfits,OUTFITS,'red');
+ s.equippedOutfit=s.ownedOutfits.includes(raw.equippedOutfit)?raw.equippedOutfit:'red';
+ s.ownedBalls=safeOwned(raw.ownedBalls,BALL_STYLES,'classic');
+ s.equippedBall=s.ownedBalls.includes(raw.equippedBall)?raw.equippedBall:'classic';
+ s.sound=raw.sound!==false;
+ s.music=raw.music===true;
+ s.voice=raw.voice!==false;
+ s.vibration=raw.vibration!==false;
+ s.reducedEffects=raw.reducedEffects===true;
+ s.showHints=raw.showHints!==false;
+ s.graphics=['auto','high','low'].includes(raw.graphics)?raw.graphics:'auto';
+ s.batterySaver=raw.batterySaver===true;
+ s.seenIntro=Boolean(raw.seenIntro);
  s.achievements=Array.isArray(raw.achievements)?raw.achievements.filter(x=>typeof x==='string').slice(0,100):[];
  const earned=s.levels.power+s.levels.swing+s.levels.multiplier-3;
  s.paidUpgrades=Number.isSafeInteger(raw.paidUpgrades)?clamp(raw.paidUpgrades,0,30000):earned;
  const oldClaims=Number.isSafeInteger(raw.bonusClaims)?clamp(raw.bonusClaims,0,30000):0;
- if(raw.version===2){
+ if(raw.version===2||raw.version===3){
   s.bonusClaims=oldClaims;
   s.pendingLegacyBonuses=Number.isSafeInteger(raw.pendingLegacyBonuses)?clamp(raw.pendingLegacyBonuses,0,10000):0;
  }else{
@@ -102,3 +118,38 @@ export const COSMETICS=[
  {id:'ruby',name:'Bate rubí',description:'Rojo intenso',emoji:'❤️',color:'#ee5265',price:1500},
  {id:'nova',name:'Bate Nova',description:'Un pequeño pedazo de galaxia',emoji:'🚀',color:'#ab8dff',price:3400}
 ];
+
+/* El vestuario no modifica las físicas, el swing ni las monedas. */
+export const OUTFITS=[
+ {id:'red',name:'Clásico rojo',description:'El uniforme original.',emoji:'👕',color:'#bd454c',price:0},
+ {id:'blue',name:'Azul océano',description:'Camiseta y casco azul.',emoji:'👕',color:'#3b9fde',price:350},
+ {id:'green',name:'Verde estadio',description:'Un toque de verde.',emoji:'👕',color:'#4dc496',price:780},
+ {id:'purple',name:'Violeta',description:'Uniforme de edición especial.',emoji:'👕',color:'#a785fa',price:1400},
+ {id:'gold',name:'Dorado',description:'Estilo de campeón.',emoji:'👕',color:'#f3be4c',price:2400}
+];
+export const BALL_STYLES=[
+ {id:'classic',name:'Pelota clásica',description:'Blanca con costuras rojas.',emoji:'⚾',color:'#ffffff',price:0},
+ {id:'sky',name:'Pelota cielo',description:'Azul suave y costuras originales.',emoji:'⚾',color:'#9cdafa',price:280},
+ {id:'sun',name:'Pelota solar',description:'Amarillo cálido.',emoji:'⚾',color:'#ffd26c',price:620},
+ {id:'mint',name:'Pelota menta',description:'Verde claro y luminoso.',emoji:'⚾',color:'#a1f0c4',price:1100},
+ {id:'lilac',name:'Pelota lavanda',description:'Violeta claro.',emoji:'⚾',color:'#ccb0fc',price:1800}
+];
+export const SHOP_SECTIONS=Object.freeze({
+ bat:{label:'Bates',items:COSMETICS,owned:'owned',equipped:'equipped'},
+ outfit:{label:'Ropa',items:OUTFITS,owned:'ownedOutfits',equipped:'equippedOutfit'},
+ ball:{label:'Pelotas',items:BALL_STYLES,owned:'ownedBalls',equipped:'equippedBall'}
+});
+export function equipCosmetic(save,section,id){
+ const catalog=SHOP_SECTIONS[section];
+ const item=catalog?.items.find(x=>x.id===id);
+ if(!catalog||!item)return 'invalid';
+ if(!save[catalog.owned].includes(id)){
+  if(save.coins<item.price)return 'insufficient';
+  save.coins-=item.price;
+  save[catalog.owned].push(id);
+  save[catalog.equipped]=id;
+  return 'purchased';
+ }
+ save[catalog.equipped]=id;
+ return 'equipped';
+}

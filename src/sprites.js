@@ -1,6 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.32.0';
-import {surfaceBelowBall} from './world.js?v=0.32.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.32.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.33.0';
+import {surfaceBelowBall} from './world.js?v=0.33.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.33.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.33.0';
+import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.33.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -16,7 +18,7 @@ export const BATTER_ASSETS=Object.freeze({
 });
 
 export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null}={}){
- if(state==='ready'||state==='rest'&&!ball)return 'ready';
+ if(state==='menu'||state==='ready'||state==='rest'&&!ball)return 'ready';
  if(state==='pitching')return pitch>.72?'loaded':pitch>.12?'watch':'ready';
  if(state==='aiming')return 'loaded'; // La flecha se renderiza aparte, con pivote fijo y giro continuo.
  if(state==='swinging'||state==='whiff')return swingElapsed<.073?'contact':swingElapsed<.48?'follow':'ready';
@@ -82,11 +84,11 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
 export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null,cache=null){
  const radius=size*.5;
  if(spin?.orientation&&camera&&target&&cache&&typeof document!=='undefined'&&
-    typeof image?.naturalWidth==='number'&&image.naturalWidth>0){
+    (image?.naturalWidth||image?.width)>0){
   try{
    if(cache.image!==image){
     const srcCanvas=document.createElement('canvas');
-    srcCanvas.width=image.naturalWidth;srcCanvas.height=image.naturalHeight;
+    srcCanvas.width=image.naturalWidth||image.width;srcCanvas.height=image.naturalHeight||image.height;
     const srcCtx=srcCanvas.getContext('2d',{willReadFrequently:true});
     srcCtx.drawImage(image,0,0);
     const outCanvas=document.createElement('canvas');
@@ -114,7 +116,7 @@ export class BatterSprites{
   this.canvas=canvas;
   this.ctx=canvas?.getContext?.('2d',{alpha:true})||null;
   this.images={};this.ready=false;this.ballLoaded=false;
-  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};
+  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.styledPoses=new Map();this.styledBalls=new Map();
  }
  load(){
   if(!this.ctx||typeof Image==='undefined')return Promise.resolve(false);
@@ -129,6 +131,30 @@ export class BatterSprites{
    this.ballLoaded=!!this.images.ball;
    return this.ready;
   });
+ }
+ // Cache one recoloured copy per pose and equipment combination.
+ // Original approved art is never overwritten.
+ getStyledPose(pose,save){
+  const source=this.images[pose];
+  if(!source||!save)return source;
+  const outfit=OUTFITS.find(item=>item.id===save.equippedOutfit)||OUTFITS[0];
+  const bat=COSMETICS.find(item=>item.id===save.equipped)||COSMETICS[0];
+  if(outfit.id==='red'&&bat.id==='classic')return source;
+  const key=pose+'|'+outfit.id+'|'+bat.id;
+  if(this.styledPoses.has(key))return this.styledPoses.get(key);
+  let result=source;
+  if(outfit.id!=='red')result=makeCosmeticCanvas(result,{kind:'outfit',color:outfit.color,pose});
+  if(bat.id!=='classic')result=makeCosmeticCanvas(result,{kind:'bat',color:bat.color,pose});
+  this.styledPoses.set(key,result);
+  return result;
+ }
+ getStyledBall(save){
+  const source=this.images.ball,ball=BALL_STYLES.find(item=>item.id===save?.equippedBall)||BALL_STYLES[0];
+  if(!source||ball.id==='classic')return source;
+  if(this.styledBalls.has(ball.id))return this.styledBalls.get(ball.id);
+  const result=makeCosmeticCanvas(source,{kind:'ball',color:ball.color});
+  this.styledBalls.set(ball.id,result);
+  return result;
  }
  resize(){
   const canvas=this.canvas,ctx=this.ctx;
@@ -150,27 +176,27 @@ export class BatterSprites{
   const {width,height}=dimensions;
   const camera=game.fxCamera||game.camera,target=game.target;
   const pose=selectBatterPose({...game,swingElapsed:game.visualSwingElapsed??game.swingElapsed});
-  const sprite=this.images[pose];
+  const sprite=this.getStyledPose(pose,game.save);
   if(this.ready&&sprite){
    const foot=projectToScreen(camera,target,[-2.3,.10,-5],width,height,zoom);
    const crown=projectToScreen(camera,target,[-2.3,8.2,-5],width,height,zoom);
    if(foot&&crown){
     const heightPx=Math.max(180,Math.min(height*.60,Math.abs(foot.y-crown.y)*.78));
-    const widthPx=heightPx*(sprite.naturalWidth/sprite.naturalHeight);
+    const widthPx=heightPx*((sprite.naturalWidth||sprite.width)/(sprite.naturalHeight||sprite.height));
     const originX=foot.x-widthPx*.47;
     const originY=foot.y-heightPx;
     ctx.save();
     // Una sombra mínima bajo el sprite lo integra en el estadio 3D.
     ctx.fillStyle='rgba(4,22,31,.26)';
     ctx.beginPath();ctx.ellipse(foot.x,foot.y+2,widthPx*.26,Math.max(5,heightPx*.022),0,0,Math.PI*2);ctx.fill();
-    if(game.state==='swinging'&&this.images.trail){
+    if(!game.save?.reducedEffects&&game.state==='swinging'&&this.images.trail){
      ctx.globalAlpha=Math.max(0,.78-(game.visualSwingElapsed??game.swingElapsed??0)*5);
      ctx.drawImage(this.images.trail,originX-18,originY+heightPx*.23,widthPx*1.7,heightPx*.54);
      ctx.globalAlpha=1;
     }
     // Son las poses aprobadas: preparados, apuntado a ambos lados y swing.
     ctx.drawImage(sprite,originX,originY,widthPx,heightPx);
-    if(game.state==='swinging'&&game.pendingShot?.quality!=='miss'&&(game.visualSwingElapsed??game.swingElapsed??0)<.085&&this.images.spark){
+    if(!game.save?.reducedEffects&&game.state==='swinging'&&game.pendingShot?.quality!=='miss'&&(game.visualSwingElapsed??game.swingElapsed??0)<.085&&this.images.spark){
      const alpha=Math.max(0,1-(game.visualSwingElapsed??game.swingElapsed??0)*11);
      ctx.globalAlpha=alpha;
      ctx.drawImage(this.images.spark,originX+widthPx*.75,originY+heightPx*.39,Math.min(100,widthPx*.58),Math.min(100,widthPx*.58));
@@ -178,7 +204,7 @@ export class BatterSprites{
     ctx.restore();
    }
   }
-  game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);
+  if(!game.save?.reducedEffects)game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);
   if(this.ballLoaded&&game.ball&&(game.state==='flight'||game.state==='landing')){
    const b=game.ball;
    const p=projectToScreen(camera,target,[b.x,b.y,b.z],width,height,zoom);
@@ -213,7 +239,7 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
-    drawSpinningBaseball(ctx,this.images.ball,size,b.spin,camera,target,this.ballSurfaceCache);
+    drawSpinningBaseball(ctx,this.getStyledBall(game.save),size,b.spin,camera,target,this.ballSurfaceCache);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);
     if(impact>0&&typeof ctx.stroke==='function'){

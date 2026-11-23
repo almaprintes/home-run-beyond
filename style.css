@@ -105,3 +105,55 @@
 #up-multiplier .upgrade-multiplier small{color:#b7ead7;font-weight:900;font-size:9px;letter-spacing:.2px;font-variant-numeric:tabular-nums}
 #up-multiplier:disabled .upgrade-multiplier{opacity:1}
 @media(max-height:740px){#up-multiplier .upgrade-multiplier{min-height:26px}#up-multiplier .upgrade-multiplier strong{font-size:14px}}
+
+/* v0.33 — Menú directo para sesiones cortas: tres acciones y progreso discreto. */
+.main-menu{position:absolute;inset:0;z-index:7;pointer-events:auto;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;background:linear-gradient(180deg,rgba(5,25,42,.91),rgba(10,42,55,.70) 40%,rgba(3,17,30,.94) 100%)}
+.menu-inner{min-height:100%;width:min(100%,560px);margin:auto;padding:calc(22px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between;gap:25px}
+.menu-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.menu-brand{display:flex;align-items:center;gap:9px;font-weight:1000;line-height:1;font-size:17px;letter-spacing:-.6px}
+.menu-brand span:last-child{display:block;color:#ffcb74;font-size:11px;letter-spacing:2.3px;margin-top:3px}
+.menu-brand-ball{display:grid;place-items:center;border-radius:13px;width:46px;height:46px;font-size:29px;background:#082a41;border:1px solid #ffffff3d;box-shadow:0 6px 20px #0007}
+.menu-cash{background:#0b263ccf;border:1px solid #ffffff3d;padding:10px 15px;border-radius:40px;font-size:18px;font-weight:1000;white-space:nowrap}
+.menu-middle{width:100%;display:flex;flex-direction:column;align-items:center;gap:28px}
+.menu-title{text-align:center;text-shadow:0 4px 20px #000a}
+.menu-title>span{font-size:11px;letter-spacing:2.4px;font-weight:900;color:#a1e8de}
+.menu-title h1{font-size:clamp(38px,10vw,59px);font-style:italic;letter-spacing:-2.7px;line-height:.9;margin:12px auto 8px;max-width:370px;font-weight:1000}
+.menu-title h1 em{display:block;color:#ffbf67;font-size:.86em;letter-spacing:1px}
+.menu-title p{font-size:13px;color:#e0f2f4;font-weight:700;margin:14px 0 0}
+.menu-actions{width:min(100%,380px);display:flex;flex-direction:column;gap:12px}
+.menu-play,.menu-secondary{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;border-radius:18px;font-weight:1000;letter-spacing:1.1px;transition:transform .08s;box-shadow:0 6px 22px #03152485}
+.menu-play:active,.menu-secondary:active{transform:scale(.97)}
+.menu-play{background:linear-gradient(110deg,#ffde93,#ffad4d);border:2px solid #fff0b3;color:#302017;min-height:82px;font-size:23px}
+.menu-play span{font-size:27px}
+.menu-secondary{background:#10344fdf;border:1px solid #a4dae06b;color:#f0faff;min-height:62px;font-size:15px}
+.menu-footer{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.menu-stats{width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;background:#03192eb8;border:1px solid #6383947d;border-radius:15px;padding:13px 8px}
+.menu-stats span{font-size:9px;letter-spacing:.55px;font-weight:900;color:#97beca;display:flex;flex-direction:column;gap:6px}
+.menu-stats strong{font-size:12px;color:#f3fafb;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-equipment{font-size:11px;font-weight:850;color:#ffdfa4}
+.menu-footer>small{font-size:10px;color:#a9c4d1}
+.menu-footer>.menu-version{color:#668ca3;letter-spacing:1.3px;font-size:9px}
+.return-menu{display:block;width:100%;max-width:600px;margin:9px auto 0;background:transparent;border:1px solid #4d7082;border-radius:13px;color:#a8cad8;padding:10px;font-size:11px;font-weight:900;letter-spacing:.8px}
+.shop-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:14px 0}
+.shop-tab{background:#0c2538;border:1px solid #44667a;border-radius:11px;min-width:0;padding:11px 5px;font-size:11px;font-weight:950}
+.shop-tab.active{background:#ffc874;color:#27200e;border-color:#fff0b0}
+.shop-preview{position:relative}
+.shop-preview .shop-swatch{position:absolute;right:2px;bottom:2px;width:14px;height:14px;border:2px solid #f7f5dc;border-radius:50%;box-shadow:0 2px 4px #06182b80}
+.shop-item.selected{border-color:#f6d38b;box-shadow:inset 0 0 0 1px #ffc96f80}
+.settings-modal{max-width:520px}
+.settings-section{margin-top:15px}
+.settings-section h3{font-size:10px;letter-spacing:1.3px;color:#ffc977;margin:0 0 7px;font-weight:1000}
+.setting-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;padding:11px 12px;background:#183649;border:1px solid #315266;border-radius:12px;margin:5px 0;min-height:56px}
+.setting-row>span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.setting-row strong{font-size:12px}
+.setting-row small{font-size:10px;color:#aec9d2;line-height:1.3}
+.setting-status{flex:0 0 auto;min-width:49px;padding:8px;border-radius:22px;background:#314b5b;text-align:center;font-size:11px;font-weight:1000;color:#bfd4db}
+.setting-row[aria-pressed=true] .setting-status{background:#9ef3be;color:#104a33}
+.setting-select select{max-width:94px;border:1px solid #7eaac1;color:#fff;border-radius:9px;background:#123046;padding:9px 5px;font-size:12px;font-weight:900;touch-action:manipulation}
+.setting-action{width:100%;text-align:center;border:1px solid #45738d;background:#173b52;border-radius:11px;padding:13px 9px;margin:4px 0;font-size:12px;font-weight:900}
+.setting-danger{color:#ffafaa;border-color:#a54b50}
+.settings-explain{font-size:10px;line-height:1.6;color:#b3cdd8}
+.guide-close{margin-top:10px}
+#app.hide-help .tip,#app.hide-help .aim-balance-hint{display:none!important}
+@media(max-height:740px){.menu-inner{gap:14px;padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:calc(8px + env(safe-area-inset-bottom))}.menu-middle{gap:14px}.menu-title h1{font-size:36px;margin:4px auto}.menu-title p{margin-top:6px;font-size:11px}.menu-play{min-height:55px;font-size:20px}.menu-secondary{min-height:45px;font-size:13px}.menu-actions{gap:7px}.menu-stats{padding:7px}.menu-footer{gap:5px}}
+@media(max-width:350px){.menu-inner{padding-left:11px;padding-right:11px}.menu-brand{font-size:15px}.menu-title h1{font-size:36px}.shop-tab{font-size:10px}}

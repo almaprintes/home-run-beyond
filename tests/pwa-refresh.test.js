@@ -3,33 +3,38 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('v0.32 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
+test('v0.33 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.32\.0/);
- assert.match(html,/src\/main\.js\?v=0\.32\.0/);
- assert.match(main,/game\.js\?v=0\.32\.0/);
- for(const src of ['game.js','world.js','sprites.js','impact-fx.js']){
+ assert.match(html,/style\.css\?v=0\.33\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.33\.0/);
+ assert.match(main,/game\.js\?v=0\.33\.0/);
+ for(const src of ['game.js','world.js','sprites.js','cosmetic-render.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.32.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.33.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v32-20261123-economy-balance/);
+ assert.match(sw,/hrb-v33-20261123-fast-menu-customization/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
  assert.match(sw,/\.\/assets\/strike\.mp3/);
- assert.match(sw,/\.\/src\/biomes\.js\?v=0\.32\.0/);
+ assert.match(sw,/\.\/src\/biomes\.js\?v=0\.33\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.33\.0/);
 });
 
 test('la interfaz muestra nuevo multiplicador, barra de dirección y desglose de premios',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(html,/Versión 0\.32/);
+ assert.match(html,/Versión 0\.33/);
  assert.match(html,/id="aim-ball"/);
  assert.match(html,/id="aim-sweet-zone"/);
  assert.match(html,/id="up-multiplier"/);
+ assert.match(html,/id="main-menu"/);
+ assert.match(html,/id="menu-play"/);
+ assert.match(html,/id="settings"/);
+ assert.match(html,/id="shop-tab-ball"/);
  assert.match(html,/id="coin-breakdown"/);
  assert.match(html,/id="multiplier-current"/);
  assert.match(html,/id="multiplier-next"/);
