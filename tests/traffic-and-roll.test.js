@@ -54,8 +54,8 @@ test('la orientación del sprite corresponde a la dirección y conserva las prop
  const rp=trafficCorners(right),lp=trafficCorners(left);
  assert.ok(rp.topLeft[0]>rp.bottomLeft[0]);
  assert.ok(lp.topLeft[0]<lp.bottomLeft[0]);
- assert.equal(rp.topRight[2]-rp.topLeft[2],right.width);
- assert.equal(rp.topLeft[0]-rp.bottomLeft[0],right.length);
+ assert.ok(Math.abs((rp.topRight[2]-rp.topLeft[2])-right.width)<1e-9);
+ assert.ok(Math.abs((rp.topLeft[0]-rp.bottomLeft[0])-right.length)<1e-9);
 });
 test('el render usa quads proyectados de los coches originales, sin moverlos como cubos',()=>{
  const car=roadTraffic(265,4)[0];

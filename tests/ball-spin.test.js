@@ -61,22 +61,27 @@ test('el giro está limitado por fotograma y no se acelera por multiplicador 22x
  advanceBallSpin(b,9,false);
  assert.ok(Math.abs(b.spin.angle-prior)<=13.5*.051,'un frame con pausa no debe saltar cientos de grados');
 });
-test('el arte aprobado gira en canvas según el estado físico de la pelota',()=>{
+test('la pelota original no se transforma en una moneda en vuelo y vuelve a girar en el suelo',()=>{
  const priorWindow=globalThis.window;
  globalThis.window={devicePixelRatio:1,innerWidth:390,innerHeight:844};
- const angles=[];
+ const angles=[],pictures=[];
  const ctx={setTransform(){},clearRect(){},save(){},restore(){},beginPath(){},
-  ellipse(){},fill(){},translate(){},rotate(a){angles.push(a)},drawImage(){}};
+  ellipse(){},fill(){},translate(){},rotate(a){angles.push(a)},drawImage(image){pictures.push(image)}};
  const sprites=new BatterSprites({clientWidth:390,clientHeight:844,getContext:()=>ctx});
- sprites.ballLoaded=true;sprites.images.ball={};
- const b=ball(12);b.spin={angle:1.4};
- const game={state:'flight',ball:b,camera:[8,20,-15],target:[0,4,80],clock:987,fxCamera:null};
+ sprites.ballLoaded=true;const original={width:160,height:160};sprites.images.ball=original;
+ const b=ball(12);b.spin={angle:1.4,groundEngaged:false};
+ const game={state:'flight',ball:b,save:{equippedBall:'classic'},
+  camera:[8,20,-15],target:[0,4,80],clock:987,fxCamera:null};
  try{
   sprites.draw(game,58);
-  assert.equal(angles.at(-1),1.4,'se está utilizando clock en lugar del giro físico');
+  assert.equal(angles.length,0,'en vuelo la pelota aprobada no gira como una moneda plana');
+  assert.ok(pictures.includes(original));
   b.spin.angle=-.75;
   sprites.draw(game,58);
-  assert.equal(angles.at(-1),-.75,'se debe percibir el sentido contrario al rebotar');
+  assert.equal(angles.length,0,'el backspin debe ser físico, no un giro lateral en el lienzo');
+  const source=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+  assert.match(source,/spin\?\.groundEngaged&&planar>1\.3/);
+  assert.match(source,/drawSpinningBaseball\(ctx,image,size,spin,camera,target,this\.ballSurfaceCache\)/);
  }finally{if(priorWindow===undefined)delete globalThis.window;else globalThis.window=priorWindow}
 });
 test('el juego actualiza el giro una vez por fotograma, y la alternativa 3D también lo usa',()=>{
