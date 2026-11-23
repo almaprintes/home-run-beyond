@@ -94,7 +94,7 @@ test('menú inicial no arranca partida, permite jugar con un toque y volver tras
  assert.equal(els.get('hud').hidden,true);
  let started=0;
  game.resetAndPitch=()=>{started++;game.state='pitching'};
- els.get('settings').hidden=true;els.get('shop').hidden=true;
+ globalThis.document.getElementById('settings').hidden=true;globalThis.document.getElementById('shop').hidden=true;
  game.playFromMenu();
  assert.equal(started,1);assert.equal(game.state,'pitching');
  assert.equal(els.get('main-menu').hidden,true);assert.equal(els.get('hud').hidden,false);

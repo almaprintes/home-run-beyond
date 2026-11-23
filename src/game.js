@@ -316,14 +316,14 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0};this.ball=b;initBallSpin(b);this.distance=0;if(!this.save.reducedEffects)this.impactFX?.spawnBat({x:b.x,y:b.y,z:b.z,quality:hit.quality});this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save.vibration&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0};this.ball=b;initBallSpin(b);this.distance=0;if(!this.save?.reducedEffects)this.impactFX?.spawnBat({x:b.x,y:b.y,z:b.z,quality:hit.quality});this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  emitCollision(material,point,strength,normal={x:0,y:1,z:0}){
   if(!Number.isFinite(strength)||strength<1.2)return;
-  if(!this.save.reducedEffects)this.impactFX?.spawn({x:point.x,y:point.y,z:point.z,material,strength,normal});
+  if(!this.save?.reducedEffects)this.impactFX?.spawn({x:point.x,y:point.y,z:point.z,material,strength,normal});
   if(this.audio?.impact)this.audio.impact(material,strength);
   else this.audio?.land?.();
-  if(!this.save.reducedEffects)this.shake=Math.max(this.shake||0,Math.min(.13,.025+strength*.00085));
+  if(!this.save?.reducedEffects)this.shake=Math.max(this.shake||0,Math.min(.13,.025+strength*.00085));
  }
  simulateStep(dt){
   const b=this.ball;
@@ -438,7 +438,7 @@ export class BaseballGame{
    this.musicClock=(this.musicClock||0)-dt;
    if(this.musicClock<=0){this.audio?.menuMusic?.();this.musicClock=6.2}
   }
-  if(!this.save.reducedEffects)this.impactFX?.update(dt);if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)el('toast').classList.remove('show')}
+  if(!this.save?.reducedEffects)this.impactFX?.update(dt);if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)el('toast').classList.remove('show')}
  if(this.state==='pitching'||this.state==='whiff')this.advancePitch(dt);
  if(this.state==='pitching'){
   el('aim').hidden=true;
