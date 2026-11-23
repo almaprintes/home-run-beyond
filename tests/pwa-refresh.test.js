@@ -3,33 +3,33 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('v0.34 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
+test('v0.35 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.34\.0/);
- assert.match(html,/src\/main\.js\?v=0\.34\.0/);
- assert.match(main,/game\.js\?v=0\.34\.0/);
+ assert.match(html,/style\.css\?v=0\.35\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.35\.0/);
+ assert.match(main,/game\.js\?v=0\.35\.0/);
  for(const src of ['game.js','world.js','sprites.js','cosmetic-render.js','cosmetic-catalog.js','cosmetic-art.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.34.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.35.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v34-20261123-100-cosmetics/);
+ assert.match(sw,/hrb-v35-20261123-pitch-ball-sticky-shop/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
  assert.match(sw,/\.\/assets\/strike\.mp3/);
- assert.match(sw,/\.\/src\/biomes\.js\?v=0\.34\.0/);
- assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.34\.0/);
- assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.34\.0/);
- assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.34\.0/);
+ assert.match(sw,/\.\/src\/biomes\.js\?v=0\.35\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.35\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.35\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.35\.0/);
 });
 
 test('la interfaz muestra nuevo multiplicador, barra de dirección y desglose de premios',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(html,/Versión 0\.34/);
+ assert.match(html,/Versión 0\.35/);
  assert.match(html,/id="aim-ball"/);
  assert.match(html,/id="aim-sweet-zone"/);
  assert.match(html,/id="up-multiplier"/);

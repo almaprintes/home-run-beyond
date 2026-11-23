@@ -168,3 +168,43 @@
 .shop-detail small{font-size:9px;color:#a2c3cb}
 .shop-buy{min-width:72px;font-size:10px}
 @media(max-width:380px){.shop-item{gap:7px;padding:7px}.shop-preview-art{width:76px;flex-basis:76px;height:61px}.shop-detail strong{font-size:11px}.shop-buy{min-width:64px;padding:8px 5px;font-size:9px}}
+
+/* Tienda v0.35: la cabecera, el botón cerrar y las tres categorías nunca
+   se desplazan. Solo el listado puede moverse, también en PWA para iPhone. */
+#shop .shop-modal{
+ display:flex;
+ flex-direction:column;
+ height:min(760px,100%);
+ max-height:100%;
+ min-height:0;
+ padding:0;
+ overflow:hidden;
+ overscroll-behavior:contain;
+}
+#shop .shop-fixed-head{
+ flex:0 0 auto;
+ padding:18px 18px 10px;
+ background:#0d2638;
+ border-bottom:1px solid #3a6177;
+ z-index:2;
+}
+#shop .shop-fixed-head .modal-intro{margin:9px 0 12px}
+#shop .shop-fixed-head .shop-tabs{margin:9px 0 1px}
+#shop #shop-close{flex:none;touch-action:manipulation}
+#shop .shop-scroll{
+ flex:1 1 auto;
+ min-height:0;
+ overflow-y:auto;
+ overflow-x:hidden;
+ -webkit-overflow-scrolling:touch;
+ overscroll-behavior-y:contain;
+ touch-action:pan-y;
+ padding:12px 18px 22px;
+ scrollbar-gutter:stable;
+}
+#shop .shop-scroll:focus-visible{outline:2px solid #ffca75;outline-offset:-3px}
+@media(max-width:380px){
+ #shop .shop-fixed-head{padding:13px 12px 8px}
+ #shop .shop-scroll{padding:10px 10px 18px}
+ #shop .shop-fixed-head .modal-intro{font-size:11px}
+}

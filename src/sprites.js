@@ -1,9 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.34.0';
-import {surfaceBelowBall} from './world.js?v=0.34.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.34.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.34.0';
-import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.34.0';
-import {ILLUSTRATED_BALLS,composeSpecialPose,makeIllustratedBall} from './cosmetic-art.js?v=0.34.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.35.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.35.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.35.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.35.0';
+import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.35.0';
+import {ILLUSTRATED_BALLS,composeSpecialPose,makeIllustratedBall} from './cosmetic-art.js?v=0.35.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -156,6 +156,17 @@ export class BatterSprites{
   this.styledBalls.set(ball.id,result);
   return result;
  }
+ // El mismo dibujo equipado se usa desde el lanzamiento del pitcher hasta
+ // el último rebote. Nunca aparece una pelota blanca que se transforma al batear.
+ drawEquippedBall(ctx,game,size,spin,camera,target){
+  const item=BALL_STYLES.find(b=>b.id===game.save?.equippedBall)||BALL_STYLES[0];
+  const image=this.getStyledBall(game.save);
+  if(!image)return;
+  if(ILLUSTRATED_BALLS.has(item.design)){
+   ctx.rotate(spin?.angle||0);
+   ctx.drawImage(image,-size*.5,-size*.5,size,size);
+  }else drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
+ }
  resize(){
   const canvas=this.canvas,ctx=this.ctx;
   if(!ctx||!canvas)return null;
@@ -205,6 +216,21 @@ export class BatterSprites{
    }
   }
   if(!game.save?.reducedEffects)game.impactFX?.draw?.(ctx,camera,target,width,height,zoom);
+  // Pelota del pitcher, dibujada en el mismo overlay 2D y con el mismo
+  // equipamiento que la pelota física del batazo.
+  const pitchPosition=this.ballLoaded&&['pitching','aiming','swinging','whiff'].includes(game.state)
+   ?pitcherBallPosition((game.pitchElapsed||0)/(game.pitchDuration||1.52)):null;
+  if(pitchPosition){
+   const p=projectToScreen(camera,target,[pitchPosition.x,pitchPosition.y,pitchPosition.z],width,height,zoom);
+   if(p&&p.x>-90&&p.x<width+90&&p.y>-90&&p.y<height+90){
+    const edge=projectToScreen(camera,target,[pitchPosition.x+.72,pitchPosition.y,pitchPosition.z],width,height,zoom);
+    const projected=edge?Math.hypot(edge.x-p.x,edge.y-p.y):12;
+    const size=Math.max(11,Math.min(36,ballSpriteDiameter(projected,width)*.78));
+    ctx.save();ctx.translate(p.x,p.y);
+    this.drawEquippedBall(ctx,game,size,null,camera,target);
+    ctx.restore();
+   }
+  }
   if(this.ballLoaded&&game.ball&&(game.state==='flight'||game.state==='landing')){
    const b=game.ball;
    const p=projectToScreen(camera,target,[b.x,b.y,b.z],width,height,zoom);
@@ -239,12 +265,7 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
-    const ballItem=BALL_STYLES.find(item=>item.id===game.save?.equippedBall)||BALL_STYLES[0];
-    if(ILLUSTRATED_BALLS.has(ballItem.design)){
-     // Sol, Saturno, dónut, dado y los demás conservan sus formas temáticas.
-     ctx.rotate(b.spin?.angle||0);
-     ctx.drawImage(this.getStyledBall(game.save),-size*.5,-size*.5,size,size);
-    }else drawSpinningBaseball(ctx,this.getStyledBall(game.save),size,b.spin,camera,target,this.ballSurfaceCache);
+    this.drawEquippedBall(ctx,game,size,b.spin,camera,target);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);
     if(impact>0&&typeof ctx.stroke==='function'){

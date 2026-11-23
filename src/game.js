@@ -1,14 +1,14 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.34.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.34.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.34.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.34.0';
-import {GameAudio} from './audio.js?v=0.34.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.34.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.34.0';
-import {BatterSprites} from './sprites.js?v=0.34.0';
-import {makeCosmeticPreview} from './cosmetic-art.js?v=0.34.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.34.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.34.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.35.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.35.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.35.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.35.0';
+import {GameAudio} from './audio.js?v=0.35.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.35.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.35.0';
+import {BatterSprites} from './sprites.js?v=0.35.0';
+import {makeCosmeticPreview} from './cosmetic-art.js?v=0.35.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.35.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.35.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -66,7 +66,7 @@ export class BaseballGame{
  click('settings-close',()=>this.closeSettings());
  click('settings-guide',()=>{this.closeSettings();el('welcome').hidden=false});
  click('settings-reset',()=>this.resetProgress());
- for(const category of Object.keys(SHOP_SECTIONS))click('shop-tab-'+category,()=>{this.shopSection=category;this.renderShop()});
+ for(const category of Object.keys(SHOP_SECTIONS))click('shop-tab-'+category,()=>{this.shopSection=category;el('shop-scroll').scrollTop=0;this.renderShop()});
  for(const key of ['sound','voice','music','vibration','showHints','reducedEffects','batterySaver'])
   click('settings-'+key,()=>this.toggleSetting(key));
  el('settings-graphics').addEventListener('change',event=>{
@@ -147,7 +147,7 @@ export class BaseballGame{
  openShop(){
   if(!['menu','ready','rest'].includes(this.state))return;
   this.shopSection=this.shopSection||'bat';
-  el('shop').hidden=false;this.renderShop();
+  el('shop').hidden=false;el('shop-scroll').scrollTop=0;this.renderShop();
  }
  renderShop(){
   const category=SHOP_SECTIONS[this.shopSection]||SHOP_SECTIONS.bat;
@@ -226,6 +226,7 @@ export class BaseballGame{
   const bat=COSMETICS.find(item=>item.id===this.save.equipped)||COSMETICS[0];
   const outfit=OUTFITS.find(item=>item.id===this.save.equippedOutfit)||OUTFITS[0];
   const ball=BALL_STYLES.find(item=>item.id===this.save.equippedBall)||BALL_STYLES[0];
+  this.ballStyleColor=ball.color;
   el('menu-equipment').textContent='🏏 '+bat.name+'  ·  👕 '+outfit.name+'  ·  ⚾ '+ball.name;
   el('shots-hud').textContent=formatInt(this.save.shots);el('region-hud').textContent=areaAt(Math.max(this.save.best,0));
   el('sound').textContent=this.save.sound?'♫':'♩';

@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css?v=0.34.0"/>
+<link rel="stylesheet" href="./style.css?v=0.35.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -41,7 +41,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.34</small>
+        <small class="menu-version">VERSIÓN 0.35</small>
       </div>
     </div>
   </section>
@@ -98,16 +98,20 @@
     <div class="footer-stats"><div>RÉCORD <strong id="best-hud">0 m</strong></div><div>GOLPES <strong id="shots-hud">0</strong></div><div>REGIÓN <strong id="region-hud">ESTADIO</strong></div></div>
   </div>
   <section class="layer modal-shell" id="shop" hidden>
-    <div class="modal">
-      <div class="modal-head"><div><small>TU ESTILO</small><h2>Personaliza tu jugador</h2></div><button class="x" id="shop-close" aria-label="Cerrar">×</button></div>
-      <div class="modal-intro">Ropa, bates y pelotas de colores. Todos son cosméticos: no cambian la distancia ni las monedas. Saldo: <strong id="shop-money">✦ 0</strong></div>
-      <div class="shop-tabs" role="group" aria-label="Categorías de la tienda">
-        <button type="button" class="shop-tab active" id="shop-tab-bat" aria-pressed="true">🏏 BATES</button>
-        <button type="button" class="shop-tab" id="shop-tab-outfit" aria-pressed="false">👕 ROPA</button>
-        <button type="button" class="shop-tab" id="shop-tab-ball" aria-pressed="false">⚾ PELOTAS</button>
+    <div class="modal shop-modal" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+      <div class="shop-fixed-head">
+        <div class="modal-head"><div><small>TU ESTILO</small><h2 id="shop-title">Personaliza tu jugador</h2></div><button type="button" class="x" id="shop-close" aria-label="Cerrar tienda">×</button></div>
+        <div class="modal-intro">Bates, equipaciones y pelotas con diseños propios. Solo cosméticos, sin ventajas. Saldo: <strong id="shop-money">✦ 0</strong></div>
+        <div class="shop-tabs" role="group" aria-label="Categorías de la tienda">
+          <button type="button" class="shop-tab active" id="shop-tab-bat" aria-pressed="true">🏏 BATES</button>
+          <button type="button" class="shop-tab" id="shop-tab-outfit" aria-pressed="false">👕 ROPA</button>
+          <button type="button" class="shop-tab" id="shop-tab-ball" aria-pressed="false">⚾ PELOTAS</button>
+        </div>
       </div>
-      <div id="shop-items" class="shop-items"></div>
-      <div class="foot-note">Compras con monedas del juego. Sin cuentas ni compras reales.</div>
+      <div class="shop-scroll" id="shop-scroll" role="region" aria-label="Catálogo de artículos" tabindex="0">
+        <div id="shop-items" class="shop-items"></div>
+        <div class="foot-note">Compras con monedas del juego. Sin cuentas ni compras reales.</div>
+      </div>
     </div>
   </section>
   <section class="layer modal-shell" id="settings" hidden>
@@ -134,7 +138,7 @@
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.34</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.35</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -150,6 +154,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.34.0"></script>
+<script type="module" src="./src/main.js?v=0.35.0"></script>
 </body>
 </html>

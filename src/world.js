@@ -1,5 +1,5 @@
-import {lerp} from './engine.js?v=0.34.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.34.0';
+import {lerp} from './engine.js?v=0.35.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.35.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -428,13 +428,20 @@ export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
  r.ball(tip[0],tip[1],tip[2],.71,batColor);
  r.box(hand[0],hand[1]-.13,hand[2],.46,.19,.46,'#d8b484');
 }
-export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',hideBatter=false){
+// Posición única para la pelota que lanza el pitcher; la consumen tanto
+// el mundo 3D (reserva) como el sprite equipado (WebGL y Canvas).
+export function pitcherBallPosition(throwProgress){
+ const t=Number(throwProgress);
+ if(!Number.isFinite(t)||t<=0||t>=1.26)return null;
+ return {x:-4.5*t,y:2.5+.35*Math.sin(Math.min(t,1)*PI),z:20.5-25.4*t};
+}
+export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',hideBatter=false,hidePitchBall=false,pitchBallColor='#fffefa'){
  if(!hideBatter)drawBatter(r,-2.3,-5,swingProgress,batColor);
  person(r,0,21,'pitcher',throwProgress*3,false);
- if(throwProgress>0 && throwProgress<1.26){
-  const t=throwProgress,z=20.5-25.4*t,y=2.5+.35*Math.sin(Math.min(t,1)*PI);
-  r.ball(-4.5*t,y,z,.72,'#fffefa');
-  r.add('ball',-4.5*t,y,z,.77,.77,.77,'#ffffff');
+ const ball=pitcherBallPosition(throwProgress);
+ if(ball&&!hidePitchBall){
+  r.ball(ball.x,ball.y,ball.z,.72,pitchBallColor);
+  r.add('ball',ball.x,ball.y,ball.z,.77,.77,.77,pitchBallColor);
  }
 }
 export function drawBaseball(r,x,y,z,spin=0){
@@ -464,7 +471,8 @@ export function drawBaseball(r,x,y,z,spin=0){
 export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
- drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady);
+ drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
+  !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa');
  // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;
