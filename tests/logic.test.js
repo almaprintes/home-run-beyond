@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initialSave,sanitizeSave,upgradeCost,upgrade,settleShot,forwardDistance,timingQuality,calculateShot,batSpeedMs,rewardForMeters,coinMultiplier,coinRewardBreakdown} from '../src/logic.js';
+import {initialSave,sanitizeSave,upgradeCost,upgrade,settleShot,forwardDistance,timingQuality,calculateShot,batSpeedMs,claimBonus,rewardForMeters,coinMultiplier,coinRewardBreakdown} from '../src/logic.js';
 
 test('la partida migra reflejos a multiplicador conservando monedas, niveles, récords y cosméticos',()=>{
  const s=sanitizeSave({coins:2847,best:1730,shots:84,totalMeters:5000,levels:{power:49,swing:14,reflex:7},owned:['classic','nova'],equipped:'nova'});
@@ -72,4 +72,45 @@ test('sin retroceso añadido: recompensas basadas en la posición final',()=>{
 test('las regiones lejanas siguen alcanzables mediante Potencia elevada',()=>{
  const r=calculateShot({power:4500,swing:1,multiplier:1},0);
  assert.ok(r.ratedDistance>10000);
+});
+
+test('la nueva curva conserva exactamente los costes iniciales y suaviza niveles altos',()=>{
+ const bases={power:160,swing:180,multiplier:290};
+ for(const [key,base] of Object.entries(bases)){
+  for(const level of [1,2,17,49,50]){
+   const n=level-1;
+   const original=Math.floor(base*(1+.30*n+.04*n*n)/5)*5;
+   assert.equal(upgradeCost(level,key),original,key+' nivel '+level);
+  }
+  if(key==='multiplier')continue;
+  let prev=upgradeCost(50,key);
+  for(let level=51;level<=1350;level++){
+   const next=upgradeCost(level,key);
+   assert.ok(next>=prev,'el precio no debe bajar: '+key+' '+level);
+   prev=next;
+  }
+ }
+ assert.equal(upgradeCost(49,'power'),17205);
+ assert.equal(upgradeCost(50,'power'),17875);
+ assert.equal(upgradeCost(51,'power'),18055);
+ assert.equal(upgradeCost(1318,'power'),36595);
+ assert.ok(upgradeCost(1318,'power')<upgradeCost(130,'power')*2);
+});
+
+test('Multiplicador deja de vender niveles al llegar a ×3, sin quitar progreso antiguo',()=>{
+ const save=initialSave();save.coins=100000000;save.levels.multiplier=50;
+ const price=upgradeCost(50,'multiplier');
+ assert.ok(price>0);
+ assert.equal(upgrade(save,'multiplier'),true);
+ assert.equal(save.levels.multiplier,51);
+ assert.equal(coinMultiplier(save.levels.multiplier),3);
+ const coins=save.coins,paid=save.paidUpgrades;
+ assert.equal(upgradeCost(51,'multiplier'),Infinity);
+ assert.equal(upgrade(save,'multiplier'),false);
+ assert.equal(save.coins,coins);
+ assert.equal(save.paidUpgrades,paid);
+ save.paidUpgrades=10;
+ assert.equal(claimBonus(save,'multiplier'),false);
+ assert.equal(save.bonusClaims,0);
+ assert.equal(sanitizeSave({version:2,coins:coins,levels:{power:49,swing:17,multiplier:68}}).levels.multiplier,68);
 });

@@ -1,5 +1,7 @@
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
+export const MULTIPLIER_MAX_LEVEL=51;
+export function skillMaxLevel(key){return key==='multiplier'?MULTIPLIER_MAX_LEVEL:MAX_LEVEL}
 export const BONUS_EVERY=5;
 export const DEFAULT_SAVE=Object.freeze({version:2,coins:170,best:0,shots:0,totalMeters:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',sound:true,seenIntro:false,achievements:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
 export function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
@@ -34,14 +36,21 @@ export function forwardDistance(ball){
  const z=Number(ball?.z);
  return Number.isFinite(z)?Math.max(0,z):0;
 }
+// Coste original hasta nivel 50. A partir de 51 la subida deja de ser
+// cuadrática y sigue una potencia sublineal: dificultad sostenida, sin que
+// llegar a los biomas lejanos requiera decenas de miles de batazos.
 export function upgradeCost(level,key){
  const bases={power:160,swing:180,multiplier:290};
  if(!(key in bases))throw Error('Unknown skill');
- const n=clamp(level,1,MAX_LEVEL)-1;
- return Math.floor(bases[key]*(1+.30*n+.04*n*n)/5)*5;
+ if(level>=skillMaxLevel(key))return Infinity;
+ const base=bases[key],n=clamp(level,1,MAX_LEVEL)-1;
+ if(level<=50)return Math.floor(base*(1+.30*n+.04*n*n)/5)*5;
+ const priceAt50=base*(1+.30*49+.04*49*49);
+ const extra=180*(base/160)*Math.pow(level-50,.65);
+ return Math.floor((priceAt50+extra)/5)*5;
 }
 export function upgrade(save,key){
- if(!(key in save.levels)||save.levels[key]>=MAX_LEVEL)return false;
+ if(!(key in save.levels)||save.levels[key]>=skillMaxLevel(key))return false;
  const price=upgradeCost(save.levels[key],key);
  if(save.coins<price)return false;
  save.coins-=price;save.levels[key]++;save.paidUpgrades=(save.paidUpgrades||0)+1;return true;
@@ -49,7 +58,7 @@ export function upgrade(save,key){
 export function bonusCredits(save){return Math.max(0,Math.floor((save.paidUpgrades||0)/BONUS_EVERY)-(save.bonusClaims||0))+(save.pendingLegacyBonuses||0)}
 export function bonusProgress(save){return (save.paidUpgrades||0)%BONUS_EVERY}
 export function claimBonus(save,key){
- if(!(key in save.levels)||save.levels[key]>=MAX_LEVEL||bonusCredits(save)<1)return false;
+ if(!(key in save.levels)||save.levels[key]>=skillMaxLevel(key)||bonusCredits(save)<1)return false;
  save.levels[key]++;if(save.pendingLegacyBonuses>0)save.pendingLegacyBonuses--;else save.bonusClaims=(save.bonusClaims||0)+1;return true;
 }
 export function timingQuality(deltaMs){

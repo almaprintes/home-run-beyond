@@ -1,13 +1,13 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.31.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.31.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.31.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.31.0';
-import {GameAudio} from './audio.js?v=0.31.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.31.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.31.0';
-import {BatterSprites} from './sprites.js?v=0.31.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.31.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.31.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.32.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.32.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.32.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,qualityNames,clamp} from './logic.js?v=0.32.0';
+import {GameAudio} from './audio.js?v=0.32.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.32.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.32.0';
+import {BatterSprites} from './sprites.js?v=0.32.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.32.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.32.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -66,6 +66,9 @@ export class BaseballGame{
  renderShop(){el('shop-items').replaceChildren();for(const item of COSMETICS){const owned=this.save.owned.includes(item.id),equipped=this.save.equipped===item.id;const row=document.createElement('div');row.className='shop-item';const preview=document.createElement('div');preview.className='shop-preview';preview.style.color=item.color;preview.textContent=item.emoji;const detail=document.createElement('div');detail.className='shop-detail';const strong=document.createElement('strong');strong.textContent=item.name;const small=document.createElement('small');small.textContent=item.description;detail.append(strong,small);const btn=document.createElement('button');btn.className='shop-buy';btn.textContent=equipped?'EQUIPADO':owned?'EQUIPAR':`✦ ${formatInt(item.price)}`;btn.disabled=equipped||(!owned&&this.save.coins<item.price);btn.addEventListener('click',()=>{if(!owned&&this.save.coins<item.price)return;if(!owned){this.save.coins-=item.price;this.save.owned.push(item.id);this.audio.cash()}this.save.equipped=item.id;this.batColor=item.color;this.persist();this.renderShop();this.drawUI()});row.append(preview,detail,btn);el('shop-items').append(row)}}
  buyUpgrade(key){
   if(this.state==='pitching'||this.state==='aiming'||this.state==='swinging'||this.state==='flight'||this.rewardPending)return;
+  if(!['power','swing','multiplier'].includes(key))return;
+  // Nunca cobrar monedas ni mostrar un anuncio por un nivel sin beneficio.
+  if(this.save.levels[key]>=skillMaxLevel(key)){this.toast('MÁXIMO ALCANZADO');return;}
   if(bonusCredits(this.save)>0&&hasRewardedAds()){
    this.rewardPending=true;this.drawUI();
    showRewardedAd().then(rewarded=>{if(rewarded)this.applyBonus(key);else this.toast('VÍDEO NO COMPLETADO · CONSERVAS EL BONO')})
@@ -89,8 +92,8 @@ export class BaseballGame{
   el('bonus-text').textContent=bonus?(hasAds?'BONO DISPONIBLE · VER ANUNCIO':'BONO PENDIENTE · SIN ANUNCIOS'):'MEJORA EXTRA CADA '+BONUS_EVERY+' COMPRAS';
   el('bonus-progress').textContent=bonus?(hasAds?'ELIGE SKILL':'EN ESPERA'):progress+'/'+BONUS_EVERY;
   for(const key of ['power','swing','multiplier']){
-   const lvl=this.save.levels[key],cost=upgradeCost(lvl,key),affordable=cost<=this.save.coins;
-   const button=el('up-'+key),free=bonus&&hasAds&&!this.rewardPending;
+   const lvl=this.save.levels[key],maxed=lvl>=skillMaxLevel(key),cost=upgradeCost(lvl,key),affordable=!maxed&&cost<=this.save.coins;
+   const button=el('up-'+key),free=!maxed&&bonus&&hasAds&&!this.rewardPending;
    el('level-'+key).textContent='NIV. '+formatInt(lvl);
    if(key==='multiplier'){
     // Mismo cálculo que se utiliza al pagar monedas tras el batazo.
@@ -99,14 +102,14 @@ export class BaseballGame{
     el('multiplier-current').textContent=display(current);
     el('multiplier-next').textContent=upcoming>current?'SIG. '+display(upcoming):'MÁXIMO';
    }
-   el('cost-'+key).textContent=free?'+1 NIVEL':formatInt(cost);
-   el('buy-label-'+key).textContent=this.rewardPending?'ESPERA':free?'VER ANUNCIO':affordable?'MEJORAR':'SIN MONEDAS';
+   el('cost-'+key).textContent=maxed?'—':free?'+1 NIVEL':formatInt(cost);
+   el('buy-label-'+key).textContent=maxed?'MÁXIMO':this.rewardPending?'ESPERA':free?'VER ANUNCIO':affordable?'MEJORAR':'SIN MONEDAS';
    button.classList.toggle('is-affordable',!free&&affordable&&!this.rewardPending);
    button.classList.toggle('is-bonus',free);
-   button.classList.toggle('is-locked',!free&&!affordable);
-   button.disabled=this.rewardPending||(!free&&!affordable);
-   const multiplierInfo=key==='multiplier'?', multiplicador actual por '+coinMultiplier(lvl).toFixed(2)+', siguiente por '+coinMultiplier(lvl+1).toFixed(2):'';
-   button.setAttribute('aria-label',key+' nivel '+lvl+multiplierInfo+', '+(free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
+   button.classList.toggle('is-locked',maxed||(!free&&!affordable));
+   button.disabled=maxed||this.rewardPending||(!free&&!affordable);
+   const multiplierInfo=key==='multiplier'?', multiplicador actual por '+coinMultiplier(lvl).toFixed(2)+(maxed?', máximo alcanzado':', siguiente por '+coinMultiplier(lvl+1).toFixed(2)):'';
+   button.setAttribute('aria-label',key+' nivel '+lvl+multiplierInfo+', '+(maxed?'máximo alcanzado':free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
   }
  }
  toast(s){el('toast').textContent=s;el('toast').classList.add('show');this.toastTimer=1.85;this.toastText=s}

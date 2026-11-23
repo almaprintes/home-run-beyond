@@ -111,3 +111,35 @@ test('la tarjeta de multiplicador es compacta y enseña ambos valores sin altera
  assert.match(css,/font-variant-numeric:tabular-nums/);
  assert.match(html,/id="cost-multiplier"/);
 });
+
+test('Multiplicador ×3 muestra máximo y nunca cobra ni ofrece anuncio',()=>{
+ const previous=globalThis.document,prevWindow=globalThis.window;
+ const nodes=new Map();let adsShown=0;
+ globalThis.document={getElementById(id){
+  if(!nodes.has(id))nodes.set(id,{textContent:'',disabled:false,
+   classList:{toggle(){}},setAttribute(name,value){this[name]=value}});
+  return nodes.get(id);
+ }};
+ globalThis.window={HRB_REWARDED_AD:{show:async()=>{adsShown++;return {rewarded:true}}}};
+ try{
+  const game=Object.create(BaseballGame.prototype);
+  game.state='rest';game.save=initialSave();game.save.coins=500000;
+  game.save.levels.multiplier=51;game.save.paidUpgrades=10;
+  game.audio={cash(){}};game.persist=()=>{};game.toast=()=>{};
+  game.drawUI();
+  assert.equal(nodes.get('multiplier-current').textContent,'×3,00');
+  assert.equal(nodes.get('multiplier-next').textContent,'MÁXIMO');
+  assert.equal(nodes.get('buy-label-multiplier').textContent,'MÁXIMO');
+  assert.equal(nodes.get('cost-multiplier').textContent,'—');
+  assert.equal(nodes.get('up-multiplier').disabled,true);
+  game.buyUpgrade('multiplier');
+  assert.equal(adsShown,0);
+  assert.equal(game.save.levels.multiplier,51);
+  assert.equal(game.save.coins,500000);
+  assert.equal(game.save.bonusClaims,0);
+  assert.equal(nodes.get('up-power').disabled,false,'otro bono puede canjearse en Potencia');
+ }finally{
+  if(previous===undefined)delete globalThis.document;else globalThis.document=previous;
+  if(prevWindow===undefined)delete globalThis.window;else globalThis.window=prevWindow;
+ }
+});
