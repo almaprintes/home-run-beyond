@@ -1,8 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.33.0';
-import {surfaceBelowBall} from './world.js?v=0.33.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.33.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.33.0';
-import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.33.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.34.0';
+import {surfaceBelowBall} from './world.js?v=0.34.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.34.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.34.0';
+import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.34.0';
+import {ILLUSTRATED_BALLS,composeSpecialPose,makeIllustratedBall} from './cosmetic-art.js?v=0.34.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -142,9 +143,7 @@ export class BatterSprites{
   if(outfit.id==='red'&&bat.id==='classic')return source;
   const key=pose+'|'+outfit.id+'|'+bat.id;
   if(this.styledPoses.has(key))return this.styledPoses.get(key);
-  let result=source;
-  if(outfit.id!=='red')result=makeCosmeticCanvas(result,{kind:'outfit',color:outfit.color,pose});
-  if(bat.id!=='classic')result=makeCosmeticCanvas(result,{kind:'bat',color:bat.color,pose});
+  const result=composeSpecialPose(source,outfit,bat,pose);
   this.styledPoses.set(key,result);
   return result;
  }
@@ -152,7 +151,8 @@ export class BatterSprites{
   const source=this.images.ball,ball=BALL_STYLES.find(item=>item.id===save?.equippedBall)||BALL_STYLES[0];
   if(!source||ball.id==='classic')return source;
   if(this.styledBalls.has(ball.id))return this.styledBalls.get(ball.id);
-  const result=makeCosmeticCanvas(source,{kind:'ball',color:ball.color});
+  const result=ILLUSTRATED_BALLS.has(ball.design)?makeIllustratedBall(ball)||source:
+   makeCosmeticCanvas(source,{kind:'ball',color:ball.color});
   this.styledBalls.set(ball.id,result);
   return result;
  }
@@ -239,7 +239,12 @@ export class BatterSprites{
      }
     }
     ctx.save();ctx.translate(p.x,p.y);
-    drawSpinningBaseball(ctx,this.getStyledBall(game.save),size,b.spin,camera,target,this.ballSurfaceCache);
+    const ballItem=BALL_STYLES.find(item=>item.id===game.save?.equippedBall)||BALL_STYLES[0];
+    if(ILLUSTRATED_BALLS.has(ballItem.design)){
+     // Sol, Saturno, dónut, dado y los demás conservan sus formas temáticas.
+     ctx.rotate(b.spin?.angle||0);
+     ctx.drawImage(this.getStyledBall(game.save),-size*.5,-size*.5,size,size);
+    }else drawSpinningBaseball(ctx,this.getStyledBall(game.save),size,b.spin,camera,target,this.ballSurfaceCache);
     ctx.restore();
     const impact=ballImpactOpacity(b.impactAge);
     if(impact>0&&typeof ctx.stroke==='function'){

@@ -1,3 +1,4 @@
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.34.0';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -111,29 +112,10 @@ export function settleShot(save,distance){
  return {meters,coins:reward.total,baseCoins:reward.base,bonusCoins:reward.bonus,multiplier:reward.multiplier,record};
 }
 export const MILESTONES=[{at:100,label:'FUERA DEL ESTADIO'},{at:250,label:'PRIMER BARRIO'},{at:500,label:'SOBRE LA AUTOPISTA'},{at:1000,label:'UN KILÓMETRO'},{at:1650,label:'RÍO A LA VISTA'},{at:3000,label:'TRES KILÓMETROS'},{at:10000,label:'DIEZ KILÓMETROS'},{at:50000,label:'CINCUENTA KILÓMETROS'}];
-export const COSMETICS=[
- {id:'classic',name:'Bate clásico',description:'Madera dorada. El original.',emoji:'🏏',color:'#e7b56e',price:0},
- {id:'gold',name:'Bate dorado',description:'Brilla bajo los focos',emoji:'✨',color:'#ffc85b',price:320},
- {id:'ocean',name:'Bate oceánico',description:'Acabado azul turquesa',emoji:'🌊',color:'#52d1e5',price:850},
- {id:'ruby',name:'Bate rubí',description:'Rojo intenso',emoji:'❤️',color:'#ee5265',price:1500},
- {id:'nova',name:'Bate Nova',description:'Un pequeño pedazo de galaxia',emoji:'🚀',color:'#ab8dff',price:3400}
-];
-
-/* El vestuario no modifica las físicas, el swing ni las monedas. */
-export const OUTFITS=[
- {id:'red',name:'Clásico rojo',description:'El uniforme original.',emoji:'👕',color:'#bd454c',price:0},
- {id:'blue',name:'Azul océano',description:'Camiseta y casco azul.',emoji:'👕',color:'#3b9fde',price:350},
- {id:'green',name:'Verde estadio',description:'Un toque de verde.',emoji:'👕',color:'#4dc496',price:780},
- {id:'purple',name:'Violeta',description:'Uniforme de edición especial.',emoji:'👕',color:'#a785fa',price:1400},
- {id:'gold',name:'Dorado',description:'Estilo de campeón.',emoji:'👕',color:'#f3be4c',price:2400}
-];
-export const BALL_STYLES=[
- {id:'classic',name:'Pelota clásica',description:'Blanca con costuras rojas.',emoji:'⚾',color:'#ffffff',price:0},
- {id:'sky',name:'Pelota cielo',description:'Azul suave y costuras originales.',emoji:'⚾',color:'#9cdafa',price:280},
- {id:'sun',name:'Pelota solar',description:'Amarillo cálido.',emoji:'⚾',color:'#ffd26c',price:620},
- {id:'mint',name:'Pelota menta',description:'Verde claro y luminoso.',emoji:'⚾',color:'#a1f0c4',price:1100},
- {id:'lilac',name:'Pelota lavanda',description:'Violeta claro.',emoji:'⚾',color:'#ccb0fc',price:1800}
-];
+// Todos los cosméticos están en un catálogo versionado con diseño procedural.
+export const COSMETICS=BAT_CATALOG;
+export const OUTFITS=OUTFIT_CATALOG;
+export const BALL_STYLES=BALL_CATALOG;
 export const SHOP_SECTIONS=Object.freeze({
  bat:{label:'Bates',items:COSMETICS,owned:'owned',equipped:'equipped'},
  outfit:{label:'Ropa',items:OUTFITS,owned:'ownedOutfits',equipped:'equippedOutfit'},

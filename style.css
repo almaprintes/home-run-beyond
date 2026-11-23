@@ -157,3 +157,14 @@
 #app.hide-help .tip,#app.hide-help .aim-balance-hint{display:none!important}
 @media(max-height:740px){.menu-inner{gap:14px;padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:calc(8px + env(safe-area-inset-bottom))}.menu-middle{gap:14px}.menu-title h1{font-size:36px;margin:4px auto}.menu-title p{margin-top:6px;font-size:11px}.menu-play{min-height:55px;font-size:20px}.menu-secondary{min-height:45px;font-size:13px}.menu-actions{gap:7px}.menu-stats{padding:7px}.menu-footer{gap:5px}}
 @media(max-width:350px){.menu-inner{padding-left:11px;padding-right:11px}.menu-brand{font-size:15px}.menu-title h1{font-size:36px}.shop-tab{font-size:10px}}
+
+/* Catálogo visual v0.34: la vista previa es la ilustración real, no un emoji. */
+.shop-items{contain:layout style}
+.shop-item{gap:10px;min-height:88px;content-visibility:auto;contain-intrinsic-size:auto 88px}
+.shop-preview-art{position:relative;width:92px;height:64px;flex:0 0 92px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #6e95a978;background:radial-gradient(circle at 45% 28%,#345871,#0a283b 82%);border-radius:12px}
+.shop-preview-art canvas{display:block;width:100%;height:100%;object-fit:contain}
+.shop-preview-art .shop-swatch{width:13px;height:13px;right:4px;bottom:3px}
+.shop-detail strong{font-size:12px;line-height:1.25}
+.shop-detail small{font-size:9px;color:#a2c3cb}
+.shop-buy{min-width:72px;font-size:10px}
+@media(max-width:380px){.shop-item{gap:7px;padding:7px}.shop-preview-art{width:76px;flex-basis:76px;height:61px}.shop-detail strong{font-size:11px}.shop-buy{min-width:64px;padding:8px 5px;font-size:9px}}
