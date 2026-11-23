@@ -1,9 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.36.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.36.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.36.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.36.0';
-import {bakedAssetUrl,equippedAssetPaths} from './baked-assets.js?v=0.36.0';
-import {ILLUSTRATED_BALLS,WEAPON_POSES} from './baked-assets.js?v=0.36.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.37.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.37.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.37.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.37.0';
+import {bakedAssetUrl,equippedAssetPaths,bakedBallTextureUrl,ballRenderMode,WEAPON_POSES} from './baked-assets.js?v=0.37.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -201,7 +200,6 @@ export class BatterSprites{
  }
  getStyledBall(save){
   const item=BALL_STYLES.find(i=>i.id===save?.equippedBall)||BALL_STYLES[0];
-  if(item.id==='classic')return this.images.ball;
   return this.bakedImages.get(bakedAssetUrl('ball',item.id))||this.images.ball;
  }
  // El mismo dibujo equipado se usa desde el lanzamiento del pitcher hasta
@@ -210,10 +208,19 @@ export class BatterSprites{
   const item=BALL_STYLES.find(b=>b.id===game.save?.equippedBall)||BALL_STYLES[0];
   const image=this.getStyledBall(game.save);
   if(!image)return;
-  if(ILLUSTRATED_BALLS.has(item.design)){
-   ctx.rotate(spin?.angle||0);
-   ctx.drawImage(image,-size*.5,-size*.5,size,size);
-  }else drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
+  // A sphere renderer must ONLY sample an opaque square UV texture:
+  // sampling a circular RGBA sprite reveals gaps/"inner core" while rolling.
+  if(ballRenderMode(item)==='baseball'&&spin?.orientation&&camera&&target){
+   const uv=this.bakedImages.get(bakedBallTextureUrl(item.id));
+   if(uv){
+    drawSpinningBaseball(ctx,uv,size,spin,camera,target,this.ballSurfaceCache);
+    return;
+   }
+  }
+  // All themed balls, and any missing UV, rotate their FULL finished sprite.
+  // Tennis, golf, Saturn, beach balls etc never inherit baseball stitching.
+  ctx.rotate(spin?.angle||0);
+  ctx.drawImage(image,-size*.5,-size*.5,size,size);
  }
  resize(){
   const canvas=this.canvas,ctx=this.ctx;

@@ -237,94 +237,14 @@ def draw_bat(item):
             for i in range(6):d.arc((245+i*4,17+i*4,305-i*3,97-i*3),i*20,300,fill=(*a,200),width=2)
     return img
 
-def draw_ball(item):
-    from PIL import ImageFont
-    mode=item["design"];c=rgb(item["color"]);a=rgb(item["accent"])
-    img=Image.new("RGBA",(160,160),(0,0,0,0));d=ImageDraw.Draw(img,"RGBA")
-    if mode=="sun":
-        for i in range(16):
-            th=i*math.tau/16
-            d.line([(80+math.cos(th)*57,80+math.sin(th)*57),(80+math.cos(th)*76,80+math.sin(th)*76)],fill=(255,186,49,255),width=8)
-    if mode=="saturn":
-        d.ellipse((4,54,155,108),outline=(*a,230),width=16)
-    if mode=="meteor":
-        for i in range(7):
-            y=38+i*14
-            d.polygon([(8,y),(47,y-7),(48,y+9)],fill=(250,161,73,180))
-    if mode=="bomb":d.line([(80,26),(95,5),(109,10)],fill=(211,192,144,255),width=7)
-    d.ellipse((19,19,141,141),fill=(*c,255),outline=(39,46,55,235),width=2)
-    if mode in ("moon","mars","meteor","golf","orange","snow"):
-        import random
-        rnd=random.Random(item["id"])
-        for i in range(35 if mode=="golf" else 19):
-            x=rnd.uniform(35,125);y=rnd.uniform(35,125)
-            r=rnd.uniform(2,10)
-            if (x-80)**2+(y-80)**2 > (50-r)**2:continue
-            color=(168,177,187,150) if mode in ("moon","golf","snow") else (*a,120)
-            d.ellipse((x-r,y-r,x+r,y+r),fill=color,outline=(238,241,245,130),width=1)
-    elif mode=="earth":
-        for p in [[(31,68),(46,39),(65,45),(72,61),(63,85),(44,106)],
-                  [(88,33),(118,54),(108,73),(132,92),(105,105),(86,85)],
-                  [(105,100),(122,115),(98,139),(81,123)]]:
-            d.polygon(p,fill=(*a,255))
-    elif mode=="billiard":
-        d.ellipse((51,47,110,109),fill=(255,255,247,255));d.text((71,64),"8",fill=(22,26,34,255),stroke_width=1,stroke_fill=(22,26,34,255))
-    elif mode=="tennis":
-        d.arc((5,9,90,149),280,78,fill=(255,255,255,255),width=5)
-        d.arc((71,8,156,151),90,258,fill=(255,255,255,255),width=5)
-    elif mode=="beach" or mode=="rainbow":
-        cols=[(236,93,105),(243,199,88),(95,186,216),(108,211,146),(176,123,223)]
-        for i in range(5):
-            x=24+i*24;d.polygon([(80,80),(x,19),(x+31,26)],fill=(*cols[i],255))
-    elif mode=="watermelon":
-        for i in range(8):
-            x=24+i*15;d.arc((x-25,15,x+30,145),0,180,fill=(*a,255),width=5)
-    elif mode=="eyeball":
-        d.ellipse((47,46,114,115),fill=(*a,255))
-        d.ellipse((64,63,97,97),fill=(19,26,39,255))
-        d.ellipse((72,67,83,79),fill=(255,255,255,255))
-    elif mode=="disco":
-        for y in range(25,136,15):
-            for x in range(25,136,15):
-                if (x-80)**2+(y-80)**2<3000:
-                    d.rectangle((x,y,x+12,y+12),fill=(*mix(a,c,(x+y)%5/5),255),outline=(240,251,255,100))
-    elif mode=="bowling":
-        for x,y in [(61,56),(94,62),(77,91)]:
-            d.ellipse((x-10,y-10,x+10,y+10),fill=(31,31,42,255))
-    elif mode=="pumpkin":
-        for i in range(-3,4):
-            d.ellipse((44+i*9,28,116+i*9,138),outline=(*a,170),width=3)
-        d.polygon([(47,75),(64,71),(53,87)],fill=(61,51,47,255))
-        d.polygon([(88,75),(105,71),(95,87)],fill=(61,51,47,255))
-    elif mode=="soccer":
-        d.polygon([(80,52),(104,68),(96,94),(66,98),(55,73)],fill=(*a,255))
-        for x,y in [(37,47),(119,44),(129,103),(42,115)]:
-            d.polygon([(x,y),(x+13,y-2),(x+17,y+13),(x+2,y+19)],fill=(*a,250))
-    elif mode=="donut":
-        d.ellipse((32,34,128,125),fill=(*a,255))
-        d.ellipse((62,63,99,98),fill=(57,46,48,255))
-    elif mode=="candy":
-        for i in range(7):
-            th=i*math.tau/7
-            d.line([(80,80),(80+math.cos(th)*55,80+math.sin(th)*55)],fill=(*a,255),width=13)
-    elif mode=="crystal":
-        d.polygon([(80,21),(124,52),(127,99),(83,137),(37,115),(31,60)],fill=(*a,210))
-        d.polygon([(80,21),(107,58),(83,137)],fill=(225,250,255,220))
-    # Real geometric silhouette for the die rather than a sphere.
-    if mode=="dice":
-        img=Image.new("RGBA",(160,160),(0,0,0,0));d=ImageDraw.Draw(img,"RGBA")
-        d.polygon([(30,49),(88,23),(133,53),(80,77)],fill=(252,246,234,255),outline=(100,93,83,255))
-        d.polygon([(30,49),(80,77),(80,140),(28,104)],fill=(229,218,204,255),outline=(100,93,83,255))
-        d.polygon([(80,77),(133,53),(131,111),(80,140)],fill=(239,229,215,255),outline=(100,93,83,255))
-        for x,y in [(45,72),(63,84),(47,104),(100,80),(115,89),(98,108)]:
-            d.ellipse((x-5,y-5,x+5,y+5),fill=(*a,255))
-    if mode=="saturn":
-        d.arc((4,54,155,108),5,176,fill=(246,225,182,250),width=16)
-    return img
+from ball_art import draw_ball, baseball_uv, verify_ball, verify_uv
 
-def save(img,path):
+def save(img,path,lossless=False):
     path.parent.mkdir(parents=True,exist_ok=True)
-    img.save(path,"WEBP",quality=87,method=4,exact=True)
+    if lossless:
+        img.save(path,"WEBP",lossless=True,method=6,exact=True)
+    else:
+        img.save(path,"WEBP",quality=87,method=4,exact=True)
 
 def main():
     outfits=catalog("outfit");bats=catalog("bat");balls=catalog("ball")
@@ -339,19 +259,31 @@ def main():
                 save(bake_uniform(src,item,pose,nobat),path);total+=1
     for item in bats:
         save(draw_bat(item),OUT/"bats"/(item["id"]+".webp"));total+=1
+    uv=0
     for item in balls:
-        save(draw_ball(item),OUT/"balls"/(item["id"]+".webp"));total+=1
+        path=OUT/"balls"/(item["id"]+".webp")
+        save(draw_ball(item),path,lossless=True)
+        verify_ball(path,item["design"])
+        total+=1
+        if item["design"]=="baseball":
+            uv_path=OUT/"ball-textures"/(item["id"]+".webp")
+            save(baseball_uv(item),uv_path,lossless=True)
+            verify_uv(uv_path)
+            total+=1;uv+=1
+    if uv!=8:raise ValueError("Expected eight opaque baseball UV textures")
     manifest={
         "version":1,"generator":"tools/build_cosmetics.py",
         "counts":{"outfits":len(outfits),"outfitFrames":len(outfits)*len(POSES)*2,
-                  "bats":len(bats),"balls":len(balls),"total":total},
+                  "bats":len(bats),"balls":len(balls),"ballTextures":uv,"ballsValidated":len(balls),"texturesValidated":uv,"total":total},
         "poses":list(POSES),
         "outfits":[i["id"] for i in outfits],
         "bats":[i["id"] for i in bats],
         "balls":[i["id"] for i in balls],
         "verified":all((OUT/"outfits"/item["id"]/(pose+".webp")).exists() for item in outfits for pose in POSES)
+                    and all((OUT/"balls"/(item["id"]+".webp")).exists() for item in balls)
+                    and all((OUT/"ball-textures"/(item["id"]+".webp")).exists() for item in balls if item["design"]=="baseball")
     }
     (OUT/"manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    print("Baked",total,"WebP images; five full-frame uniform poses per outfit and batless pose variants")
+    print("Baked",total,"WebP images; 32 opacity-checked balls + 8 fully opaque baseball UV textures")
 
 if __name__=="__main__":main()
