@@ -4,6 +4,7 @@ import {BaseballGame} from '../src/game.js';
 import {GameAudio} from '../src/audio.js';
 import {initialSave} from '../src/logic.js';
 import {selectBatterPose} from '../src/sprites.js';
+import {pitcherBallPosition} from '../src/world.js';
 import {readFileSync} from 'node:fs';
 
 function withDOM(run){
@@ -40,9 +41,8 @@ test('sin tocar, bola pasa por detrás y canta STRIKE una sola vez sin dar moned
  assert.equal(els.get('again').hidden,false);
  assert.equal(selectBatterPose({state:'rest',ball:null}),'ready','el jugador no desaparece al fallar');
  assert.equal(JSON.stringify(g.save),before,'una bola no bateada no altera el progreso');
- const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(world,/throwProgress<1\.26/);
- assert.ok((20.5-25.4*1.2)<-4.7,'bola detrás de home');
+ assert.ok(pitcherBallPosition(1.2).z< -4.7,'bola detrás de home');
+ assert.equal(pitcherBallPosition(1.26),null,'el lanzamiento acaba fuera del home');
 }));
 
 test('swing muy temprano falla de verdad y nunca lanza una bola débil',()=>withDOM(els=>{

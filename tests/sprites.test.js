@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS,selectBatterPose,projectToScreen} from '../src/sprites.js';
+import {pitcherBallPosition} from '../src/world.js';
 
 test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'ready'}),'ready');
@@ -46,10 +47,12 @@ test('la pelota se genera frente al bate y en el punto final del lanzamiento',()
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  assert.match(game,/const b=\{x:-4\.5,y:2\.5,z:-4\.7/);
- assert.match(world,/z=20\.5-25\.4\*t/);assert.match(world,/r\.ball\(-4\.5\*t,y,z/);
+ assert.ok(Math.abs(pitcherBallPosition(1).z+4.9)<1e-9);
+ assert.equal(pitcherBallPosition(1).x,-4.5);
+ assert.match(world,/const ball=pitcherBallPosition\(throwProgress\)/);
  assert.match(game,/this\.sprites\?\.draw\(this,zoom\)/);
  assert.match(world,/!!game\.spriteReady/);
- assert.match(world,/!game\.sprites\?\.ballLoaded/);
+ assert.match(world,/game\.sprites\?\.ballLoaded&&game\.sprites\?\.ctx/);
 });
 test('el canvas 2D es una capa visual no interactiva que se adapta a la pantalla',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
