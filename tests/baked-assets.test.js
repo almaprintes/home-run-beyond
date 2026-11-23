@@ -1,0 +1,121 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,existsSync,statSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from '../src/cosmetic-catalog.js';
+import {BAKED_ASSET_COUNT,OUTFIT_POSES,bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from '../src/baked-assets.js';
+import {BatterSprites} from '../src/sprites.js';
+import {initialSave,calculateShot,coinRewardBreakdown,sanitizeSave,equipCosmetic} from '../src/logic.js';
+
+const abs=path=>new URL('../'+path.slice(2),import.meta.url);
+function assertWebP(uri){
+ const file=abs(uri);
+ assert.ok(existsSync(file),'Falta asset completo '+uri);
+ assert.ok(statSync(file).size>200,'Asset vacío '+uri);
+ const buffer=readFileSync(file);
+ assert.equal(buffer.toString('ascii',0,4),'RIFF',uri);
+ assert.equal(buffer.toString('ascii',8,12),'WEBP',uri);
+ return createHash('sha256').update(buffer).digest('hex');
+}
+test('397 imágenes WebP completas publicables, sin generación al renderizar ni overlays',()=>{
+ const manifest=JSON.parse(readFileSync(abs('./assets/baked/manifest.json'),'utf8'));
+ assert.equal(BAKED_ASSET_COUNT,397);
+ assert.equal(manifest.counts.total,397);
+ assert.equal(manifest.counts.outfitFrames,330);
+ assert.equal(manifest.counts.bats,35);
+ assert.equal(manifest.counts.balls,32);
+ assert.equal(manifest.verified,true);
+ assert.deepEqual(manifest.poses,OUTFIT_POSES);
+ assert.equal(OUTFIT_CATALOG.length,33);
+ assert.equal(BAT_CATALOG.length,35);
+ assert.equal(BALL_CATALOG.length,32);
+ for(const item of OUTFIT_CATALOG){
+  for(const pose of OUTFIT_POSES){
+   assertWebP(bakedAssetUrl('outfit',item.id,pose));
+   assertWebP(bakedAssetUrl('outfit',item.id,pose,true));
+  }
+ }
+ for(const item of BAT_CATALOG)assertWebP(bakedAssetUrl('bat',item.id));
+ for(const item of BALL_CATALOG)assertWebP(bakedAssetUrl('ball',item.id));
+});
+test('cinco poses por uniforme y variantes reales de ropa distintas a los originales',()=>{
+ for(const pose of OUTFIT_POSES){
+  const classic=assertWebP(bakedAssetUrl('outfit','red',pose));
+  const blue=assertWebP(bakedAssetUrl('outfit','blue',pose));
+  const soccer=assertWebP(bakedAssetUrl('outfit','futbol_azulgrana',pose));
+  const astronaut=assertWebP(bakedAssetUrl('outfit','astronauta',pose));
+  assert.notEqual(classic,blue,'Azul copia el uniforme rojo en '+pose);
+  assert.notEqual(blue,soccer,'Fútbol copia el azul en '+pose);
+  assert.notEqual(soccer,astronaut,'Astronauta no lleva uniforme propio en '+pose);
+  assert.notEqual(classic,assertWebP(bakedAssetUrl('outfit','red',pose,true)));
+ }
+ for(const [pose,{grip,tip}] of Object.entries(WEAPON_POSES)){
+  assert.ok(OUTFIT_POSES.includes(pose));
+  assert.ok(Math.hypot(grip[0]-tip[0],grip[1]-tip[1])>.2);
+ }
+});
+test('bates especiales, mini Luna y mini Sol son imágenes únicas guardadas en archivos',()=>{
+ const trout=assertWebP(bakedAssetUrl('bat','trucha'));
+ const broom=assertWebP(bakedAssetUrl('bat','escoba'));
+ const wire=assertWebP(bakedAssetUrl('bat','alambre'));
+ assert.equal(new Set([trout,broom,wire]).size,3);
+ const moon=assertWebP(bakedAssetUrl('ball','luna'));
+ const sun=assertWebP(bakedAssetUrl('ball','sol'));
+ const earth=assertWebP(bakedAssetUrl('ball','tierra'));
+ const yellow=assertWebP(bakedAssetUrl('ball','sun'));
+ assert.equal(new Set([moon,sun,earth,yellow]).size,4);
+});
+test('cada selección prepara las poses completas y su propio bate y pelota',()=>{
+ const options=equippedAssetPaths('futbol_azulgrana','trucha','luna');
+ assert.equal(options.length,12);
+ assert.ok(options.includes(bakedAssetUrl('outfit','futbol_azulgrana','follow')));
+ assert.ok(options.includes(bakedAssetUrl('outfit','futbol_azulgrana','follow',true)));
+ assert.ok(options.includes(bakedAssetUrl('bat','trucha')));
+ assert.ok(options.includes(bakedAssetUrl('ball','luna')));
+ assert.deepEqual(equippedAssetPaths('red','classic','classic'),[]);
+ assert.throws(()=>bakedAssetUrl('outfit','../../bad','ready'));
+});
+test('el sprite completo se elige por pose, sin volver a pintar el cuerpo encima',()=>{
+ const sprite=new BatterSprites({getContext:()=>null});
+ const original={naturalWidth:194,naturalHeight:347};
+ sprite.images={ready:original,ball:original};
+ const save=initialSave();
+ save.equippedOutfit='blue';
+ const dressed={naturalWidth:194,naturalHeight:347,id:'uniforme-azul-completo'};
+ sprite.bakedImages.set(bakedAssetUrl('outfit','blue','ready'),dressed);
+ assert.equal(sprite.getStyledPose('ready',save),dressed);
+ assert.equal(sprite.getStyledPose('ready',save),dressed);
+ const moon={naturalWidth:160,naturalHeight:160,id:'moon-webp'};
+ save.equippedBall='luna';
+ sprite.bakedImages.set(bakedAssetUrl('ball','luna'),moon);
+ assert.equal(sprite.getStyledBall(save),moon);
+});
+test('compra antigua y habilidad intactas tras la migración visual',()=>{
+ const save=sanitizeSave({version:3,coins:5000,levels:{power:49,swing:17,multiplier:9},
+  ownedOutfits:['red','blue'],equippedOutfit:'blue',
+  owned:['classic','gold'],equipped:'gold',
+  ownedBalls:['classic','sun'],equippedBall:'sun'});
+ assert.equal(save.equippedOutfit,'blue');
+ assert.equal(save.equipped,'gold');
+ assert.equal(save.equippedBall,'sun');
+ const shot=calculateShot(save.levels,0);
+ const earnings=coinRewardBreakdown(965,save.levels);
+ const originalCoins=save.coins;
+ assert.equal(equipCosmetic(save,'outfit','blue'),'equipped');
+ assert.equal(save.coins,originalCoins);
+ assert.deepEqual(calculateShot(save.levels,0),shot);
+ assert.deepEqual(coinRewardBreakdown(965,save.levels),earnings);
+});
+test('el código de juego no usa las superposiciones rectangulares anteriores',()=>{
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ const sprite=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ const assets=readFileSync(new URL('../src/baked-assets.js',import.meta.url),'utf8');
+ const wf=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
+ assert.doesNotMatch(game,/makeCosmeticPreview/);
+ assert.doesNotMatch(sprite,/composeSpecialPose|overlayOutfit|makeCosmeticCanvas|paintWeapon/);
+ assert.match(sprite,/getStyledPose\(pose,save\)/);
+ assert.match(sprite,/bakedAssetUrl\('outfit',outfit\.id,pose/);
+ assert.match(game,/img\.src=bakedAssetUrl\(this\.shopSection,item\.id\)/);
+ assert.match(wf,/python tools\/build_cosmetics\.py/);
+ assert.match(assets,/BAKED_ASSET_COUNT=397/);
+});

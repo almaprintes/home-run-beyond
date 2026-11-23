@@ -1,14 +1,14 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.35.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.35.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.35.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.35.0';
-import {GameAudio} from './audio.js?v=0.35.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.35.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.35.0';
-import {BatterSprites} from './sprites.js?v=0.35.0';
-import {makeCosmeticPreview} from './cosmetic-art.js?v=0.35.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.35.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.35.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.36.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.36.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.36.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.36.0';
+import {GameAudio} from './audio.js?v=0.36.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.36.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.36.0';
+import {BatterSprites} from './sprites.js?v=0.36.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.36.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.36.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.36.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -24,7 +24,7 @@ export class BaseballGame{
  this.spriteReady=false;this.sprites=new BatterSprites(el('character-overlay'));
  this.sprites.load().then(ok=>{
   this.spriteReady=ok;
-  this.shopPreviewCache?.clear();
+  this.sprites.prepareEquipment(this.save);
   if(typeof document!=='undefined'&&!el('shop')?.hidden)this.renderShop();
  }).catch(err=>console.warn('Bateador 2.5D no disponible',err));
  this.initUI();this.applySettings();this.drawUI();this.showMenu();requestAnimationFrame(now=>this.frame(now));}
@@ -104,8 +104,17 @@ export class BaseballGame{
  }
  playFromMenu(){
   if(!el('shop').hidden||!el('settings').hidden)return;
-  el('main-menu').hidden=true;el('hud').hidden=false;
-  this.state='ready';this.resetAndPitch();
+  const start=()=>{
+   el('menu-play').disabled=false;
+   el('menu-play').querySelector('strong').textContent='JUGAR';
+   el('main-menu').hidden=true;el('hud').hidden=false;
+   this.state='ready';this.resetAndPitch();
+  };
+  if(this.sprites?.prepareEquipment){
+   el('menu-play').disabled=true;
+   el('menu-play').querySelector('strong').textContent='PREPARANDO...';
+   this.sprites.prepareEquipment(this.save).then(start).catch(start);
+  }else start();
  }
  openSettings(){
   if(!['menu','ready','rest'].includes(this.state))return;
@@ -157,27 +166,17 @@ export class BaseballGame{
    tab.classList.toggle('active',active);tab.setAttribute('aria-pressed',String(active));
   }
   const container=el('shop-items');container.replaceChildren();
-  this.shopPreviewCache ||= new Map();
   for(const item of category.items){
    const owned=this.save[category.owned].includes(item.id);
    const equipped=this.save[category.equipped]===item.id;
    const row=document.createElement('div');row.className='shop-item'+(equipped?' selected':'');
    const preview=document.createElement('div');preview.className='shop-preview shop-preview-art';
-   const artKey=this.shopSection+':'+item.id;
-   let art=this.shopPreviewCache.get(artKey);
-   if(!art){
-    const source=this.shopSection==='ball'?this.sprites?.images?.ball:
-     this.shopSection==='outfit'?this.sprites?.images?.ready:null;
-    art=makeCosmeticPreview(this.shopSection,item,source);
-    if(art&&source||art&&this.shopSection==='bat')this.shopPreviewCache.set(artKey,art);
-   }
-   if(art){
-    // cloneNode no clona los píxeles de un canvas: copiar el dibujo explícitamente.
-    const display=document.createElement('canvas');display.width=art.width;display.height=art.height;
-    display.getContext('2d')?.drawImage(art,0,0);
-    preview.append(display);
-   }
-   else preview.textContent=item.emoji;
+   const img=document.createElement('img');
+   img.loading='lazy';img.decoding='async';
+   img.alt='Aspecto real de '+item.name;
+   img.src=bakedAssetUrl(this.shopSection,item.id);
+   img.onerror=()=>{img.remove();preview.textContent=item.emoji};
+   preview.append(img);
    const swatch=document.createElement('span');swatch.className='shop-swatch';swatch.style.background=item.color;preview.append(swatch);
    const detail=document.createElement('div');detail.className='shop-detail';
    const strong=document.createElement('strong');strong.textContent=item.name;
@@ -194,6 +193,7 @@ export class BaseballGame{
     if(status==='purchased')this.audio.cash();
     this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
     this.persist();this.drawUI();this.renderShop();
+    this.sprites?.prepareEquipment?.(this.save);
    });
    row.append(preview,detail,btn);container.append(row);
   }

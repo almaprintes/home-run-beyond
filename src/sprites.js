@@ -1,9 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.35.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.35.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.35.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.35.0';
-import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.35.0';
-import {ILLUSTRATED_BALLS,composeSpecialPose,makeIllustratedBall} from './cosmetic-art.js?v=0.35.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.36.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.36.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.36.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.36.0';
+import {bakedAssetUrl,equippedAssetPaths} from './baked-assets.js?v=0.36.0';
+import {ILLUSTRATED_BALLS,WEAPON_POSES} from './baked-assets.js?v=0.36.0';
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -117,7 +117,7 @@ export class BatterSprites{
   this.canvas=canvas;
   this.ctx=canvas?.getContext?.('2d',{alpha:true})||null;
   this.images={};this.ready=false;this.ballLoaded=false;
-  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.styledPoses=new Map();this.styledBalls=new Map();
+  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.styledPoses=new Map();this.styledBalls=new Map();this.bakedImages=new Map();this.bakedRequests=new Map();this.equipmentReady=false;
  }
  load(){
   if(!this.ctx||typeof Image==='undefined')return Promise.resolve(false);
@@ -133,28 +133,76 @@ export class BatterSprites{
    return this.ready;
   });
  }
- // Cache one recoloured copy per pose and equipment combination.
- // Original approved art is never overwritten.
+ // Dynamic image loader with cached failures, so missing files never trigger
+ // repeated network requests in the 60 FPS renderer.
+ loadBaked(url){
+  if(this.bakedImages.has(url))return Promise.resolve(this.bakedImages.get(url));
+  if(this.bakedRequests.has(url))return this.bakedRequests.get(url);
+  if(typeof Image==='undefined')return Promise.resolve(null);
+  const pending=new Promise(resolve=>{
+   const image=new Image();
+   image.decoding='async';
+   image.onload=()=>{this.bakedImages.set(url,image);resolve(image)};
+   image.onerror=()=>{this.bakedImages.set(url,null);resolve(null)};
+   image.src=url;
+  }).then(result=>{this.bakedRequests.delete(url);return result});
+  this.bakedRequests.set(url,pending);
+  return pending;
+ }
+ prepareEquipment(save){
+  if(!save)return Promise.resolve(false);
+  const outfit=OUTFITS.some(x=>x.id===save.equippedOutfit)?save.equippedOutfit:'red';
+  const bat=COSMETICS.some(x=>x.id===save.equipped)?save.equipped:'classic';
+  const ball=BALL_STYLES.some(x=>x.id===save.equippedBall)?save.equippedBall:'classic';
+  const key=[outfit,bat,ball].join('/');
+  if(key===this.equipmentKey&&this.equipmentReady)return Promise.resolve(true);
+  this.equipmentKey=key;this.equipmentReady=false;
+  const paths=equippedAssetPaths(outfit,bat,ball);
+  return Promise.all(paths.map(p=>this.loadBaked(p))).then(assets=>{
+   const success=assets.every(Boolean);
+   if(this.equipmentKey===key){this.equipmentReady=success;this.styledPoses.clear();this.ballSurfaceCache={}}
+   return success;
+  });
+ }
  getStyledPose(pose,save){
-  const source=this.images[pose];
-  if(!source||!save)return source;
-  const outfit=OUTFITS.find(item=>item.id===save.equippedOutfit)||OUTFITS[0];
-  const bat=COSMETICS.find(item=>item.id===save.equipped)||COSMETICS[0];
-  if(outfit.id==='red'&&bat.id==='classic')return source;
-  const key=pose+'|'+outfit.id+'|'+bat.id;
+  const original=this.images[pose];
+  if(!original||!save)return original;
+  const outfit=OUTFITS.find(i=>i.id===save.equippedOutfit)||OUTFITS[0];
+  const bat=COSMETICS.find(i=>i.id===save.equipped)||COSMETICS[0];
+  if(outfit.id==='red'&&bat.id==='classic')return original;
+  const key=[pose,outfit.id,bat.id].join('/');
   if(this.styledPoses.has(key))return this.styledPoses.get(key);
-  const result=composeSpecialPose(source,outfit,bat,pose);
-  this.styledPoses.set(key,result);
-  return result;
+  const dressed=this.bakedImages.get(bakedAssetUrl('outfit',outfit.id,pose));
+  if(!dressed)return original;
+  if(bat.id==='classic'){
+   this.styledPoses.set(key,dressed);
+   return dressed;
+  }
+  const batless=this.bakedImages.get(bakedAssetUrl('outfit',outfit.id,pose,true));
+  const weapon=this.bakedImages.get(bakedAssetUrl('bat',bat.id));
+  if(!batless||!weapon||typeof document==='undefined')return dressed;
+  const width=batless.naturalWidth||batless.width,height=batless.naturalHeight||batless.height;
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)return dressed;
+  const anchor=WEAPON_POSES[pose]||WEAPON_POSES.ready;
+  const [gx,gy]=anchor.grip,[tx,ty]=anchor.tip;
+  const dx=(tx-gx)*width,dy=(ty-gy)*height;
+  // Real weapon asset first; full character pose second, so hands occlude
+  // the handle while no part of an old bat remains stuck to the character.
+  ctx.save();ctx.translate(gx*width,gy*height);ctx.rotate(Math.atan2(dy,dx));
+  const dist=Math.hypot(dx,dy),factor=dist/292;
+  ctx.scale(factor,factor);
+  ctx.drawImage(weapon,-18,-58);
+  ctx.restore();
+  ctx.drawImage(batless,0,0,width,height);
+  this.styledPoses.set(key,canvas);
+  return canvas;
  }
  getStyledBall(save){
-  const source=this.images.ball,ball=BALL_STYLES.find(item=>item.id===save?.equippedBall)||BALL_STYLES[0];
-  if(!source||ball.id==='classic')return source;
-  if(this.styledBalls.has(ball.id))return this.styledBalls.get(ball.id);
-  const result=ILLUSTRATED_BALLS.has(ball.design)?makeIllustratedBall(ball)||source:
-   makeCosmeticCanvas(source,{kind:'ball',color:ball.color});
-  this.styledBalls.set(ball.id,result);
-  return result;
+  const item=BALL_STYLES.find(i=>i.id===save?.equippedBall)||BALL_STYLES[0];
+  if(item.id==='classic')return this.images.ball;
+  return this.bakedImages.get(bakedAssetUrl('ball',item.id))||this.images.ball;
  }
  // El mismo dibujo equipado se usa desde el lanzamiento del pitcher hasta
  // el último rebote. Nunca aparece una pelota blanca que se transforma al batear.

@@ -150,13 +150,14 @@ test('cada pose tiene anclajes para armas con silueta diferente',()=>{
   assert.ok(Math.hypot(anchor.grip[0]-anchor.tip[0],anchor.grip[1]-anchor.tip[1])>.2);
  }
 });
-test('tienda muestra miniaturas reales, coste, rareza y mantiene UI ligera',()=>{
- const code=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
- const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
- assert.match(code,/makeCosmeticPreview\(this.shopSection,item,source\)/);
- assert.match(code,/display.getContext\('2d'\)\?\.drawImage\(art,0,0\)/);
- assert.doesNotMatch(code,/cloneNode\(true\)/);
- assert.match(css,/\.shop-preview-art canvas/);
- assert.match(code,/item.rarity/);
- assert.doesNotMatch(code,/Math\.random\(\).*cosmetic/);
+test('la tienda enseña los WebP definitivos de la partida, no un rectángulo de Canvas',()=>{
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ const style=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+ const sprites=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ assert.match(game,/img\.src=bakedAssetUrl\(this\.shopSection,item\.id\)/);
+ assert.match(game,/img\.loading='lazy'/);
+ assert.match(style,/\.shop-preview-art img/);
+ assert.match(game,/item\.rarity/);
+ assert.doesNotMatch(game,/makeCosmeticPreview/);
+ assert.doesNotMatch(sprites,/composeSpecialPose|overlayOutfit/);
 });
