@@ -240,6 +240,50 @@ function torsoForPose(pose){
  if(pose==='follow')return {p:[[.37,.38],[.69,.38],[.71,.69],[.38,.69]],neck:[.53,.36],belt:.67};
  return {p:[[.31,.44],[.74,.44],[.78,.68],[.30,.68]],neck:[.53,.42],belt:.67};
 }
+// Accesorios de cabeza realmente distintos para disfraces; el uniforme no
+// se limita a colorear ribetes de la camiseta.
+export function overlayHeadAccessory(ctx,width,height,item,pose='ready'){
+ const mode=item.design;
+ if(!['chef','fisher','pirate','cowboy','astronaut','ninja','fireman','robot','boxing'].includes(mode))return;
+ const head=pose==='contact'?[.32,.16]:pose==='follow'?[.48,.16]:pose==='loaded'?[.65,.27]:[.54,.28];
+ const [cx,cy]=head,c=item.color,accent=item.accent;
+ ctx.save();ctx.scale(width,height);
+ if(mode==='chef'){
+  // Gorro alto de cocina con pliegues y banda.
+  poly(ctx,[[cx-.11,cy-.13],[cx-.13,cy-.27],[cx-.07,cy-.32],[cx+.02,cy-.30],[cx+.12,cy-.28],[cx+.12,cy-.12]],'#f5f3e5','#bfcbd3',.012);
+  for(const d of [-.06,0,.06])line(ctx,[[cx+d,cy-.27],[cx+d,cy-.15]],'#c1c8cc',.008);
+  stripe(ctx,cx-.13,cy-.17,.26,.045,'#e45750');
+ }else if(mode==='pirate'){
+  poly(ctx,[[cx-.22,cy-.08],[cx-.15,cy-.22],[cx,cy-.18],[cx+.13,cy-.23],[cx+.25,cy-.08],[cx,cy-.12]],'#202c36','#d2a365',.013);
+  polygonStarAt(ctx,cx,cy-.16,.026,5,'#f2e0bd');
+ }else if(mode==='cowboy'){
+  ellipse(ctx,cx,cy-.10,.25,.035,'#926840','#4b3a29',.013);
+  poly(ctx,[[cx-.14,cy-.12],[cx-.10,cy-.24],[cx+.10,cy-.24],[cx+.16,cy-.12]],'#b98960','#6b4c32',.012);
+  stripe(ctx,cx-.13,cy-.14,.26,.028,'#dfba81');
+ }else if(mode==='fisher'){
+  poly(ctx,[[cx-.15,cy-.08],[cx-.12,cy-.22],[cx+.12,cy-.22],[cx+.18,cy-.08]],c,accent,.012);
+  ellipse(ctx,cx+.01,cy-.08,.22,.028,accent);
+ }else if(mode==='astronaut'){
+  ellipse(ctx,cx,cy,.23,.23,'#b3d9ed66','#e7fbff',.014);
+  ellipse(ctx,cx+.045,cy+.015,.14,.105,'#56a6c65c','#b8edff',.009);
+  line(ctx,[[cx-.16,cy-.11],[cx-.08,cy-.16]],'#ffffff9c',.014);
+ }else if(mode==='ninja'){
+  poly(ctx,[[cx-.11,cy-.02],[cx+.18,cy-.04],[cx+.16,cy+.065],[cx-.12,cy+.075]],'#202934','#8d4551',.01);
+  stripe(ctx,cx+.02,cy-.015,.09,.022,'#f4ece2');
+ }else if(mode==='fireman'){
+  poly(ctx,[[cx-.18,cy-.07],[cx-.15,cy-.18],[cx+.14,cy-.18],[cx+.19,cy-.07]],'#e0ac4b','#ffe8a4',.014);
+  stripe(ctx,cx-.07,cy-.17,.14,.075,'#e8f5e6');
+ }else if(mode==='robot'){
+  poly(ctx,[[cx-.14,cy-.03],[cx+.17,cy-.04],[cx+.14,cy+.08],[cx-.14,cy+.09]],'#253b4c','#8bdce4',.012);
+  stripe(ctx,cx-.08,cy,.15,.026,'#66e7ed');
+  line(ctx,[[cx,cy-.20],[cx,cy-.26]],'#779ba9',.015);
+  circle(ctx,cx,cy-.26,.025,'#60e1dd');
+ }else if(mode==='boxing'){
+  const hand=pose==='contact'?[.57,.49]:pose==='follow'?[.68,.50]:pose==='loaded'?[.18,.43]:[.26,.49];
+  circle(ctx,hand[0],hand[1],.075,'#d84f56','#fff0ce',.011);
+ }
+ ctx.restore();
+}
 export function overlayOutfit(ctx,width,height,item,pose='ready'){
  if(!ctx||!item||item.design==='classic')return;
  const area=torsoForPose(pose);
@@ -272,6 +316,7 @@ export function overlayOutfit(ctx,width,height,item,pose='ready'){
   ctx.font='bold .07px sans-serif';ctx.fillStyle=accent;ctx.textAlign='center';ctx.fillText('7',.53,.61);
  }
  ctx.restore();
+ overlayHeadAccessory(ctx,width,height,item,pose);
 }
 export function composeSpecialPose(image,outfit,bat,pose='ready'){
  if(typeof document==='undefined'||!image)return image;
@@ -291,7 +336,7 @@ export function composeSpecialPose(image,outfit,bat,pose='ready'){
    const dx=x1-x0,dy=y1-y0,dist=Math.hypot(dx,dy);
    // Erase the original wooden prop, never alter physical game state.
    ctx.save();ctx.globalCompositeOperation='destination-out';
-   line(ctx,[[x0,y0],[x1,y1]],'#000',pose==='contact'?19:pose==='follow'?22:21);
+   line(ctx,[[x0,y0],[x1,y1]],'#000',pose==='contact'?27:pose==='follow'?29:39);
    ctx.restore();
    ctx.save();ctx.translate(x0,y0);ctx.rotate(Math.atan2(dy,dx));
    ctx.scale(dist/205,dist/205);
