@@ -17,7 +17,7 @@ export const WEAPON_POSES=Object.freeze({
 });
 const TAU=Math.PI*2;
 function circle(ctx,x,y,r,fill,stroke=null,lw=2){
- ctx.beginPath();ctx.arc(x,y,Math.max(.1,r),0,TAU);
+ ctx.beginPath();ctx.arc(x,y,Math.max(.0001,r),0,TAU);
  if(fill){ctx.fillStyle=fill;ctx.fill()}
  if(stroke){ctx.lineWidth=lw;ctx.strokeStyle=stroke;ctx.stroke()}
 }
