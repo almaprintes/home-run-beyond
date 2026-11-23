@@ -269,11 +269,18 @@ def verify_ball(path, design):
     if img.size!=(SIZE,SIZE):
         raise ValueError(f"{path}: size {img.size}")
     px=img.load()
-    # Entire visible core is fully opaque, including distant center samples.
-    for y in range(28,133):
-        for x in range(28,133):
-            if (x-80)**2+(y-80)**2<=50**2 and px[x,y][3]!=255:
-                raise ValueError(f"{path}: transparent core at {x},{y}: {px[x,y][3]}")
+    # A cube is NOT circular: outside its polygon and on anti-aliased edges
+    # transparency is intentional. Validate solid points on each cube face.
+    if design=="dice":
+        for x,y in [(80,80),(82,60),(80,118),(45,79),(58,95),(102,84),(112,98)]:
+            if px[x,y][3]<250:
+                raise ValueError(f"{path}: missing cube face at {x},{y}: {px[x,y][3]}")
+    else:
+        # Every circular ball must be fully opaque throughout the visible core.
+        for y in range(28,133):
+            for x in range(28,133):
+                if (x-80)**2+(y-80)**2<=50**2 and px[x,y][3]!=255:
+                    raise ValueError(f"{path}: transparent core at {x},{y}: {px[x,y][3]}")
     if design=="baseball":
         center=px[80,80]
         if center[3]!=255:
