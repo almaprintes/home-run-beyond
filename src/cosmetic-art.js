@@ -56,6 +56,14 @@ export function paintThemedBall(ctx,item,size=120){
  const mode=item.design||'baseball';
  const c=item.color||'#ffffff',accent=item.accent||'#d44747';
  ctx.save();ctx.translate(size/2,size/2);ctx.scale(size/128,size/128);
+ if(mode==='dice'){
+  // Dado genuinamente cúbico: tres caras isométricas, no una esfera tintada.
+  poly(ctx,[[-42,-42],[8,-54],[53,-26],[0,-8]],'#fffaf0','#a9a2a1',2);
+  poly(ctx,[[-42,-42],[0,-8],[0,47],[-45,18]],'#ddd5c6','#aaa5a0',2);
+  poly(ctx,[[0,-8],[53,-26],[46,24],[0,47]],'#f6e6d5','#aaa5a0',2);
+  for(const [x,y] of [[-29,-19],[-14,-8],[-29,7],[21,-5],[37,-13],[20,17]])circle(ctx,x,y,5,'#8b5b6d');
+  ctx.restore();return;
+ }
  if(mode==='sun'){for(let i=0;i<15;i++){const a=i*TAU/15;line(ctx,[[Math.cos(a)*43,Math.sin(a)*43],[Math.cos(a)*59,Math.sin(a)*59]],'#ffcc43',7)}}
  if(mode==='saturn'){ctx.save();ctx.rotate(-.30);ellipse(ctx,0,0,64,25,'#dbb575','#f3e2bd',7);ctx.restore()}
  if(mode==='bomb'){line(ctx,[[8,-48],[16,-65],[26,-68]],'#d6bf91',6);polygonStar(ctx,13,8,'#ffbe46')}
