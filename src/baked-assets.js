@@ -8,7 +8,7 @@ export function bakedAssetUrl(category,id,pose='ready',withoutBat=false){
  if(!/^[a-z0-9_]+$/.test(String(id)))throw Error('Invalid cosmetic id');
  // Versionar también los WEBP horneados: Safari/PWA no debe conservar
  // ni la pelota de tenis lisa ni poses con restos del bate anterior.
- const stamp='?v=0.54.0';
+ const stamp='?v=0.55.0';
  if(category==='outfit'){
   if(!OUTFIT_POSES.includes(pose))throw Error('Invalid pose');
   return './assets/baked/outfits/'+id+'/'+pose+(withoutBat?'-nobat':'')+'.webp'+stamp;
@@ -37,9 +37,9 @@ export const ILLUSTRATED_BALLS=new Set([
  'snow','bowling','dice','donut','candy','crystal','soccer'
 ]);
 export const WEAPON_POSES=Object.freeze({
- ready:{grip:[.265,.48],tip:[.105,.025]},
- watch:{grip:[.265,.48],tip:[.105,.025]},
- loaded:{grip:[.29,.42],tip:[.47,.015]},
- contact:{grip:[.56,.52],tip:[.88,.45]},
- follow:{grip:[.49,.26],tip:[.035,.19]}
+ ready:{grip:[50/194,153/347],tip:[26/194,4/347]},
+ watch:{grip:[50/177,153/347],tip:[27/177,4/347]},
+ loaded:{grip:[35/207,129/355],tip:[86/207,3/355]},
+ contact:{grip:[202/359,145/286],tip:[319/359,126/286]},
+ follow:{grip:[108/289,83/306],tip:[3/289,80/306]}
 });

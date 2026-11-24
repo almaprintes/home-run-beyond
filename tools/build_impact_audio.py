@@ -67,16 +67,16 @@ def decode_ima_wav(source):
 def write_clip(source,target):
  rate,samples=decode_ima_wav(source.read_bytes())
  if len(samples)<rate*.22:raise ValueError("CGEffex backing recording too short")
- # Find the sharpest actual strike, retain 20ms before and 315ms after.
+ # Find the sharpest actual strike, retain 8ms before and 152ms after.
  # The original approved take contains a little leading/background quiet.
  limit=max(1,min(len(samples)-int(rate*.23),int(rate*.95)))
  peak=max(range(limit),key=lambda i:abs(samples[i]))
- pre=int(rate*.020)
+ pre=int(rate*.008)
  start=max(0,peak-pre)
- end=min(len(samples),start+int(rate*.37))
+ end=min(len(samples),start+int(rate*.16))
  clip=list(samples[start:end])
- if len(clip)<rate*.20:raise ValueError("Missing enough data after CGEffex impact")
- fade=min(len(clip),int(rate*.055))
+ if len(clip)<rate*.12:raise ValueError("Missing enough data after CGEffex impact")
+ fade=min(len(clip),int(rate*.025))
  max_amp=max(1,max(abs(v) for v in clip))
  gain=.79*32767/max_amp
  for i in range(len(clip)):

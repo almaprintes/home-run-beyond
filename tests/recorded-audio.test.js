@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,statSync} from 'node:fs';
-import {GameAudio,synthImpulse,contactProfile} from '../src/audio.js';
+import {GameAudio,synthImpulse,contactProfile,recordedImpactSegment} from '../src/audio.js';
 
 test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible sin red',()=>{
  const raw=readFileSync(new URL('../assets/audio/bat-cgeffex-source.wav',import.meta.url));
@@ -26,7 +26,7 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.match(html,/BranRainey/);
  assert.match(sw,/OPTIONAL_AUDIO/);
  assert.match(sw,/Promise\.allSettled\(OPTIONAL_AUDIO/);
- assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.54\.0/);
+ assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.55\.0/);
  assert.equal((workflow.match(/run: python tools\/build_impact_audio\.py/g)||[]).length,2);
 });
 
@@ -88,7 +88,7 @@ test('precarga sin bloquear el bateo y cae al sonido local si falla Freesound',a
   a.prepareGameEffects();
   await Promise.all([...a.recordedLoads.values()]);
   assert.deepEqual([...a.recordedBuffers.keys()].sort(),['asphalt','bat','facade']);
-  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.54.0')));
+  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.55.0')));
   assert.ok(visited.some(x=>x.includes('asphalt-ball.mp3')));
   assert.ok(visited.some(x=>x.includes('wall-ball.mp3')));
  }finally{
@@ -111,4 +111,10 @@ test('0.54: bate tres veces más fuerte, sin movimiento ni golpe si falla',()=>{
  for(const q of ['perfect','excellent','good','weak'])a.hit(q);
  assert.equal(played.length,4);assert.deepEqual(volumes.map(g=>g.value),[.72,.615,.54,.36]);assert.ok(played.every(b=>b.name==='CGEffex'));
  a.enabled=false;a.hit('perfect');assert.equal(played.length,4);
+});
+
+test('0.55: el recorte conserva el contacto fuerte y descarta movimiento y rebotes posteriores',()=>{
+ const rate=1000,data=new Float32Array(1000);data.fill(.04,20,200);data.fill(.9,400,404);data.fill(.2,650,655);
+ const s=recordedImpactSegment({duration:1,sampleRate:rate,getChannelData:()=>data},0,1,.12);
+ assert.ok(s.offset>=.38&&s.offset<=.4);assert.equal(s.duration,.12);assert.ok(s.offset+s.duration<.65);
 });

@@ -54,3 +54,6 @@ El WAV PCM de la misma grabación se incluye directamente en el repositorio y en
 
 ## 0.54 — impacto aislado y más fuerte
 Ganancia WebAudio del golpe CGEffex multiplicada por tres (perfecto 0,72), sin modificar velocidad ni añadir efectos. El movimiento del bate y los swings al aire quedan silenciosos; se conserva la voz de strike. Las superficies mantienen sus ganancias originales.
+
+## 0.55 — limpieza del contacto
+Las grabaciones reproducen únicamente el transitorio del contacto (recorte máximo de 160 ms para bate y 120 ms para superficies duras), con fundido al final. Se reduce la cola de ruido de los materiales sintetizados salvo césped, que conserva exactamente su forma de onda. Metal conserva su resonancia tonal. Las máscaras de las cinco poses se recalibran a las imágenes originales para que no aparezca el bate clásico junto al comprado.

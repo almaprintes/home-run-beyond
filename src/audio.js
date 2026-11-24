@@ -44,7 +44,7 @@ function synthContact(name,rate){
   mid+=(white-mid)*midAlpha;
   low+=(mid-low)*lowAlpha;
   const crack=(white-mid)*Math.exp(-t/p.click);
-  const grain=(mid-low)*Math.exp(-t/p.noise);
+  const grain=(mid-low)*Math.exp(-t/(name==='grass'?p.noise:p.noise*.23));
   const thud=low*Math.exp(-t/(p.decay*1.1));
   // Formantes cortos y no armónicos de madera / cuero. Sin zumbidos estables.
   const body=(
@@ -76,12 +76,12 @@ function synthHardSurface(kind,rate){
   const white=(seed>>>0)/2147483648-1,t=i/rate;
   mid+=(white-mid)*highpass;low+=(mid-low)*basspass;
   const crack=(white-mid)*Math.exp(-t/(road?.0029:.0044));
-  const hard=(mid-low)*Math.exp(-t/(road?.017:.026));
+  const hard=(mid-low)*Math.exp(-t/(road?.0045:.006));
   const body=(Math.sin(2*Math.PI*(road?255:188)*t)+
    .29*Math.sin(2*Math.PI*(road?465:348)*t+.3))*Math.exp(-t/(road?.021:.035));
-  const wallReflect=road?0:Math.exp(-Math.pow((t-.024)/.005,2))*low*.25;
+  const wallReflect=0; // Sin segundo golpe ni cola de aire.
   const envelope=(1-Math.exp(-t*rate/5))*Math.pow(Math.max(0,1-t/length),2);
-  out[i]=(.28*crack+.59*hard+(road?.26:.44)*body+wallReflect)*envelope;
+  out[i]=(.18*crack+.28*hard+(road?.60:.72)*body+wallReflect)*envelope;
  }
  let peak=0;for(const x of out)peak=Math.max(peak,Math.abs(x));
  const scale=.68/Math.max(.0001,peak);
@@ -110,7 +110,8 @@ export function synthImpulse(kind='concrete',rate=22050){
   const bass=slow*fade;
   const harmonic=Math.sin(2*Math.PI*cfg.frequency*t+.15*Math.sin(t*31))*
       Math.exp(-t/(cfg.kind==='metal'?.155:cfg.kind==='hollow'?.09:.055));
-  let sample=cfg.noise*(.55*mid+.65*bass+.45*transient)+cfg.tone*harmonic;
+  const dryNoise=Math.exp(-t/.012);
+  let sample=cfg.noise*(.55*mid+.65*bass+.45*transient)*dryNoise+cfg.tone*harmonic;
   if(cfg.kind==='air'){
    const swell=Math.pow(Math.sin(Math.PI*Math.min(1,t/cfg.length)),1.4);
    sample=(.8*slow+.3*(fast-slow))*swell*1.7;
@@ -118,9 +119,9 @@ export function synthImpulse(kind='concrete',rate=22050){
    const splash=(Math.exp(-Math.pow((t-.06)/.018,2))+
                  .67*Math.exp(-Math.pow((t-.12)/.027,2))+
                  .36*Math.exp(-Math.pow((t-.21)/.044,2)));
-   sample=.35*bass+(.65*fast+.35*white)*splash*.33+cfg.tone*harmonic;
+   sample=.35*bass*dryNoise+(.65*fast+.35*white)*splash*.22*Math.exp(-t/.065)+cfg.tone*harmonic;
   }else if(cfg.kind==='soft'){
-   sample=.85*slow*fade+.2*mid+cfg.tone*harmonic;
+   sample=(.85*slow*fade+.2*mid)*dryNoise+cfg.tone*harmonic;
   }
   a[i]=sample;
  }
@@ -128,6 +129,17 @@ export function synthImpulse(kind='concrete',rate=22050){
  const norm=.80/Math.max(.15,peak);
  for(let i=0;i<count;i++)a[i]=Math.max(-.86,Math.min(.86,a[i]*norm));
  return a;
+}
+// Retain the strongest contact transient within the chosen recording, not the
+// air movement before it or subsequent bounces. Keep a short natural decay.
+export function recordedImpactSegment(buffer,start=0,end=buffer.duration,duration=.14){
+ const rate=buffer.sampleRate||0;
+ if(!rate||typeof buffer.getChannelData!=='function')return {offset:start,duration:Math.min(duration,Math.max(.001,(buffer.duration||end)-start))};
+ const data=buffer.getChannelData(0),lo=Math.max(0,Math.floor(start*rate)),hi=Math.min(data.length,Math.floor(end*rate)),step=Math.max(1,Math.floor(rate*.004));
+ let peak=-1,best=lo;
+ for(let i=lo;i<hi;i+=step){let energy=0;for(let j=i;j<Math.min(hi,i+step);j++)energy+=data[j]*data[j];if(energy>peak){peak=energy;best=i}}
+ const offset=Math.max(start,best/rate-.008);
+ return {offset,duration:Math.min(duration,Math.max(.001,buffer.duration-offset))};
 }
 export class GameAudio{
  constructor(){
@@ -179,30 +191,14 @@ export class GameAudio{
   const job=(async()=>{
    for(const file of files){
     try{
-     const response=await fetch('./assets/audio/'+file+'?v=0.54.0');
+     const response=await fetch('./assets/audio/'+file+'?v=0.55.0');
      if(!response.ok)continue;
      const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
      if(kind==='bat'&&file.endsWith('.mp3')&&decoded.duration<5.22)continue;
      this.recordedBuffers.set(kind,decoded);
-     let offset=0,duration=.30;
-     if(kind==='bat'){
-      // Freesound source has multiple hits; the selected recorded take is
-      // near 4.82s. The short PCM backup has already been trimmed.
-      if(file.endsWith('.mp3')){offset=4.82;duration=.40}
-      else duration=Math.min(.35,decoded.duration||.35);
-     }else if(typeof decoded.getChannelData==='function'&&decoded.sampleRate){
-      // Single collision from a multi-bounce field recording.
-      const data=decoded.getChannelData(0),rate=decoded.sampleRate;
-      let peak=0,best=0;
-      const cap=Math.min(data.length,rate*10),step=Math.max(1,Math.floor(rate*.004));
-      for(let i=0;i<cap;i+=step){
-       let total=0;
-       for(let j=i;j<Math.min(cap,i+step);j++)total+=data[j]*data[j];
-       if(total>peak){peak=total;best=i}
-      }
-      offset=Math.max(0,best/rate-.012);duration=.29;
-     }
-     this.recordedSegments.set(kind,{offset,duration});
+     const selected=kind==='bat'&&file.endsWith('.mp3');
+     const segment=recordedImpactSegment(decoded,selected?4.82:0,selected?5.22:Math.min(decoded.duration,10),kind==='bat'?.16:.12);
+     this.recordedSegments.set(kind,segment);
      return true;
     }catch{}
    }
@@ -228,7 +224,12 @@ export class GameAudio{
   gain.gain.value=Math.min(kind==='bat'?.85:.4,Math.max(.001,gainAmount));
   src.connect(gain);gain.connect(this.ctx.destination);
   const segment=this.recordedSegments.get(kind);
-  if(segment)src.start(0,segment.offset,segment.duration);else src.start();
+  if(segment){
+   const now=this.ctx.currentTime||0,level=gain.gain.value;
+   gain.gain.setValueAtTime?.(level,now+Math.max(0,segment.duration-.025));
+   gain.gain.linearRampToValueAtTime?.(0,now+segment.duration);
+   src.start(0,segment.offset,segment.duration);
+  }else src.start();
   return true;
  }
  swing(){} // El movimiento del bate es silencioso.
@@ -240,7 +241,7 @@ export class GameAudio{
   if(this.playRecorded('bat',gain))return;
   // Solo el WAV real si WebAudio no está listo. Nunca la síntesis del bate.
   if(typeof Audio!=='undefined'){
-   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.54.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
+   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.55.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
   }
   void this.prepareRecorded('bat');
  }
@@ -262,7 +263,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.54.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.55.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();

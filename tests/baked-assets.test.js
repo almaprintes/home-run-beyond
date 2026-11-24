@@ -123,3 +123,10 @@ test('el código de juego no usa las superposiciones rectangulares anteriores',(
  assert.match(wf,/python tools\/build_cosmetics\.py/);
  assert.match(assets,/BAKED_ASSET_COUNT=397/);
 });
+
+test('0.55: las anclas siguen la mano y la punta del bate de las cinco poses originales',()=>{
+ assert.ok(WEAPON_POSES.loaded.grip[0]<.2);assert.ok(WEAPON_POSES.loaded.tip[0]>.4);
+ assert.ok(WEAPON_POSES.follow.grip[0]<.4);assert.ok(WEAPON_POSES.contact.tip[0]>.85);
+ const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
+ assert.match(generator,/BAT_FRAME_MASKS/);assert.doesNotMatch(generator,/wood_tone=/);
+});
