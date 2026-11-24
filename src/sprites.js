@@ -1,9 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.40.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.40.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.40.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.40.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.40.0';
-import {TRAFFIC_VEHICLES,visibleRoadTraffic,drawTrafficSprites} from './traffic.js?v=0.40.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.41.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.41.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.41.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.41.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.41.0';
+
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
 // sustitución por otro personaje: el mismo diseño conserva su silhouette y poses.
@@ -139,27 +139,12 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
  ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
 }
 
-// Las imágenes de Taller son grandes: escalarlas una sola vez evita 30+ MB de
-// texturas decodificadas durante la carrera, sin sacrificar detalle en pantalla.
-export function downsampleTrafficSprite(image,maxWidth=512){
- const w=image?.naturalWidth||image?.width,h=image?.naturalHeight||image?.height;
- if(typeof document==='undefined'||!(w>maxWidth&&h>0))return image;
- try{
-  const canvas=document.createElement('canvas');
-  canvas.width=maxWidth;canvas.height=Math.max(1,Math.round(h*maxWidth/w));
-  const ctx=canvas.getContext('2d',{alpha:true});
-  if(!ctx)return image;
-  ctx.imageSmoothingQuality='high';ctx.drawImage(image,0,0,canvas.width,canvas.height);
-  return canvas;
- }catch{return image}
-}
-
 export class BatterSprites{
  constructor(canvas){
   this.canvas=canvas;
   this.ctx=canvas?.getContext?.('2d',{alpha:true})||null;
   this.images={};this.ready=false;this.ballLoaded=false;
-  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.trafficImages=new Map();this.styledPoses=new Map();this.styledBalls=new Map();this.bakedImages=new Map();this.bakedRequests=new Map();this.equipmentReady=false;
+  this.lastWidth=0;this.lastHeight=0;this.lastRatio=0;this.ballSurfaceCache={};this.styledPoses=new Map();this.styledBalls=new Map();this.bakedImages=new Map();this.bakedRequests=new Map();this.equipmentReady=false;
  }
  load(){
   if(!this.ctx||typeof Image==='undefined')return Promise.resolve(false);
@@ -169,12 +154,7 @@ export class BatterSprites{
    picture.onerror=()=>{console.warn('Asset no disponible',url);resolve(false)};
    picture.src=url;
   }));
-  return Promise.all([...loaders,...TRAFFIC_VEHICLES.map(vehicle=>new Promise(resolve=>{
-   const pic=new Image();
-   pic.onload=()=>{this.trafficImages.set(vehicle.id,downsampleTrafficSprite(pic));resolve(true)};
-   pic.onerror=()=>{console.warn('Vehículo TDR no disponible',vehicle.id);resolve(false)};
-   pic.decoding='async';pic.src=vehicle.src;
-  }))]).then(()=>{
+  return Promise.all(loaders).then(()=>{
    this.ready=!!this.images.ready;
    this.ballLoaded=!!this.images.ball;
    return this.ready;
@@ -288,12 +268,6 @@ export class BatterSprites{
   if(!ctx||!dimensions)return;
   const {width,height}=dimensions;
   const camera=game.fxCamera||game.camera,target=game.target;
-  // Coches de TDR proyectados sobre las mismas carreteras; eliminar bloques
-  // de Lego también significa que ningún objeto 3D falso tapa sus carrocerías.
-  if(this.trafficImages.size&&typeof ctx.transform==='function'&&typeof ctx.moveTo==='function'&&game.state!=='menu'){
-   drawTrafficSprites(ctx,camera,target,width,height,zoom,projectToScreen,
-    this.trafficImages,visibleRoadTraffic(game.ball?.z??game.target?.[2]??0,game.clock||0));
-  }
   const pose=selectBatterPose({...game,swingElapsed:game.visualSwingElapsed??game.swingElapsed});
   const sprite=this.getStyledPose(pose,game.save);
   if(this.ready&&sprite){

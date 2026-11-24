@@ -3,42 +3,37 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('v0.40 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
+test('v0.41 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.40\.0/);
- assert.match(html,/src\/main\.js\?v=0\.40\.0/);
- assert.match(main,/game\.js\?v=0\.40\.0/);
+ assert.match(html,/style\.css\?v=0\.41\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.41\.0/);
+ assert.match(main,/game\.js\?v=0\.41\.0/);
  for(const src of ['game.js','world.js','sprites.js','traffic.js','cosmetic-render.js','cosmetic-catalog.js','cosmetic-art.js','baked-assets.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.40.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.41.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v40-20261123-traffic-three-quarter/);
+ assert.match(sw,/hrb-v41-20261124-procedural-vehicles/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
  assert.match(sw,/\.\/assets\/strike\.mp3/);
- assert.match(sw,/\.\/src\/biomes\.js\?v=0\.40\.0/);
- assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.40\.0/);
- assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.40\.0/);
- assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.40\.0/);
- assert.match(sw,/\.\/src\/baked-assets\.js\?v=0\.40\.0/);
+ assert.match(sw,/\.\/src\/biomes\.js\?v=0\.41\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.41\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.41\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.41\.0/);
+ assert.match(sw,/\.\/src\/baked-assets\.js\?v=0\.41\.0/);
  assert.match(sw,/\.\/assets\/baked\/manifest\.json/);
- assert.match(sw,/\.\/src\/traffic\.js\?v=0\.40\.0/);
- assert.match(sw,/\.\/assets\/traffic\/three-quarter\/helix_spark\.webp/);
- assert.match(sw,/\.\/assets\/traffic\/three-quarter\/avenir_gripline\.webp/);
- assert.match(sw,/\.\/assets\/traffic\/three-quarter\/veloce_flash\.webp/);
- assert.match(sw,/\.\/assets\/traffic\/three-quarter\/crown_axis\.webp/);
- assert.match(sw,/\.\/assets\/traffic\/three-quarter\/forge_hammer\.webp/);
- assert.match(sw,/\.\/assets\/traffic\/three-quarter\/helix_comet\.webp/);
+ assert.match(sw,/\.\/src\/traffic\.js\?v=0\.41\.0/);
+ assert.doesNotMatch(sw,/assets\/traffic\//);
 });
 
 test('la interfaz muestra nuevo multiplicador, barra de dirección y desglose de premios',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(html,/Versión 0\.40/);
+ assert.match(html,/Versión 0\.41/);
  assert.match(html,/id="aim-ball"/);
  assert.match(html,/id="aim-sweet-zone"/);
  assert.match(html,/id="up-multiplier"/);

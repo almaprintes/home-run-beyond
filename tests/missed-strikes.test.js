@@ -77,7 +77,7 @@ test('archivo de voz Strike incluido, legible y MP3 local',()=>{
  assert.ok(clip.length>1200,'el clip de voz no puede estar vacío');
  const audio=readFileSync(new URL('../src/audio.js',import.meta.url),'utf8');
  assert.doesNotMatch(audio,/speechSynthesis|SpeechSynthesisUtterance/);
- assert.ok(audio.includes('assets/strike.mp3?v=0.40.0'));
+ assert.ok(audio.includes('assets/strike.mp3?v=0.41.0'));
 });
 
 test('preparar voz carga y decodifica una vez, y Strike reproduce el audio con WebAudio',async()=>{

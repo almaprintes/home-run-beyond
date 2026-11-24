@@ -1,86 +1,92 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync,readFileSync} from 'node:fs';
-import {createHash} from 'node:crypto';
-import {TRAFFIC_VEHICLES,ROAD_CENTERS,TRAFFIC_HALF_SPAN,roadTraffic,visibleRoadTraffic,
- trafficCorners,drawTrafficSprites} from '../src/traffic.js';
+import {readFileSync} from 'node:fs';
+import {TRAFFIC_VEHICLES,ROAD_CENTERS,TRAFFIC_HALF_SPAN,roadTraffic,
+ visibleRoadTraffic,drawProceduralTraffic} from '../src/traffic.js';
 import {opaqueBaseballPixels,BALL_SURFACE_SIZE,BatterSprites} from '../src/sprites.js';
 import {BaseballGame,groundRollRetention} from '../src/game.js';
 import {groundAt} from '../src/world.js';
 
-test('los seis coches usan las seis vistas originales 3/4 de TDR, no sprites cenitales',()=>{
- const originalShas={
-  helix_spark:'e18b5add0f0d6f54afdd19d9dbea0ec48b505f3e',
-  avenir_gripline:'27477dde99580e6d5a7d1dcd31052af84b715ed3',
-  veloce_flash:'69581f8df103255eab1d913f20b037057c1dcc55',
-  crown_axis:'b68c3c8b970778d6267b5dfe09f3135db4f74cf7',
-  forge_hammer:'f67cf51b6a96b50973e8432d67cc8149a062829b',
-  helix_comet:'5e880b039b196fa068557770b0704f1c2e0876d9'
- };
+test('seis coches procedimentales 3D, sin sprites ni vehículos de TDR',()=>{
  assert.equal(TRAFFIC_VEHICLES.length,6);
- for(const car of TRAFFIC_VEHICLES){
-  assert.match(car.src,/\/three-quarter\//,car.id+' no utiliza vista de Taller');
-  const p=new URL('../'+car.src.slice(2),import.meta.url);
-  assert.ok(existsSync(p),car.id);
-  const data=readFileSync(p);
-  assert.equal(data.toString('ascii',0,4),'RIFF');
-  assert.equal(data.toString('ascii',8,12),'WEBP');
-  const objectHash=createHash('sha1').update('blob '+data.length+'\0').update(data).digest('hex');
-  assert.equal(objectHash,originalShas[car.id],car.id+' no coincide con el render 3/4 de TDR');
+ assert.deepEqual(new Set(TRAFFIC_VEHICLES.map(v=>v.kind)),new Set(['hatch','sedan','suv','pickup']));
+ for(const v of TRAFFIC_VEHICLES){
+  assert.ok(!('src' in v),'tráfico independiente de archivos de imagen');
+  assert.ok(v.length>=7&&v.width>3&&v.radius>.8);
+  assert.ok(v.color.startsWith('#'));
  }
+ const src=readFileSync(new URL('../src/traffic.js',import.meta.url),'utf8');
+ const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
+ const sprites=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
+ assert.doesNotMatch(src,/drawImage|\.webp|Billboard|three-quarter|helix_spark/);
+ assert.doesNotMatch(sprites,/drawTrafficSprites|trafficImages|three-quarter/);
+ assert.doesNotMatch(sw,/assets\/traffic\//);
+ assert.match(world,/drawProceduralTraffic\(r,visibleRoadTraffic/);
 });
-test('el tráfico avanza en sentidos opuestos por dos carriles sin desplazamiento lateral',()=>{
+test('dos sentidos, carriles rectos y rodadura física independiente de los FPS',()=>{
  assert.equal(ROAD_CENTERS.length,9);
- const span=TRAFFIC_HALF_SPAN*2;
+ assert.ok(TRAFFIC_HALF_SPAN>280,'los coches reaparecen fuera de la carretera');
+ const wrap=(n,span)=>((n%span)+span)%span,span=TRAFFIC_HALF_SPAN*2;
  for(const z of ROAD_CENTERS){
-  const before=roadTraffic(z,10),after=roadTraffic(z,10.1);
+  const before=roadTraffic(z,10),after=roadTraffic(z,10.01);
   assert.equal(before.length,6);
   for(let i=0;i<6;i++){
    const a=before[i],b=after[i];
-   assert.ok(a.x>=-260&&a.x<260);
+   assert.ok(a.x>=-TRAFFIC_HALF_SPAN&&a.x<TRAFFIC_HALF_SPAN);
    assert.equal(b.z,a.z);
    assert.equal(a.dir,i%2===0?1:-1);
-   assert.ok(a.speed>0);
-   const correct=((a.x+260+a.dir*a.speed*.1)%span+span)%span-260;
-   assert.ok(Math.abs(correct-b.x)<1e-7,'el coche patina o se teletransporta dentro del carril');
+   assert.ok(a.speed>=12&&a.speed<=25);
+   assert.ok(Math.abs(wrap(a.x+260+a.dir*a.speed*.01,span)-260-b.x)<1e-8);
+   assert.equal(a.wheelSpeed,a.speed/a.radius);
+   const spin=wrap(b.wheelAngle-a.wheelAngle,Math.PI*2);
+   const expected=wrap(-a.speed*.01/a.radius,Math.PI*2);
+   assert.ok(Math.abs(spin-expected)<1e-8,'la rueda rueda, no patina');
+   assert.ok(a.length>a.width);
   }
  }
  assert.deepEqual(roadTraffic(123,4),[]);
- const visible=visibleRoadTraffic(665,22,240);
- assert.ok(visible.length>=12&&visible.length<=18);
+ assert.deepEqual(roadTraffic(265,Infinity),roadTraffic(265,0));
+ assert.ok(visibleRoadTraffic(665,22,240).length>=12);
 });
-test('la orientación del sprite corresponde a la dirección y conserva las proporciones',()=>{
- const right=roadTraffic(265,0).find(c=>c.dir===1);
- const left=roadTraffic(265,0).find(c=>c.dir===-1);
- const rp=trafficCorners(right),lp=trafficCorners(left);
- assert.ok(rp.topLeft[0]>rp.bottomLeft[0]);
- assert.ok(lp.topLeft[0]<lp.bottomLeft[0]);
- assert.ok(Math.abs((rp.topRight[2]-rp.topLeft[2])-right.width)<1e-9);
- assert.ok(Math.abs((rp.topLeft[0]-rp.bottomLeft[0])-right.length)<1e-9);
-});
-test('la vista 3/4 es vertical, se orienta según el carril y nunca se aplasta sobre el suelo',()=>{
- const right={...roadTraffic(265,4)[0],x:0,z:265};
- const left={...roadTraffic(265,4)[1],x:8,z:265};
- const images=new Map([[right.id,{naturalWidth:1536,naturalHeight:1024}],
-  [left.id,{naturalWidth:1536,naturalHeight:1024}]]);
+test('cada vehículo tiene carrocería 3D, lunas, techo, cuatro neumáticos y llantas animadas',()=>{
  const calls=[];
- const ctx={
-  save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},
-  fill(){calls.push('shadow')},
-  transform(){calls.push('flat-quad')},
-  translate(...args){calls.push(['translate',...args])},
-  rotate(...args){calls.push(['rotate',...args])},
-  scale(...args){calls.push(['scale',...args])},
-  drawImage(...args){calls.push(['car',...args])}
+ const r={
+  setMaterial(name){calls.push(['material',name])},
+  add(...args){calls.push(['add',...args])},
+  box(...args){calls.push(['box',...args])}
  };
- const project=(camera,target,p)=>({x:300+p[0]*3,y:250+p[2]*.22-p[1]*3});
- const painted=drawTrafficSprites(ctx,[0,20,0],[0,0,300],800,600,62,project,images,[right,left]);
- assert.equal(painted,2);
- assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='car').length,2);
- assert.equal(calls.filter(x=>x==='flat-quad').length,0,'no pegar el coche a la carretera');
- assert.ok(calls.some(x=>Array.isArray(x)&&x[0]==='scale'&&x[1]===-1),'girar el coche del carril opuesto');
- const src=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.doesNotMatch(src,/for\(let k of \[-1,1\]\)r\.ball\(x\+k\*2\.4/);
+ const right={...roadTraffic(265,1)[0],x:0,z:265};
+ const left={...roadTraffic(265,1)[1],x:14,z:265};
+ assert.equal(drawProceduralTraffic(r,[right,left],[0,9,265]),2);
+ const shapes=calls.filter(c=>c[0]==='add').map(c=>c[1]);
+ for(const k of [right.kind,left.kind]){
+  assert.ok(shapes.includes('carBody_'+k));
+  assert.ok(shapes.includes('carGlass_'+k));
+  assert.ok(shapes.includes('carRoof_'+k));
+ }
+ assert.equal(shapes.filter(v=>v==='carTire').length,8);
+ assert.equal(shapes.filter(v=>v==='carRim').length,8);
+ assert.equal(shapes.filter(v=>v==='carArch').length,8);
+ const wheels=calls.filter(c=>c[0]==='add'&&c[1]==='carTire');
+ assert.ok(wheels.every(c=>c[5]>0&&c[6]>0&&c[7]>0));
+ assert.ok(wheels.some(c=>c[9]===Math.PI),'el carril opuesto apunta al sentido contrario');
+ const frontRight=calls.some(c=>c[0]==='box'&&c[1]>right.x&&c[1]<right.x+right.length);
+ const rearLeft=calls.some(c=>c[0]==='box'&&c[1]<left.x&&c[1]>left.x-left.length);
+ assert.ok(frontRight&&rearLeft,'faros y pilotos respetan la dirección');
+ assert.ok(calls.filter(c=>c[0]==='box').length>=12);
+ const engine=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
+ assert.match(engine,/function carShell\(/);
+ assert.match(engine,/function carCabin\(/);
+ assert.match(engine,/function wheelTire\(/);
+ assert.match(engine,/function wheelAlloy\(/);
+ assert.match(engine,/function wheelArch\(/);
+ assert.match(engine,/carTire:wheelTire\(\)/);
+ const countBefore=calls.length;
+ const far={...right,x:200,z:500};
+ assert.equal(drawProceduralTraffic(r,[far],[0,9,265]),1);
+ assert.equal(calls.slice(countBefore).filter(c=>c[1]==='carRim').length,0,'LOD de ruedas lejanas');
+ assert.equal(drawProceduralTraffic(r,[{...right,x:300}],[0,9,265]),0);
 });
 test('el cuero de la pelota se extiende hasta el borde de la copia UV sin agujeros',()=>{
  const w=24,h=24,source=new Uint8ClampedArray(w*h*4);

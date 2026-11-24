@@ -1,5 +1,6 @@
-import {lerp} from './engine.js?v=0.40.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.40.0';
+import {lerp} from './engine.js?v=0.41.0';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.41.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.41.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -181,7 +182,7 @@ function city(r,x,z,idx,row,lod,ghost=false){
 }
 function road(r,x,z,w,d){
  r.setMaterial?.('asphalt');r.box(x,.035,z,w,.09,d,'#364f5c');
- r.setMaterial?.('plain');r.box(x,.19,z,w*.022,.035,d,'#e5c48b');
+ r.setMaterial?.('plain');r.box(x,.19,z-d*.47,w,.035,.16,'#dfe4dc');r.box(x,.19,z+d*.47,w,.035,.16,'#dfe4dc');
 }
 // El suelo se extiende más allá del horizonte visible. Los edificios y vehículos
 // siguen usando un radio corto para mantener los FPS de la PWA en iPhone.
@@ -325,7 +326,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
    if(Math.abs(mid-viewZ)>coverage.detail+160)continue;
    if(chunk*200<1750&&(chunk+1)*200>1620){for(let x=-220;x<=220;x+=36)r.box(x,.035,1660+((x%4)*8),13,.025,2,'#9adfea');for(let i=0;i<4;i++){let xx=-250+i*155+Math.sin(time*.32+i)*24;r.box(xx,1.1,1690+i*6,11,2,6,'#f4e5c8');r.box(xx,2.8,1690+i*6,4,2,4,'#d06f64');r.pole(xx+4,6,1690+i*6,.2,7,'#fff5d5')}}
    if(chunk>0&&roadAt(chunk*200+65)){road(r,WORLD_CENTER_X,chunk*200+65,560,24);for(let x=-270;x<270;x+=32)r.box(x,.16,chunk*200+65,13,.06,1.5,'#f5cf92');
-    // Las carrocerías LEGO ya no se generan: sprites reales TDR sobre el asfalto.
+    // Los coches 3D se dibujan después del terreno y comparten su prueba de profundidad.
    }
  }
  if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-4;i<=4;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
@@ -471,7 +472,9 @@ export function drawBaseball(r,x,y,z,spin=0){
 export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
- drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
+ drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);
+ // Tráfico volumétrico: misma matriz, misma profundidad, 4 ruedas por coche.
+ if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
   !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa');
  // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.
  }

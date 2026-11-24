@@ -67,6 +67,119 @@ function cube(){let T=[],v=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],
 function prism(sides=10,topRadius=0.5,bottomRadius=0.5){const T=[];for(let i=0;i<sides;i++){let a=i*2*Math.PI/sides,b=(i+1)*2*Math.PI/sides,ca=Math.cos(a),cb=Math.cos(b),sa=Math.sin(a),sb=Math.sin(b);let p0=[ca*bottomRadius,-.5,sa*bottomRadius],p1=[cb*bottomRadius,-.5,sb*bottomRadius],p2=[cb*topRadius,.5,sb*topRadius],p3=[ca*topRadius,.5,sa*topRadius];if(topRadius>0)T.push([p0,p2,p1],[p0,p3,p2]);else T.push([p0,p3,p1]);T.push([[0,-.5,0],p1,p0]);if(topRadius>0)T.push([[0,.5,0],p3,p2]);}return meshFromTriangles(T)}
 function sphere(lat=6,lng=10){const T=[];for(let j=0;j<lat;j++){const t0=-Math.PI/2+j*Math.PI/lat,t1=-Math.PI/2+(j+1)*Math.PI/lat;for(let i=0;i<lng;i++){const p0=i*Math.PI*2/lng,p1=(i+1)*Math.PI*2/lng;const point=(t,p)=>[.5*Math.cos(t)*Math.cos(p),.5*Math.sin(t),.5*Math.cos(t)*Math.sin(p)];const a=point(t0,p0),b=point(t0,p1),c=point(t1,p1),d=point(t1,p0);if(j>0)T.push([a,b,c]);if(j<lat-1)T.push([a,c,d]);}}return meshFromTriangles(T)}
 function plane(){return meshFromTriangles([[[-.5,0,-.5],[.5,0,.5],[.5,0,-.5]],[[-.5,0,-.5],[-.5,0,.5],[.5,0,.5]]])}
+
+/* Coches de carretera procedimentales: geometría real, sin sprites ni cajas de juguete.
+   Los ejes delanteros apuntan a +X; cabina, capó, lunas y techo son mallas separadas. */
+const CAR_CABINS={
+ hatch:{rearBase:-.36,rearRoof:-.26,frontRoof:.14,frontBase:.30},
+ sedan:{rearBase:-.31,rearRoof:-.17,frontRoof:.13,frontBase:.29},
+ suv:{rearBase:-.38,rearRoof:-.31,frontRoof:.21,frontBase:.30},
+ pickup:{rearBase:-.15,rearRoof:-.10,frontRoof:.20,frontBase:.30}
+};
+function carShell(kind){
+ const T=[],rings=[],stations=[-.50,-.47,-.36,-.20,.05,.27,.39,.48,.50];
+ for(const x of stations){
+  const edge=1-.16*Math.pow(Math.abs(x)/.5,4);
+  const cap=kind==='pickup'&&x<-.18 ? -.02 : .01;
+  const height=.24-.12*Math.pow(Math.abs(x)/.5,2)+cap;
+  const side=.47*edge;
+  const profile=[
+   [-side*.91,-.34],[-side,-.25],[-side,.10],
+   [-side*.83,height],[side*.83,height],[side,.10],
+   [side,-.25],[side*.91,-.34]
+  ];
+  rings.push(profile.map(([z,y])=>[x,y,z]));
+ }
+ for(let i=0;i<rings.length-1;i++){
+  for(let j=0;j<8;j++){
+   const k=(j+1)%8,a=rings[i][j],b=rings[i+1][j],c=rings[i+1][k],d=rings[i][k];
+   T.push([a,c,b],[a,d,c]);
+  }
+ }
+ for(let j=0;j<8;j++){
+  const k=(j+1)%8;
+  T.push([[stations[0],0,0],rings[0][j],rings[0][k]]);
+  T.push([[stations[stations.length-1],0,0],rings[rings.length-1][k],rings[rings.length-1][j]]);
+ }
+ return meshFromTriangles(T);
+}
+function carCabin(kind,part){
+ const T=[],p=CAR_CABINS[kind],w0=.438,w1=.365;
+ const bl=[p.rearBase,0,-w0],br=[p.rearBase,0,w0],
+  fl=[p.frontBase,0,-w0],fr=[p.frontBase,0,w0],
+  tl=[p.rearRoof,1,-w1],tr=[p.rearRoof,1,w1],
+  ul=[p.frontRoof,1,-w1],ur=[p.frontRoof,1,w1];
+ const quad=(a,b,c,d)=>T.push([a,b,c],[a,c,d]);
+ if(part==='glass'){
+  quad(bl,fl,ul,tl);quad(fr,br,tr,ur);
+  quad(fl,fr,ur,ul);quad(br,bl,tl,tr);
+ }else{
+  const t=([x,y,z])=>[x,y+.045,z];
+  quad(t(tl),t(ul),t(ur),t(tr));
+  const f=.032;
+  quad([p.frontRoof,1,-w1-f],[p.frontRoof,1,w1+f],t(ur),t(ul));
+  quad([p.rearRoof,1,w1+f],[p.rearRoof,1,-w1-f],t(tl),t(tr));
+ }
+ return meshFromTriangles(T);
+}
+function wheelTire(){
+ const T=[],n=16,profile=[[-.5,.36],[-.42,.47],[-.27,.50],[.27,.50],[.42,.47],[.5,.36]];
+ for(let j=0;j<profile.length-1;j++){
+  const [z0,r0]=profile[j],[z1,r1]=profile[j+1];
+  for(let i=0;i<n;i++){
+   const a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;
+   const p=(ang,r,z)=>[Math.cos(ang)*r,Math.sin(ang)*r,z];
+   const A=p(a,r0,z0),B=p(b,r0,z0),C=p(b,r1,z1),D=p(a,r1,z1);
+   T.push([A,B,C],[A,C,D]);
+  }
+ }
+ for(const s of [-1,1]){
+  const z=s*.5;
+  for(let i=0;i<n;i++){
+   const a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;
+   const A=[Math.cos(a)*.36,Math.sin(a)*.36,z],
+    B=[Math.cos(b)*.36,Math.sin(b)*.36,z];
+   T.push(s>0?[[0,0,z],A,B]:[[0,0,z],B,A]);
+  }
+ }
+ return meshFromTriangles(T);
+}
+function wheelAlloy(){
+ const T=[],n=20,quad=(a,b,c,d)=>T.push([a,b,c],[a,c,d]);
+ for(const side of [-1,1]){
+  const z=side*.514;
+  for(let i=0;i<n;i++){
+   const a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;
+   const point=(ang,r)=>[Math.cos(ang)*r,Math.sin(ang)*r,z];
+   quad(point(a,.245),point(b,.245),point(b,.32),point(a,.32));
+  }
+  for(let j=0;j<5;j++){
+   const a=j*2*Math.PI/5,da=.11;
+   const p=(ang,r)=>[Math.cos(ang)*r,Math.sin(ang)*r,z+side*.002];
+   quad(p(a-da,.065),p(a+da,.065),p(a+.060,.28),p(a-.060,.28));
+  }
+  for(let i=0;i<n;i++){
+   const a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;
+   T.push([[0,0,z+side*.012],[Math.cos(a)*.075,Math.sin(a)*.075,z],
+    [Math.cos(b)*.075,Math.sin(b)*.075,z]]);
+  }
+ }
+ return meshFromTriangles(T);
+}
+function wheelArch(){
+ const T=[],n=12;
+ for(const side of [-1,1]){
+  const z=side*.505;
+  for(let i=0;i<n;i++){
+   const a=i*Math.PI/n,b=(i+1)*Math.PI/n;
+   const pt=(ang,r)=>[Math.cos(ang)*r,Math.sin(ang)*r,z];
+   T.push([pt(a,.51),pt(b,.51),pt(b,.59)],
+          [pt(a,.51),pt(b,.59),pt(a,.59)]);
+  }
+ }
+ return meshFromTriangles(T);
+}
+
 function createShader(gl,kind,source){const s=gl.createShader(kind);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error('Shader: '+gl.getShaderInfoLog(s));return s}
 function makeProgram(gl){const p=gl.createProgram();gl.attachShader(p,createShader(gl,gl.VERTEX_SHADER,VERT));gl.attachShader(p,createShader(gl,gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error('Program: '+gl.getProgramInfoLog(p));return p}
 function parseColor(hex){if(Array.isArray(hex))return hex;let h=hex.replace('#','');if(h.length===3)h=[...h].map(x=>x+x).join('');const n=parseInt(h,16);return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]}
@@ -81,7 +194,7 @@ function matrix(x,y,z,sx,sy,sz,ry=0,rx=0,rz=0){
 export const MATERIAL_IDS=Object.freeze({plain:0,grass:1,brick:2,asphalt:3,roof:4,wood:5,concrete:6,water:7,dirt:8,plaster:9,metal:10,paving:11,rubber:12});
 export class Renderer{
  constructor(canvas){this.canvas=canvas;let gl=canvas.getContext('webgl2',{antialias:true,alpha:true,powerPreference:'high-performance',depth:true,stencil:false,desynchronized:true});if(!gl)throw Error('Este dispositivo no admite WebGL2');this.gl=gl;this.program=makeProgram(gl);this.uniforms={};for(let n of ['uViewProj','uCamPos','uFogDistance','uFogColor','uOpacity','uTextureReady','uMaterialArray'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
- this.meshes={};for(const [name,geom] of Object.entries({box:cube(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane()})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],overlay:[]};}
+ this.meshes={};for(const [name,geom] of Object.entries({box:cube(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane(),carTire:wheelTire(),carRim:wheelAlloy(),carArch:wheelArch(),...Object.fromEntries(Object.keys(CAR_CABINS).flatMap(kind=>[['carBody_'+kind,carShell(kind)],['carGlass_'+kind,carCabin(kind,'glass')],['carRoof_'+kind,carCabin(kind,'roof')]]))})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],overlay:[]};}
  gl.bindVertexArray(null);this.layer='opaque';this.materialId=0;
  this.materialTexture=null;this.textureReady=false;this.anisotropy=1;
  // WebGL2 texture array: materials have independent mipmaps so no tile shimmer/bleeding.
@@ -125,7 +238,7 @@ export class Renderer{
    }
   };
   atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible; se conservan los colores base')};
-  atlas.src='./assets/materials-atlas-v2.png?v=0.40.0';
+  atlas.src='./assets/materials-atlas-v2.png?v=0.41.0';
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}
@@ -153,7 +266,7 @@ export class Renderer{
    gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.materialTexture);
    gl.uniform1i(this.uniforms.uMaterialArray,0);
   }
-  const order=['field','box','hex','cone','ball','baseball','pole'];
+  const order=['field','box','hex','cone','ball','baseball','pole','carBody_hatch','carBody_sedan','carBody_suv','carBody_pickup','carGlass_hatch','carGlass_sedan','carGlass_suv','carGlass_pickup','carRoof_hatch','carRoof_sedan','carRoof_suv','carRoof_pickup','carTire','carRim','carArch'];
   const draw=(layer)=>{
    for(const name of order){
     const m=this.meshes[name],data=m[layer];
