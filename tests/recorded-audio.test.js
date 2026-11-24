@@ -8,8 +8,10 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.equal(raw.toString('ascii',0,4),'RIFF');
  assert.equal(raw.toString('ascii',8,12),'WAVE');
  assert.ok(raw.length>=4000);
- const mp3=readFileSync(new URL('../assets/audio/bat-cgeffex.mp3',import.meta.url));
- assert.ok(mp3.length>=700&&mp3.length<35000,'clip ligero para Safari/PWA');
+ const mp3=readFileSync(new URL('../assets/audio/bat-cgeffex.wav',import.meta.url));
+ assert.ok(mp3.length>=1000&&mp3.length<35000,'clip ligero para Safari/PWA');
+ assert.equal(mp3.toString('ascii',0,4),'RIFF');
+ assert.equal(mp3.toString('ascii',8,12),'WAVE');
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const doc=readFileSync(new URL('../docs/AUDIO_CREDITS.md',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
@@ -20,7 +22,7 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.match(html,/creativecommons\.org\/licenses\/by\/4\.0/);
  assert.match(doc,/fragmento/i);
  assert.match(doc,/CC BY 4\.0/);
- assert.match(sw,/assets\/audio\/bat-cgeffex\.mp3\?v=0\.50\.0/);
+ assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.50\.0/);
  assert.equal((workflow.match(/run: python tools\/build_impact_audio\.py/g)||[]).length,2);
 });
 

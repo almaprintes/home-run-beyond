@@ -164,7 +164,7 @@ export class GameAudio{
  constructor(){
   this.ctx=null;this.enabled=true;this.buffers=new Map();this.lastImpactAt=-1e9;this.variant=0;
   this.strikeBuffer=null;this.strikeLoad=null;this.pendingStrike=false;this.voiceEnabled=true;
-  this.recordedBuffers=new Map();this.recordedLoads=new Map();this.recordedMissing=new Set();
+  this.recordedBuffers=new Map();this.recordedLoads=new Map();this.recordedMissing=new Set();this.recordedSegments=new Map();
  }
  init(){if(!this.enabled)return;try{this.ctx??=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume()}catch{}}
  tone(hz,duration=.15,type='sine',volume=.14,offset=0,slide=0){
@@ -198,17 +198,47 @@ export class GameAudio{
   if(this.recordedBuffers.has(kind))return Promise.resolve(true);
   if(this.recordedMissing.has(kind))return Promise.resolve(false);
   if(this.recordedLoads.has(kind))return this.recordedLoads.get(kind);
-  const file={
-   bat:'bat-cgeffex.mp3',asphalt:'asphalt-ball.mp3',facade:'wall-ball.mp3'
+  // Original recording if the public preview was available at build time,
+  // always fall back to a bundled PCM WAV derived from the SAME CGEffex take.
+  const files={
+   bat:['bat-cgeffex.mp3','bat-cgeffex.wav'],
+   asphalt:['asphalt-ball.mp3'],
+   facade:['wall-ball.mp3']
   }[kind];
-  if(!file||!this.ctx||typeof fetch!=='function'||
+  if(!files||!this.ctx||typeof fetch!=='function'||
      typeof this.ctx.decodeAudioData!=='function')return Promise.resolve(false);
-  const job=fetch('./assets/audio/'+file+'?v=0.50.0')
-   .then(r=>{if(!r.ok)throw Error('Audio '+kind+': '+r.status);return r.arrayBuffer()})
-   .then(bytes=>this.ctx.decodeAudioData(bytes))
-   .then(buffer=>{this.recordedBuffers.set(kind,buffer);return true})
-   .catch(()=>{this.recordedMissing.add(kind);return false})
-   .finally(()=>this.recordedLoads.delete(kind));
+  const job=(async()=>{
+   for(const file of files){
+    try{
+     const response=await fetch('./assets/audio/'+file+'?v=0.50.0');
+     if(!response.ok)continue;
+     const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
+     this.recordedBuffers.set(kind,decoded);
+     let offset=0,duration=.30;
+     if(kind==='bat'){
+      // Freesound source has multiple hits; the selected recorded take is
+      // near 4.82s. The short PCM backup has already been trimmed.
+      if(file.endsWith('.mp3')){offset=4.82;duration=.40}
+      else duration=Math.min(.35,decoded.duration||.35);
+     }else if(typeof decoded.getChannelData==='function'&&decoded.sampleRate){
+      // Single collision from a multi-bounce field recording.
+      const data=decoded.getChannelData(0),rate=decoded.sampleRate;
+      let peak=0,best=0;
+      const cap=Math.min(data.length,rate*10),step=Math.max(1,Math.floor(rate*.004));
+      for(let i=0;i<cap;i+=step){
+       let total=0;
+       for(let j=i;j<Math.min(cap,i+step);j++)total+=data[j]*data[j];
+       if(total>peak){peak=total;best=i}
+      }
+      offset=Math.max(0,best/rate-.012);duration=.29;
+     }
+     this.recordedSegments.set(kind,{offset,duration});
+     return true;
+    }catch{}
+   }
+   this.recordedMissing.add(kind);
+   return false;
+  })().finally(()=>this.recordedLoads.delete(kind));
   this.recordedLoads.set(kind,job);return job;
  }
  prepareGameEffects(){
@@ -226,7 +256,9 @@ export class GameAudio{
   this.variant=(this.variant+1)%7;
   src.playbackRate.value=.985+this.variant*.007;
   gain.gain.value=Math.min(.4,Math.max(.001,gainAmount));
-  src.connect(gain);gain.connect(this.ctx.destination);src.start();
+  src.connect(gain);gain.connect(this.ctx.destination);
+  const segment=this.recordedSegments.get(kind);
+  if(segment)src.start(0,segment.offset,segment.duration);else src.start();
   return true;
  }
  swing(){this.sound('swing',.115)}
