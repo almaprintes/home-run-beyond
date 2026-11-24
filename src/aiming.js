@@ -16,8 +16,16 @@ export function aimSweetHalf(swingLevel=1,powerLevel=1){
 export function aimSweep(elapsedSeconds,swingLevel=1){
  return -SWEEP_MAX_RAD*aimBarPosition(elapsedSeconds,swingLevel);
 }
+// Continuous sweet-zone response. Identical input always produces the same shot.
+export function preciseAim(elapsed,swing=1,power=1,contactMs=0){
+ const raw=-aimBarPosition(elapsed,swing),edge=aimSweetHalf(swing,power),a=Math.abs(raw);
+ const compressed=a<=edge?.30*a:.30*edge+(a-edge)*(1-.30*edge)/(1-edge);
+ const timing=Math.max(-1,Math.min(1,(Number(contactMs)||0)/132));
+ const heading=Math.sign(raw)*compressed*SWEEP_MAX_RAD+timing*(.6*Math.PI/180)*(1-a);
+ return Math.max(-SWEEP_MAX_RAD,Math.min(SWEEP_MAX_RAD,heading));
+}
 export function aimDegrees(angle){
- const degrees=Math.round((Number.isFinite(angle)?angle:0)*180/Math.PI);
+ const degrees=Math.round((Number.isFinite(angle)?angle:0)*1800/Math.PI)/10;
  return (degrees>0?'+':'')+degrees+'°';
 }
 export function redirectShot(shot,angle){

@@ -48,7 +48,7 @@ test('el bateador completo y el punto de contacto caben en iPhone vertical',()=>
 test('la pelota se genera frente al bate y en el punto final del lanzamiento',()=>{
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
- assert.match(game,/const b=\{x:-4\.5,y:2\.5,z:-4\.7/);
+ assert.match(game,/const b=\{x:-4\.5\+\(hit\.contactOffsetMm\|\|0\)\/1000,y:2\.5,z:-4\.7/);
  assert.ok(Math.abs(pitcherBallPosition(1).z+4.9)<1e-9);
  assert.equal(pitcherBallPosition(1).x,-4.5);
  assert.match(world,/const ball=pitcherBallPosition\(throwProgress\)/);

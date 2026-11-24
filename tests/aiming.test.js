@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {aimBarPosition,aimSweep,aimSweetHalf,aimSweepPeriod,redirectShot,aimDegrees,SWEEP_MAX_RAD} from '../src/aiming.js';
+import {aimBarPosition,aimSweep,aimSweetHalf,aimSweepPeriod,redirectShot,aimDegrees,preciseAim,SWEEP_MAX_RAD} from '../src/aiming.js';
 import {calculateShot} from '../src/logic.js';
 import {BaseballGame} from '../src/game.js';
 import {readFileSync} from 'node:fs';
@@ -49,7 +49,7 @@ test('dirección aplica el rumbo sin añadir energía a un golpe',()=>{
  assert.equal(right.initialSpeed,base.initialSpeed);
 });
 
-test('tocar y mantener congela la calidad; soltar en la zona dulce manda la bola recta',()=>{
+test('tocar y mantener congela la calidad; soltar conserva la dirección exacta',()=>{
  const game=Object.create(BaseballGame.prototype);
  game.state='pitching';game.pitchElapsed=1.25;game.pitchDuration=1.52;
  game.save={levels:{power:4,swing:14,multiplier:2}};
@@ -72,7 +72,7 @@ test('tocar y mantener congela la calidad; soltar en la zona dulce manda la bola
   assert.equal(game.state,'swinging');
   assert.equal(game.pendingShot.quality,q);
   assert.equal(game.pitchElapsed,t);
-  assert.equal(game.pendingShot.direction,0);
+  assert.equal(game.pendingShot.direction,preciseAim(quarter,14,4,game.pendingShot.deltaMs));
   assert.equal(elements.get('pitch-surface').hidden,true);
  }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous}
 });
@@ -116,4 +116,29 @@ test('un golpe fuera del punto dulce por Potencia alta no se corrige artificialm
  }finally{
   if(before===undefined)delete globalThis.document;else globalThis.document=before;
  }
+});
+
+test('zona dulce continua: 101 sueltas distintas generan 101 rumbos, sin azar',()=>{
+ const period=aimSweepPeriod(1),edge=aimSweetHalf(1,1);
+ const headings=Array.from({length:101},(_,i)=>preciseAim((1-edge+2*edge*i/100)*period/4,1,1,0));
+ assert.equal(new Set(headings).size,101);
+ assert.ok(headings[0]>0&&headings.at(-1)<0);
+ assert.ok(Math.abs(headings[50])<1e-12);
+ assert.ok(headings.every((x,i)=>i===0||x<headings[i-1]));
+ const t=(1+edge)*period/4;
+ assert.ok(Math.abs(preciseAim(t-1e-8)-preciseAim(t+1e-8))<1e-5);
+ assert.ok(Math.abs(preciseAim(period/4,1,1,10))>0);
+});
+test('dentro de PERFECTO cambia suavemente velocidad, elevación y contacto milimétrico',()=>{
+ const levels={power:10,swing:1,multiplier:1},a=calculateShot(levels,0),b=calculateShot(levels,30),c=calculateShot(levels,-30);
+ assert.equal(a.quality,b.quality);assert.equal(b.quality,c.quality);
+ assert.ok(a.initialSpeed>b.initialSpeed);assert.equal(b.initialSpeed,c.initialSpeed);
+ assert.ok(c.angle<a.angle&&a.angle<b.angle);
+ assert.ok(c.contactOffsetMm<0&&b.contactOffsetMm>0);
+ assert.deepEqual(b,calculateShot(levels,30));
+});
+test('el reloj conserva fracciones de fotograma de la entrada',()=>{
+ const g=Object.create(BaseballGame.prototype);g.last=1000;
+ assert.equal(g.inputRemainder(1005),.005);assert.equal(g.inputRemainder(1000),0);
+ assert.equal(g.inputRemainder(undefined),0);
 });

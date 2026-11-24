@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.59.0';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.59.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.60.0';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.60.0';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -107,11 +107,16 @@ export function pitchTimingGuide(elapsed,duration){
 }
 export function speedForSkills(levels){return 24+3.5*Math.pow(levels.power,.68)}
 export function calculateShot(levels,timingMs){
- const quality=timingQuality(timingMs),factor=qualityFactor[quality],base=speedForSkills(levels),speed=base*factor;
- const angle=(34+(quality==='perfect'?5:quality==='excellent'?3:0))*Math.PI/180;
- const slice=clamp(timingMs/850,-.3,.3);
+ const ms=Number.isFinite(timingMs)?timingMs:999;
+ const quality=timingQuality(ms),factor=qualityFactor[quality],base=speedForSkills(levels);
+ const bounds={perfect:[0,48],excellent:[48,132],good:[132,280],weak:[280,490],miss:[490,999]};
+ const [lo,hi]=bounds[quality],error=clamp((Math.abs(ms)-lo)/(hi-lo),0,1);
+ const speed=base*factor*(1-.02*error*error);
+ const angle=(34+(quality==='perfect'?5:quality==='excellent'?3:0)+1.8*clamp(ms/132,-1,1))*Math.PI/180;
+ const slice=clamp(ms/850,-.3,.3);
+ const contactOffsetMm=5*clamp(ms/132,-1,1);
  const vx=speed*slice*.19,vy=speed*Math.sin(angle),vz=Math.sqrt(Math.max(0,speed*speed-vy*vy-vx*vx));
- return {quality,initialSpeed:speed,vx,vy,vz,angle,ratedDistance:speed*speed*Math.sin(2*angle)/9.81};
+ return {quality,initialSpeed:speed,vx,vy,vz,angle,contactOffsetMm,ratedDistance:speed*speed*Math.sin(2*angle)/9.81};
 }
 export function coinMultiplier(level=1){return 1+.04*Math.min(50,Math.max(0,level-1))}
 export function coinRewardBreakdown(meters,levels){
