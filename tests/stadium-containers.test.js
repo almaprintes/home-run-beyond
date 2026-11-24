@@ -42,7 +42,7 @@ test('frentes, extremos y cubiertas de TODOS los contenedores son sólidos',()=>
   for(const [axis,y,start,end,normalAxis,sign] of [
    ['x',4.2,-11,0,'x',-1],['x',4.2,11,0,'x',1],
    ['z',4.2,-14,0,'z',-1],['z',4.2,14,0,'z',1],
-   ['y',18,4.2,0,'y',1]
+   ['y',0,18,4.2,'y',1]
   ]){
    const a=axis==='x'?fromLocal(c,start,y,0):axis==='z'?fromLocal(c,0,y,start):fromLocal(c,0,start,0);
    const b=axis==='x'?fromLocal(c,end,y,0):axis==='z'?fromLocal(c,0,y,end):fromLocal(c,0,end,0);
