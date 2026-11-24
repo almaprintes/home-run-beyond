@@ -1,15 +1,15 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.45.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.45.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.45.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.45.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.45.0';
-import {GameAudio} from './audio.js?v=0.45.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.45.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.45.0';
-import {BatterSprites} from './sprites.js?v=0.45.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.45.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.45.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.45.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.46.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.46.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.46.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.46.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.46.0';
+import {GameAudio} from './audio.js?v=0.46.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.46.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.46.0';
+import {BatterSprites} from './sprites.js?v=0.46.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.46.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.46.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.46.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -102,7 +102,7 @@ export class BaseballGame{
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
-  this.closeDiscovery();
+  this.closeDiscovery();this.clearTransientToast();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
   el('main-menu').hidden=false;el('hud').hidden=true;el('controls').hidden=true;
@@ -283,10 +283,32 @@ export class BaseballGame{
    button.setAttribute('aria-label',key+' nivel '+lvl+multiplierInfo+', '+(maxed?'máximo alcanzado':free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
   }
  }
- toast(s){el('toast').textContent=s;el('toast').classList.add('show');this.toastTimer=1.85;this.toastText=s}
+ clearTransientToast(){
+  el('toast').classList.remove('show');
+  el('toast').textContent='';
+  const subtitle=el('upgrades-subtitle');
+  subtitle.classList.remove('is-feedback');
+  subtitle.textContent='Sube habilidades antes del siguiente batazo';
+  this.toastTimer=0;this.toastText='';this.toastPlacement='';
+ }
+ toast(s){
+  this.clearTransientToast();
+  // En descanso no existen carteles flotantes detrás del resultado.
+  // El feedback de habilidades y logros se muestra en su propio panel.
+  if(this.state==='rest'){
+   const subtitle=el('upgrades-subtitle');
+   subtitle.textContent=s;subtitle.classList.add('is-feedback');
+   this.toastPlacement='upgrades';
+  }else{
+   el('toast').textContent=s;el('toast').classList.add('show');
+   this.toastPlacement='floating';
+  }
+  this.toastTimer=1.85;this.toastText=s;
+ }
  onAction(){if(!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false);}
 
  startPitch(){
+  this.clearTransientToast();
   this.audio?.prepareStrike?.();
   this.state='pitching';this.activePointer=null;this.aimElapsed=0;this.aimAngle=0;
   this.strikeCalled=false;this.swingElapsed=0;this.visualSwingElapsed=0;
@@ -356,6 +378,7 @@ export class BaseballGame{
  }
  finishStrike(){
   if(this.state!=='pitching'&&this.state!=='whiff')return;
+  this.clearTransientToast();
   this.state='rest';this.activePointer=null;this.ball=null;this.distance=0;
   el('app').classList.add('resting');el('app').classList.remove('aiming');
   el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;el('again').hidden=false;
@@ -486,7 +509,7 @@ export class BaseballGame{
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }
- finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b));
+ finishShot(){if(this.state!=='flight')return;this.clearTransientToast();const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b));
  const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
@@ -499,7 +522,7 @@ export class BaseballGame{
    this.musicClock=(this.musicClock||0)-dt;
    if(this.musicClock<=0){this.audio?.menuMusic?.();this.musicClock=6.2}
   }
-  if(!this.save?.reducedEffects)this.impactFX?.update(dt);if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)el('toast').classList.remove('show')}
+  if(!this.save?.reducedEffects)this.impactFX?.update(dt);if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)this.clearTransientToast()}
  if(this.state==='pitching'||this.state==='whiff')this.advancePitch(dt);
  if(this.state==='pitching'){
   el('aim').hidden=true;

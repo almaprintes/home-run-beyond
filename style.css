@@ -290,3 +290,9 @@
 @media(max-width:380px){
  #shop .shop-item .shop-preview-art{width:82px;flex-basis:82px;height:60px}
 }
+
+
+/* v0.46: los mensajes de mejoras viven en el descanso, no bajo resultados. */
+#app.resting #toast{display:none!important}
+#upgrades-subtitle.is-feedback{color:#ffda8b;font-weight:900}
+#upgrades-subtitle{max-width:min(76vw,430px);overflow-wrap:break-word}

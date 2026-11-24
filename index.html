@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css?v=0.45.0"/>
+<link rel="stylesheet" href="./style.css?v=0.46.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -41,7 +41,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.45</small>
+        <small class="menu-version">VERSIÓN 0.46</small>
       </div>
     </div>
   </section>
@@ -96,7 +96,7 @@
     </div>
   </section>
   <div class="layer upgrades" id="upgrades">
-    <div class="upgrades-top"><div><strong>DESCANSO · MEJORA</strong><span>Sube habilidades antes del siguiente batazo</span></div><button id="sound" aria-label="Activar o desactivar sonido" class="audio">♫</button></div>
+    <div class="upgrades-top"><div><strong>DESCANSO · MEJORA</strong><span id="upgrades-subtitle" aria-live="polite">Sube habilidades antes del siguiente batazo</span></div><button id="sound" aria-label="Activar o desactivar sonido" class="audio">♫</button></div>
     <div class="upgrade-grid">
       <button class="upgrade" id="up-power"><span class="upgrade-icon">💪</span><span class="upgrade-name">POTENCIA</span><span class="upgrade-level" id="level-power">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-power">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-power">80</span></span></span></button>
       <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-swing">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-swing">85</span></span></span></button>
@@ -157,7 +157,7 @@
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.45</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.46</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -173,6 +173,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.45.0"></script>
+<script type="module" src="./src/main.js?v=0.46.0"></script>
 </body>
 </html>
