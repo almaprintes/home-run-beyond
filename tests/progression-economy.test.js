@@ -112,3 +112,17 @@ test('ROI de multiplicador auditable: la ganancia marginal por golpe es 4% del b
  const theoretical=calculateShot({power:1,swing:1,multiplier:1},0);
  assert.ok(theoretical.ratedDistance>100&&theoretical.ratedDistance<140);
 });
+
+test('recargar la PWA no vacía la cola: solo un descubrimiento por batazo entre sesiones',()=>{
+ const save=initialSave();
+ save.earnedCoins=100000;save.shots=200;save.best=10000;save.totalMeters=100000;
+ save.discoveryStats.perfectHits=40;save.discoveryStats.preciseHits=40;
+ const first=recordDiscoveryShot(save,{quality:'good',record:true,peakZ:10000});
+ assert.equal(first.length,1);
+ const previous=save.discovered.slice();
+ const loaded=sanitizeSave(JSON.parse(JSON.stringify(save)));
+ assert.deepEqual(loaded.discovered,previous,'abrir la app no descubre otros 30 objetos silenciosamente');
+ const next=recordDiscoveryShot(loaded,{quality:'good'});
+ assert.equal(next.length,1,'el siguiente logro se revela tras jugar, no tras reiniciar');
+ assert.equal(loaded.discovered.length,previous.length+1);
+});

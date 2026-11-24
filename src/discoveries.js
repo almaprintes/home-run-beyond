@@ -110,7 +110,11 @@ export function sanitizeDiscovery(save,raw){
    if(!save.discovered.includes(key))save.discovered.push(key);
   }
  }
- return unlockEligible(save); // Migración silenciosa de distancia, récord y batazos.
+ // Una partida antigua sin contador económico recibe migración retroactiva.
+ // Las nuevas no abren la cola de recompensas al reiniciar la aplicación:
+ // las novedades se anuncian una a una al terminar cada batazo.
+ if(raw?.earnedCoins===undefined)return unlockEligible(save);
+ return [];
 }
 function metricValue(save,rule){
  if(rule.group==='secret')return save.discoveryFlags?.includes(rule.metric)?1:0;
