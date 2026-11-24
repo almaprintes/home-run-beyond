@@ -22,7 +22,7 @@ export function soundProfile(name){return PROFILE[name]||PROFILE.concrete}
 // El golpe es una suma de impulso breve y resonancias amortiguadas;
 // se elimina la cola de ruido largo (que sonaba a fritura digital).
 const CONTACT=Object.freeze({
- bat:     {length:.132,click:.0027,noise:.016,cut:3500,body:[185,370,690],decay:.031,snap:.56,ring:.31,weight:.20},
+ bat:     {length:.069,click:.0021,noise:.0045,cut:2800,body:[210,420,790],decay:.013,snap:.71,ring:.22,weight:.25},
  grass:   {length:.105,click:.0110,noise:.046,cut:480, body:[165,280,535],decay:.047,snap:.08,ring:.33,weight:.52},
  dirt:    {length:.109,click:.0090,noise:.048,cut:790, body:[175,310,610],decay:.047,snap:.14,ring:.34,weight:.46},
  asphalt: {length:.115,click:.0047,noise:.033,cut:1650,body:[215,410,770],decay:.040,snap:.30,ring:.37,weight:.30},
@@ -33,6 +33,35 @@ const CONTACT=Object.freeze({
  rubber:  {length:.106,click:.0140,noise:.044,cut:560, body:[148,280,520],decay:.040,snap:.07,ring:.29,weight:.53}
 });
 export function contactProfile(name){return CONTACT[name]||null}
+// Bate realista: un único golpe seco de madera contra cuero (≈69 ms).
+// El crujido de alta frecuencia muere en 3 ms; cuerpo cálido en 12–16 ms.
+// Ni cola de ruido, ni nota sostenida, ni reverberación artificial.
+function synthDryBat(rate){
+ const cfg=CONTACT.bat,length=Math.max(1,Math.ceil(cfg.length*rate));
+ const out=new Float32Array(length);
+ let seed=0x7b4ca91f,low=0;
+ const alpha=1-Math.exp(-2*Math.PI*2700/rate);
+ for(let i=0;i<length;i++){
+  seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+  const white=(seed>>>0)/2147483648-1;
+  low+=(white-low)*alpha;
+  const t=i/rate;
+  const crisp=(white-low)*Math.exp(-t/.00245);
+  const wood=(.66*Math.sin(2*Math.PI*420*t+.18)+
+   .34*Math.sin(2*Math.PI*210*t+.68))*Math.exp(-t/.0125);
+  const leather=low*Math.exp(-t/.0075);
+  // Entrada submilisegundo y salida muda, sin clic de corte del buffer.
+  const entry=Math.min(1,t/.00022);
+  const exit=Math.pow(Math.min(1,(cfg.length-t)/.008),2);
+  out[i]=(.72*crisp+.36*wood+.13*leather)*entry*exit;
+ }
+ let peak=0;
+ for(const v of out)peak=Math.max(peak,Math.abs(v));
+ const gain=.72/Math.max(.001,peak);
+ for(let i=0;i<out.length;i++)out[i]=Math.max(-.75,Math.min(.75,out[i]*gain));
+ return out;
+}
+
 function synthContact(name,rate){
  const p=CONTACT[name],count=Math.max(1,Math.ceil(p.length*rate)),samples=new Float32Array(count);
  let seed=0x613d2baf ^ name.split('').reduce((n,c)=>(Math.imul(n,33)+c.charCodeAt(0))|0,0);
@@ -65,6 +94,7 @@ function synthContact(name,rate){
  return samples;
 }
 export function synthImpulse(kind='bat',rate=22050){
+ if(kind==='bat')return synthDryBat(rate);
  if(contactProfile(kind))return synthContact(kind,rate);
  const cfg=soundProfile(kind),count=Math.max(1,Math.ceil(cfg.length*rate)),a=new Float32Array(count);
  let seed=0x7f4a7c15^kind.split('').reduce((h,c)=>Math.imul(h,31)+c.charCodeAt(0)|0,0);
@@ -135,7 +165,7 @@ export class GameAudio{
  }
  swing(){this.sound('swing',.115)}
  hit(q){
-  // El bate es un chasquido de madera contra cuero, no una explosión de ruido.
+  // Golpe único, seco y cálido; no tocar los perfiles de rebote.
   const gain=q==='perfect'?.24:q==='excellent'?.205:q==='good'?.18:.12;
   this.sound('bat',gain);
  }
@@ -157,7 +187,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.47.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.48.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();
