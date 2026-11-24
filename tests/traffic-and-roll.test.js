@@ -37,7 +37,7 @@ test('dos sentidos, carriles rectos y rodadura física independiente de los FPS'
    assert.equal(b.z,a.z);
    assert.equal(a.dir,i%2===0?1:-1);
    assert.ok(a.speed>=12&&a.speed<=25);
-   assert.ok(Math.abs(wrap(a.x+260+a.dir*a.speed*.01,span)-260-b.x)<1e-8);
+   assert.ok(Math.abs(wrap(a.x+TRAFFIC_HALF_SPAN+a.dir*a.speed*.01,span)-TRAFFIC_HALF_SPAN-b.x)<1e-8);
    assert.equal(a.wheelSpeed,a.speed/a.radius);
    const spin=wrap(b.wheelAngle-a.wheelAngle,Math.PI*2);
    const expected=wrap(-a.speed*.01/a.radius,Math.PI*2);
