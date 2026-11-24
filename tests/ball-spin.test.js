@@ -80,7 +80,7 @@ test('la pelota original no se transforma en una moneda en vuelo y vuelve a gira
   sprites.draw(game,58);
   assert.equal(angles.length,0,'el backspin debe ser físico, no un giro lateral en el lienzo');
   const source=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
-  assert.match(source,/spin\?\.groundEngaged&&planar>1\.3/);
+  assert.match(source,/spin\?\.orientation&&planar>1\.3/);
   assert.match(source,/drawSpinningBaseball\(ctx,image,size,spin,camera,target,this\.ballSurfaceCache\)/);
  }finally{if(priorWindow===undefined)delete globalThis.window;else globalThis.window=priorWindow}
 });

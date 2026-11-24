@@ -115,7 +115,7 @@ test('al rodar vuelve la proyección esférica real; en el aire conserva el spri
  assert.equal(calls.filter(x=>x[0]==='draw').length,1);
  assert.equal(calls.filter(x=>x[0]==='rotate').length,0,'en vuelo no gira como moneda');
  const source=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
- assert.match(source,/spin\?\.groundEngaged&&planar>1\.3/);
+ assert.match(source,/spin\?\.orientation&&planar>1\.3/);
  assert.match(source,/drawSpinningBaseball\(ctx,image,size,spin,camera,target,this\.ballSurfaceCache\)/);
  assert.match(source,/opaqueBaseballPixels\(sourceImage\.data/);
 });

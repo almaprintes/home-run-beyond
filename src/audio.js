@@ -210,7 +210,7 @@ export class GameAudio{
   const job=(async()=>{
    for(const file of files){
     try{
-     const response=await fetch('./assets/audio/'+file+'?v=0.51.0');
+     const response=await fetch('./assets/audio/'+file+'?v=0.52.0');
      if(!response.ok)continue;
      const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
      this.recordedBuffers.set(kind,decoded);
@@ -285,7 +285,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.51.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.52.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();

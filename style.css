@@ -330,3 +330,11 @@
 }
 @media(max-height:720px){#again.rest-again{min-height:57px;margin:7px auto 9px;font-size:15px}}
 @media(prefers-reduced-motion:reduce){#again.rest-again{animation:none}}
+
+/* 0.52 — reloj de bateo: zona verde ligada a la ventana perfecta real. */
+.pitch-touch-label[data-timing]{width:min(90vw,330px);text-align:center;font-size:13px;letter-spacing:.6px;padding:11px 15px 10px;border:1px solid #d6e9f4;background:#092437ed;}
+.pitch-touch-label[data-timing]::after{content:'';display:block;height:9px;margin-top:8px;border-radius:9px;border:1px solid #ffffff55;background:linear-gradient(90deg,transparent 0 var(--pitch-progress),#fff var(--pitch-progress) calc(var(--pitch-progress) + 2%),transparent calc(var(--pitch-progress) + 2%) 100%),linear-gradient(90deg,#416477 0 var(--pitch-perfect-start),#66f3a0 var(--pitch-perfect-start) var(--pitch-perfect-end),#416477 var(--pitch-perfect-end) 100%);}
+.pitch-touch-label[data-timing=ready]{color:#ffe29c;border-color:#ffcf72;}
+.pitch-touch-label[data-timing=perfect]{background:#12603c;color:#fff;border-color:#a8ffbf;box-shadow:0 0 24px #64ff9c85;}
+.pitch-touch-label[data-timing=late]{color:#ffd1a2;}
+#app.hide-help .pitch-touch-label[data-timing]::after{display:none;}

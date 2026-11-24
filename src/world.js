@@ -1,6 +1,6 @@
-import {lerp} from './engine.js?v=0.51.0';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.51.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.51.0';
+import {lerp} from './engine.js?v=0.52.0';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.52.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.52.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -69,6 +69,33 @@ const STADIUM_CONTAINERS=Object.freeze(Array.from({length:20},(_,n)=>{
  return Object.freeze({id:i,x:137*Math.sin(a),z:137*Math.cos(a),yaw:a});
 }));
 export function stadiumContainers(){return STADIUM_CONTAINERS;}
+// Misma geometría para la valla visible, su barrido y su material.
+const STADIUM_FENCE=Object.freeze(Array.from({length:39},(_,i)=>{
+ const a=-1.52+i*3.04/38,x=121*Math.sin(a),z=121*Math.cos(a);
+ const post=Object.freeze({id:i,kind:'stadium-fence-post',material:'metal',x,z,y:3.9,w:1.3,h:8,d:1.3,yaw:0,color:'#2a6572'});
+ if(i===38)return [post];
+ const b=-1.52+(i+1)*3.04/38,nx=121*Math.sin(b),nz=121*Math.cos(b),dx=nx-x,dz=nz-z;
+ return [post,Object.freeze({id:i,kind:'stadium-fence-rail',material:'metal',x:(x+nx)/2,z:(z+nz)/2,y:2,w:1.9,h:.06,d:Math.hypot(dx,dz),yaw:Math.atan2(dx,dz),color:i%5===0?'#ff9b52':'#285d67'})];
+}).flat());
+export function stadiumFenceParts(){return STADIUM_FENCE;}
+export function traceStadiumFenceCollision(from,to,radius=1.45){
+ if(!from||!to||Math.min(from.y,to.y)>7.9+radius)return null;
+ const xMin=Math.min(from.x,to.x)-radius,xMax=Math.max(from.x,to.x)+radius;
+ const zMin=Math.min(from.z,to.z)-radius,zMax=Math.max(from.z,to.z)+radius;
+ if(zMin>123||zMax<0||xMin>123||xMax< -123)return null;
+ let nearest=null;
+ for(const part of STADIUM_FENCE){
+  const extent=Math.hypot(part.w,part.d)/2;
+  if(part.x+extent<xMin||part.x-extent>xMax||part.z+extent<zMin||part.z-extent>zMax)continue;
+  const hit=sweptSphereBox(containerLocal(from,part),containerLocal(to,part),radius,containerPartBox(part));
+  if(!hit)continue;
+  const normal=containerNormal(hit.normal,part);
+  const dot=(to.x-from.x)*normal.x+(to.y-from.y)*normal.y+(to.z-from.z)*normal.z;
+  if(dot>=0)continue;
+  if(!nearest||hit.t<nearest.t)nearest={...hit,point:containerWorld(hit.point,part),normal};
+ }
+ return nearest;
+}
 const STADIUM_CONTAINER_PARTS=Object.freeze([
  Object.freeze({kind:'stadium-container-body',material:'metal',y:4.2,w:13,h:7,d:10,color:'#315b71'}),
  Object.freeze({kind:'stadium-container-trim',material:'metal',y:7.9,w:14,h:1.2,d:11,color:'#e6a95c'}),
@@ -425,7 +452,10 @@ function stadium(r){r.field(0,-.02,38,285,290,'#448e60');for(let i=0;i<11;i++){c
  line(r,0,0,29,25,.21,.35,'#f5f0d6');line(r,0,0,-29,25,.21,.35,'#f5f0d6');line(r,29,25,0,50,.21,.28,'#f5f0d6');line(r,-29,25,0,50,.21,.28,'#f5f0d6');
  for(const [x,z] of [[0,0],[29,25],[-29,25],[0,50]])r.box(x,.26,z,2,.11,2,'#f9faf4',PI/4);
  r.setMaterial?.('dirt');r.pole(0,.6,21,4,1.1,'#be865a');r.setMaterial?.('plain');r.field(0,.75,21,2.2,1,'#f6f3e8');
- for(let i=0;i<=38;i++){const a=-1.52+i*3.04/38,x=121*Math.sin(a),z=121*Math.cos(a);r.pole(x,3.9,z,.65,8,'#2a6572');if(i<38){const b=-1.52+(i+1)*3.04/38,nx=121*Math.sin(b),nz=121*Math.cos(b);line(r,x,z,nx,nz,2,1.9,i%5===0?'#ff9b52':'#285d67');}}
+ for(const part of stadiumFenceParts()){
+  if(part.kind==='stadium-fence-post')r.pole(part.x,part.y,part.z,part.w/2,part.h,part.color);
+  else r.box(part.x,part.y,part.z,part.w,part.h,part.d,part.color,part.yaw);
+ }
  // Contenedores: exactamente los mismos prismas en escena y colisiones.
  for(const container of stadiumContainers())for(const part of stadiumContainerParts()){
   r.setMaterial?.('plain');

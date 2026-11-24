@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.51.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.51.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.51.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.51.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.51.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.52.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.52.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.52.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.52.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.52.0';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -136,7 +136,7 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
    if(!cache.warned){console.warn('Sprite esférico no disponible',error);cache.warned=true}
   }
  }
- ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
+ ctx.drawImage(image,-radius,-radius,size,size);
 }
 
 // Coloca el asset completo en el lienzo global, NO en el recorte del bateador.
@@ -233,15 +233,15 @@ export class BatterSprites{
   const image=this.getStyledBall(game.save);
   if(!image)return;
   const item=BALL_STYLES.find(ball=>ball.id===game.save?.equippedBall)||BALL_STYLES[0];
-  // La pelota aprobada permanece perfecta al salir del pitcher y en vuelo.
-  // Sólo al tocar el suelo el giro físico necesita proyección esférica.
+  // La misma pelota aprobada se proyecta como esfera desde el golpe:
+  // backspin en vuelo y topspin tras el primer bote, sin girar como moneda.
   // Su copia UV se rellena internamente, SIN alterar el dibujo original.
   const planar=Math.hypot(game.ball?.vx||0,game.ball?.vz||0);
-  if(item.design==='baseball'&&spin?.groundEngaged&&planar>1.3&&camera&&target){
+  if(item.design==='baseball'&&spin?.orientation&&planar>1.3&&camera&&target){
    drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
    return;
   }
-  // En el aire no gira como moneda sobre el plano de la pantalla.
+  // En reposo o durante el lanzamiento se conserva la imagen original.
   // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
   if(item.design!=='baseball')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
