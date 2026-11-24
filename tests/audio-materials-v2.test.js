@@ -31,13 +31,13 @@ test('audio de bate y materiales usa buffers de ruido filtrado, no pitidos de os
  try{
   const game=new GameAudio();
   game.swing();game.hit('perfect');
-  game.impact('concrete',90);game.ctx.currentTime+=.1;game.impact('water',55);
-  game.ctx.currentTime+=.1;game.impact('grass',20);
+  game.impact('concrete',90);game.ctx.currentTime+=.15;game.impact('water',55);
+  game.ctx.currentTime+=.15;game.impact('grass',20);
   assert.ok(played.length>=5);
   assert.ok(game.buffers.has('swing')&&game.buffers.has('bat')&&game.buffers.has('water')&&game.buffers.has('grass'));
   assert.ok(allocated.every(n=>n>1000));
   const count=allocated.length;
-  game.ctx.currentTime+=.1;game.hit('good');
+  game.ctx.currentTime+=.15;game.hit('good');
   assert.equal(allocated.length,count,'se regeneró innecesariamente una muestra');
  }finally{if(previousWindow===undefined)delete globalThis.window;else globalThis.window=previousWindow}
 });
