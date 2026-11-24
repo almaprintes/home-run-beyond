@@ -238,7 +238,7 @@ export class Renderer{
    }
   };
   atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible; se conservan los colores base')};
-  atlas.src='./assets/materials-atlas-v2.png?v=0.57.0';
+  atlas.src='./assets/materials-atlas-v2.png?v=0.58.0';
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}

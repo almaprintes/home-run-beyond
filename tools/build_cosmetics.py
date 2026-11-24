@@ -93,12 +93,41 @@ def legacy_bat_mask(original,pose):
 HEAD={
  "ready":(.56,.24),"watch":(.56,.24),"loaded":(.69,.26),
  "contact":(.31,.17),"follow":(.54,.25)}
+# Exclusive championship finish; the source facets and alpha are preserved.
+# Helmet = polished metal; textile = black with woven gold panels and piping.
+def champion_gold(t):
+    stops=((0.,(62,27,5)),(.25,(133,72,11)),(.48,(218,143,25)),(.70,(255,207,73)),(.88,(255,240,160)),(1.,(255,255,233)))
+    t=max(0.,min(1.,t))
+    for (lo,c),(hi,d) in zip(stops,stops[1:]):
+        if t<=hi:return mix(c,d,(t-lo)/(hi-lo))
+    return stops[-1][1]
+
+def champion_helmet(u,v,brightness,pose):
+    hx,hy=HEAD[pose]
+    # Studio-style reflections in the same relative place for each pose.
+    x=(u-hx)/.28;y=(v-hy)/.18
+    panel=math.exp(-((x+.44+.30*y)/.29)**2-((y+.35)/.90)**2)
+    band=math.exp(-((y-.15-.24*x)/.23)**2)
+    rim=math.exp(-((x-.75)/.24)**2-((y-.12)/1.2)**2)
+    spec=math.exp(-((x+.52)/.14)**2-((y+.56)/.20)**2)
+    return champion_gold(.22+.53*brightness/190+.44*panel+.30*spec+.22*rim-.27*band)
+
+def champion_cloth(u,v,brightness,pose):
+    x0,y0,x1,y1=JERSEY[pose]
+    x=(u-x0)/max(.01,x1-x0);y=(v-y0)/max(.01,y1-y0)
+    # Gold shoulders, a broad diagonal sash and thin gold edging on black.
+    sash=abs(x-(.24+.62*y))
+    if y<.22 or sash<.16 or x<.07 or x>.93 or y>.90:
+        return champion_gold(.30+.60*brightness/235+.10*math.sin((x+y)*9))
+    return shade((49,47,45),brightness+42)
+
 def bake_uniform(original,item,pose,remove_bat=False):
     if item["id"]=="red" and not remove_bat:return original.copy()
     base=original.copy().convert("RGBA")
     w,h=base.size;px=base.load()
     c=rgb(item["color"]);a=rgb(item["accent"])
     mode=item["design"];shirt=JERSEY[pose];helmet=HELMET[pose]
+    champion=item['id']=='gold'
     for y in range(h):
         v=y/max(1,h);v0=y/float(h)
         for x in range(w):
@@ -111,17 +140,17 @@ def bake_uniform(original,item,pose,remove_bat=False):
             red=r>g*1.3 and r>b*1.25 and g<126 and r>70
             color=None
             if within(u,v0,helmet) and red:
-                color=shade(c,brightness+28)
+                color=champion_helmet(u,v0,brightness,pose) if champion else shade(c,brightness+28)
             elif within(u,v0,shirt) and neutral:
                 accent_here=pattern(mode,u,v0,item["id"])
                 cloth=c if mode not in ("chef","kimono","astronaut","golf","polo","retro") else (235,231,218)
-                color=shade(a if accent_here else cloth,brightness)
+                color=champion_cloth(u,v0,brightness,pose) if champion else shade(a if accent_here else cloth,brightness)
             elif .69<=v0<=.94 and neutral and brightness>105:
                 leg=(235,234,227) if mode not in ("basket","boxing","running","cycling","wrestling","robot","ninja") else mix(c,(220,215,217),.32)
                 if mode in ("stripes","retro","cycling") and ((u+.01)%.115)<.018:leg=a
-                color=shade(leg,brightness)
+                color=shade((45,44,43) if champion else leg,brightness)
             elif (v0>.73 or within(u,v0,shirt)) and red:
-                color=shade(a,brightness+30)
+                color=champion_gold(.30+.60*brightness/220) if champion else shade(a,brightness+30)
             if color:px[x,y]=(*color,alpha)
     # High-contrast details painted into the SAME complete full-frame asset.
     if mode not in ("classic","shoulders","polo","stripes","pinstripes","hoops","chevron","hockey","basket","cycling","running","boxing","kimono","wrestling","retro","golf","jersey","rugby","fireman"):

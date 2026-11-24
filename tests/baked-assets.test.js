@@ -145,3 +145,10 @@ test('las 100 vistas previas son archivos únicos del catálogo, sin emoji susti
  const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
  assert.match(workflow,/git add assets\/baked/);
 });
+
+test('Dorado campeón usa acabado de oro y tejido negro en las cinco poses',()=>{
+ const gen=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
+ assert.match(gen,/champion_helmet/);assert.match(gen,/champion_cloth/);
+ const gold=OUTFIT_CATALOG.find(i=>i.id==='gold');assert.equal(gold.price,2400);
+ for(const pose of OUTFIT_POSES){const g=assertWebP(bakedAssetUrl('outfit','gold',pose));assert.notEqual(g,assertWebP(bakedAssetUrl('outfit','red',pose)));assert.notEqual(g,assertWebP(bakedAssetUrl('outfit','blue',pose)));assertWebP(bakedAssetUrl('outfit','gold',pose,true));}
+});
