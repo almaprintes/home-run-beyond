@@ -22,6 +22,10 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.match(html,/creativecommons\.org\/licenses\/by\/4\.0/);
  assert.match(doc,/fragmento/i);
  assert.match(doc,/CC BY 4\.0/);
+ assert.match(html,/JaenKleynhans/);
+ assert.match(html,/BranRainey/);
+ assert.match(sw,/OPTIONAL_AUDIO/);
+ assert.match(sw,/Promise\.allSettled\(OPTIONAL_AUDIO/);
  assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.50\.0/);
  assert.equal((workflow.match(/run: python tools\/build_impact_audio\.py/g)||[]).length,2);
 });

@@ -10,7 +10,19 @@ const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/
  './src/world.js?v=0.50.0','./src/biomes.js?v=0.50.0','./src/engine.js?v=0.50.0','./src/logic.js?v=0.50.0',
  './src/audio.js?v=0.50.0','./src/rewarded.js?v=0.50.0','./src/aiming.js?v=0.50.0',
  './src/sprites.js?v=0.50.0','./src/traffic.js?v=0.50.0','./src/discoveries.js?v=0.50.0','./src/cosmetic-render.js?v=0.50.0','./src/cosmetic-catalog.js?v=0.50.0','./src/cosmetic-art.js?v=0.50.0','./src/baked-assets.js?v=0.50.0','./src/impact-fx.js?v=0.50.0','./src/ball-visuals.js?v=0.50.0','./src/ball-spin.js?v=0.50.0','./assets/materials-atlas-v2.png?v=0.50.0','./assets/strike.mp3?v=0.50.0','./assets/audio/bat-cgeffex.wav?v=0.50.0'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
+const OPTIONAL_AUDIO=[
+ './assets/audio/bat-cgeffex.mp3?v=0.50.0',
+ './assets/audio/asphalt-ball.mp3?v=0.50.0',
+ './assets/audio/wall-ball.mp3?v=0.50.0'
+];
+// Las grabaciones CC0 no deben impedir la instalación si Freesound
+// falla durante la compilación; los originales de PCM sí son obligatorios.
+self.addEventListener('install',e=>e.waitUntil(
+ caches.open(CACHE).then(async cache=>{
+  await cache.addAll(ASSETS);
+  await Promise.allSettled(OPTIONAL_AUDIO.map(path=>cache.add(path)));
+ }).then(()=>self.skipWaiting())
+));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 // Red primero PARA TODOS LOS ASSETS: una PWA instalada nunca debe mezclar
 // HTML v12 con CSS/JS de v10. La copia precargada sigue funcionando sin conexión.
