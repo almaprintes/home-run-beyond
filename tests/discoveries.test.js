@@ -80,7 +80,10 @@ test('cinco contactos perfectos revelan baguette y se conserva el progreso tras 
  s=sanitizeSave(JSON.parse(JSON.stringify(s)));
  assert.equal(s.discoveryStats.perfectHits,5);
  assert.equal(s.discoveryStats.bestGoodStreak,5);
- assert.equal(unlockEligible(s).length,0);
+ assert.ok(isDiscovered(s,'bat','baguette'),'reiniciar mantiene la recompensa anterior');
+ const backlog=unlockEligible(s);
+ assert.ok(!backlog.some(x=>x.item.id==='baguette'),'sin notificación duplicada del bate');
+ assert.equal(unlockEligible(s).length,0,'la cola queda vacía tras revelar el resto');
 });
 test('sucesos especiales y récords se contabilizan por separado y solo una vez',()=>{
  const s=initialSave();s.earnedCoins=100000;
