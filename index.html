@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css?v=0.49.0"/>
+<link rel="stylesheet" href="./style.css?v=0.50.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -41,7 +41,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.49</small>
+        <small class="menu-version">VERSIÓN 0.50</small>
       </div>
     </div>
   </section>
@@ -152,12 +152,21 @@
         </label>
         <button class="setting-row" id="settings-batterySaver" data-setting="batterySaver"><span><strong>Ahorro de batería</strong><small>Gráficos reducidos y máximo 30 FPS</small></span><span class="setting-status">NO</span></button>
       </div>
+      <div class="settings-section audio-credits" id="audio-credits" aria-labelledby="audio-credits-title">
+        <h3 id="audio-credits-title">🎧 CRÉDITOS DE AUDIO</h3>
+        <p><strong>Golpe de bate de madera:</strong> «Hitting baseball w. wooden bat.wav»,
+          grabación de <strong>CGEffex</strong>, obtenida de
+          <a href="https://freesound.org/people/CGEffex/sounds/93136/" target="_blank" rel="noopener noreferrer">Freesound · grabación original</a>.
+          Utilizada en forma de fragmento recortado y procesado.</p>
+        <p>Licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">Creative Commons Atribución 4.0 Internacional (CC BY 4.0)</a>.</p>
+        <small>Gracias a CGEffex por compartir su grabación para proyectos como este.</small>
+      </div>
       <div class="settings-section"><h3>ℹ️ INFORMACIÓN</h3>
         <button id="settings-guide" class="setting-action">❔ Cómo jugar</button>
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.49</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.50</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -173,6 +182,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.49.0"></script>
+<script type="module" src="./src/main.js?v=0.50.0"></script>
 </body>
 </html>

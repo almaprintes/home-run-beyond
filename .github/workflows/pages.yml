@@ -23,6 +23,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install 'Pillow==12.0.0'
       - run: python tools/build_cosmetics.py
+      - run: python tools/build_impact_audio.py
       - run: npm run check
       - run: npm test
   publish:
@@ -38,6 +39,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install 'Pillow==12.0.0'
       - run: python tools/build_cosmetics.py
+      - run: python tools/build_impact_audio.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

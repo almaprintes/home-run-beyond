@@ -1,5 +1,5 @@
-// Motor de audio procedural: impulsos filtrados y resonancias breves en vez de pitidos.
-// Sin descargas ni librerías; compatible con AudioContext de Safari/iPhone.
+// Audio híbrido: grabación real de bate de madera (CGEffex CC BY 4.0) y
+// materializaciones locales para suelos; funciona sin red en Safari/iPhone.
 const PROFILE=Object.freeze({
  swing:{length:.23,low:.045,body:.17,attack:.015,frequency:110,noise:.95,tone:0,kind:'air'},
  bat:{length:.26,low:.092,body:.055,attack:.002,frequency:340,noise:.88,tone:.32,kind:'hard'},
@@ -93,8 +93,36 @@ function synthContact(name,rate){
  for(let i=0;i<count;i++)samples[i]=Math.max(-.76,Math.min(.76,samples[i]*gain));
  return samples;
 }
+// Hard surfaces use a completely different contact model from grass or metal.
+// This provides a dry rubber-on-pavement "tock" and a heavier facade "clap"
+// if the CC0 field-recorded samples are not available offline.
+function synthHardSurface(kind,rate){
+ const road=kind==='asphalt',length=road?.104:.136,amount=Math.ceil(length*rate);
+ const out=new Float32Array(amount);
+ let seed=road?0x45e719a3:0x319b7f6d,mid=0,low=0;
+ const highpass=1-Math.exp(-2*Math.PI*(road?3100:1800)/rate);
+ const basspass=1-Math.exp(-2*Math.PI*(road?340:255)/rate);
+ for(let i=0;i<amount;i++){
+  seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+  const white=(seed>>>0)/2147483648-1,t=i/rate;
+  mid+=(white-mid)*highpass;low+=(mid-low)*basspass;
+  const crack=(white-mid)*Math.exp(-t/(road?.0029:.0044));
+  const hard=(mid-low)*Math.exp(-t/(road?.017:.026));
+  const body=(Math.sin(2*Math.PI*(road?255:188)*t)+
+   .29*Math.sin(2*Math.PI*(road?465:348)*t+.3))*Math.exp(-t/(road?.021:.035));
+  const wallReflect=road?0:Math.exp(-Math.pow((t-.024)/.005,2))*low*.25;
+  const envelope=(1-Math.exp(-t*rate/5))*Math.pow(Math.max(0,1-t/length),2);
+  out[i]=(.28*crack+.59*hard+(road?.26:.44)*body+wallReflect)*envelope;
+ }
+ let peak=0;for(const x of out)peak=Math.max(peak,Math.abs(x));
+ const scale=.68/Math.max(.0001,peak);
+ for(let i=0;i<amount;i++)out[i]=Math.max(-.70,Math.min(.70,out[i]*scale));
+ return out;
+}
 export function synthImpulse(kind='bat',rate=22050){
  if(kind==='bat')return synthDryBat(rate);
+ if(kind==='asphalt')return synthHardSurface('asphalt',rate);
+ if(['concrete','brick','solid','roof'].includes(kind))return synthHardSurface('facade',rate);
  if(contactProfile(kind))return synthContact(kind,rate);
  const cfg=soundProfile(kind),count=Math.max(1,Math.ceil(cfg.length*rate)),a=new Float32Array(count);
  let seed=0x7f4a7c15^kind.split('').reduce((h,c)=>Math.imul(h,31)+c.charCodeAt(0)|0,0);
@@ -136,6 +164,7 @@ export class GameAudio{
  constructor(){
   this.ctx=null;this.enabled=true;this.buffers=new Map();this.lastImpactAt=-1e9;this.variant=0;
   this.strikeBuffer=null;this.strikeLoad=null;this.pendingStrike=false;this.voiceEnabled=true;
+  this.recordedBuffers=new Map();this.recordedLoads=new Map();this.recordedMissing=new Set();
  }
  init(){if(!this.enabled)return;try{this.ctx??=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume()}catch{}}
  tone(hz,duration=.15,type='sine',volume=.14,offset=0,slide=0){
@@ -163,11 +192,48 @@ export class GameAudio{
   gain.gain.value=Math.min(.4,Math.max(.001,volume));
   src.connect(gain);gain.connect(c.destination);src.start();
  }
+ prepareRecorded(kind){
+  if(!this.enabled)return Promise.resolve(false);
+  this.init();
+  if(this.recordedBuffers.has(kind))return Promise.resolve(true);
+  if(this.recordedMissing.has(kind))return Promise.resolve(false);
+  if(this.recordedLoads.has(kind))return this.recordedLoads.get(kind);
+  const file={
+   bat:'bat-cgeffex.mp3',asphalt:'asphalt-ball.mp3',facade:'wall-ball.mp3'
+  }[kind];
+  if(!file||!this.ctx||typeof fetch!=='function'||
+     typeof this.ctx.decodeAudioData!=='function')return Promise.resolve(false);
+  const job=fetch('./assets/audio/'+file+'?v=0.50.0')
+   .then(r=>{if(!r.ok)throw Error('Audio '+kind+': '+r.status);return r.arrayBuffer()})
+   .then(bytes=>this.ctx.decodeAudioData(bytes))
+   .then(buffer=>{this.recordedBuffers.set(kind,buffer);return true})
+   .catch(()=>{this.recordedMissing.add(kind);return false})
+   .finally(()=>this.recordedLoads.delete(kind));
+  this.recordedLoads.set(kind,job);return job;
+ }
+ prepareGameEffects(){
+  // Llamado en el gesto de comenzar a batear: carga sin frenar la física.
+  void this.prepareRecorded('bat');
+  void this.prepareRecorded('asphalt');
+  void this.prepareRecorded('facade');
+ }
+ playRecorded(kind,gainAmount){
+  if(!this.enabled||!this.ctx)return false;
+  const buffer=this.recordedBuffers.get(kind);
+  if(!buffer)return false;
+  const src=this.ctx.createBufferSource(),gain=this.ctx.createGain();
+  src.buffer=buffer;
+  this.variant=(this.variant+1)%7;
+  src.playbackRate.value=.985+this.variant*.007;
+  gain.gain.value=Math.min(.4,Math.max(.001,gainAmount));
+  src.connect(gain);gain.connect(this.ctx.destination);src.start();
+  return true;
+ }
  swing(){this.sound('swing',.115)}
  hit(q){
   // Golpe único, seco y cálido; no tocar los perfiles de rebote.
   const gain=q==='perfect'?.24:q==='excellent'?.205:q==='good'?.18:.12;
-  this.sound('bat',gain);
+  if(!this.playRecorded('bat',gain))this.sound('bat',gain);
  }
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  // Pequeño motivo original y discreto para el menú: nada se reproduce durante el bateo.
@@ -187,7 +253,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.49.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.50.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();
@@ -242,7 +308,11 @@ export class GameAudio{
   const normalized=Math.min(1,Math.log1p(Math.max(0,strength))/Math.log(90));
   const soft=['grass','dirt','rubber','swamp'].includes(kind);
   const volume=(.022+.105*Math.pow(normalized,1.55))*(soft?.78:1);
-  this.sound(kind,volume);
+  // Grabaciones CC0 para asfalto y fachada cuando están disponibles.
+  // Césped y metal usan EXACTAMENTE su motor aprobado.
+  const realKind=kind==='asphalt'?'asphalt':
+   ['concrete','brick','solid','roof'].includes(kind)?'facade':null;
+  if(!realKind||!this.playRecorded(realKind,volume))this.sound(kind,volume);
  }
  land(){this.sound('grass',.045)}
  record(){[440,554,659,880].forEach((n,i)=>this.tone(n,.29,'sine',.09,i*.12))}

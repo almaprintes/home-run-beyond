@@ -296,3 +296,9 @@
 #app.resting #toast{display:none!important}
 #upgrades-subtitle.is-feedback{color:#ffda8b;font-weight:900}
 #upgrades-subtitle{max-width:min(76vw,430px);overflow-wrap:break-word}
+
+/* Créditos visibles y accesibles desde Configuración (v0.50). */
+#audio-credits p{margin:8px 0;font-size:12px;line-height:1.55;color:#dbe9f0}
+#audio-credits a{color:#ffdc91;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+#audio-credits a:focus-visible{outline:2px solid #ffe9b5;outline-offset:3px}
+#audio-credits small{display:block;font-size:11px;line-height:1.45;opacity:.83}
