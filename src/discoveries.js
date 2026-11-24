@@ -1,7 +1,8 @@
 // Colección de 100 cosméticos: los no descubiertos no se exponen en la tienda.
-// El precio nunca es un requisito de desbloqueo. Comprar/equipar es otra acción.
+// Comprar/equipar es otra acción: el precio orienta cuándo revelar cada objeto,
+// pero gastar en habilidades nunca hace retroceder los descubrimientos.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.44.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.45.0';
 
 export const COLLECTIONS=Object.freeze({bat:BAT_CATALOG,outfit:OUTFIT_CATALOG,ball:BALL_CATALOG});
 export const STARTER_DISCOVERIES=Object.freeze(['bat:classic','outfit:red','ball:classic']);
@@ -29,7 +30,9 @@ const QUOTAS={play:47,record:25,skill:15,secret:10}; // + 3 básicos = 100.
 const GROUP_PATTERN=['play','record','play','skill','play','record','play','secret',
  'play','record','play','skill','play','record','play','secret',
  'play','record','play','skill'];
-const SHOT_TARGETS=Array.from({length:50},(_,n)=>8+n*2+Math.floor(n*n*.78));
+// La antigua curva llegaba a 1536 batazos para cosméticos normales.
+// Ritmo nuevo: 8..~316, además de la puerta económica para cada artículo.
+const SHOT_TARGETS=Array.from({length:50},(_,n)=>8+n*2+Math.floor(n*n*.12));
 const RECORD_TARGETS=[250,500,800,1000,1300,1650,1900,2300,2700,3400,4200,
  5200,6400,8000,9600,12000,14500,17500,22000,28000,35000,45000,60000,80000,110000];
 const SKILL_TARGETS=[
@@ -77,6 +80,18 @@ export const DISCOVERY_GROUP_COUNTS=Object.freeze(Object.fromEntries(Object.keys
 ])));
 
 const safeCounter=n=>Number.isSafeInteger(n)&&n>=0?Math.min(n,2e9):0;
+export const DISCOVERY_ECONOMY=Object.freeze({starterCoins:170,skillReserveFactor:2.2,buffer:150});
+export function requiredCareerEarnings(price){
+ if(!Number.isFinite(price)||price<0)return Infinity;
+ // Gross income includes neither spent upgrades nor previously bought cosmetics.
+ // 170 starting coins, 2.2x price + 150 reserve for early skill upgrades.
+ return Math.max(0,Math.ceil(price*11/5+
+  DISCOVERY_ECONOMY.buffer-DISCOVERY_ECONOMY.starterCoins));
+}
+export function careerEarnings(save){
+ return Math.max(0,Number(save?.earnedCoins)||0);
+}
+
 export function sanitizeDiscovery(save,raw){
  const allowed=new Set(ordered.map(({key})=>key));
  save.discoveryStats=Object.fromEntries(COUNTERS.map(k=>[k,safeCounter(raw?.discoveryStats?.[k])]));
@@ -105,15 +120,17 @@ function metricValue(save,rule){
 export function isDiscovered(save,category,id){
  return BASE_KEYS.has(category+':'+id)||!!save?.discovered?.includes(category+':'+id);
 }
-export function unlockEligible(save){
+export function unlockEligible(save,limit=Infinity){
  if(!Array.isArray(save.discovered))save.discovered=[...STARTER_DISCOVERIES];
  const have=new Set(save.discovered),newItems=[];
- for(const {key,category,item} of ordered){
-  if(have.has(key)||BASE_KEYS.has(key))continue;
-  const rule=DISCOVERY_RULES[key];
-  if(metricValue(save,rule)>=rule.target){
-   save.discovered.push(key);have.add(key);newItems.push({category,item});
-  }
+ // Price order: when several achievements arrive together, show one
+ // affordable-tier discovery per shot instead of a wall of expensive prizes.
+ const eligible=ordered.filter(({key,item})=>!have.has(key)&&!BASE_KEYS.has(key)&&
+   metricValue(save,DISCOVERY_RULES[key])>=DISCOVERY_RULES[key].target&&
+   careerEarnings(save)>=requiredCareerEarnings(item.price));
+ eligible.sort((a,b)=>a.item.price-b.item.price||a.key.localeCompare(b.key));
+ for(const {key,category,item} of eligible.slice(0,Math.max(0,limit))){
+  save.discovered.push(key);have.add(key);newItems.push({category,item});
  }
  return newItems;
 }
@@ -137,7 +154,7 @@ export function recordDiscoveryShot(save,{quality='',record=false,peakZ=0,road=f
  if(water)flags.add('water');
  if(swamp)flags.add('swamp');
  save.discoveryFlags=[...flags];
- return unlockEligible(save);
+ return unlockEligible(save,1);
 }
 export function discoveredCount(save,category){
  const items=COLLECTIONS[category]||[];
@@ -147,16 +164,24 @@ const LABELS={shots:'batazos',totalMeters:'m acumulados',best:'m de récord',
  perfectHits:'contactos perfectos',preciseHits:'contactos excelentes o perfectos',
  bestGoodStreak:'buenos golpes seguidos',recordBreaks:'récords superados'};
 export function nextDiscoveryHint(save,category){
- const candidates=(COLLECTIONS[category]||[]).map(item=>DISCOVERY_RULES[category+':'+item.id])
-  .filter(rule=>rule&&rule.group!=='secret'&&metricValue(save,rule)<rule.target);
- candidates.sort((a,b)=>{
-  const ra=(a.target-metricValue(save,a))/Math.max(1,a.target);
-  const rb=(b.target-metricValue(save,b))/Math.max(1,b.target);
-  const priority={play:0,record:1,skill:2};
-  return ra-rb||(priority[a.group]-priority[b.group])||a.target-b.target;
- });
- const rule=candidates[0];
- if(!rule)return 'Sigue jugando: todavía quedan descubrimientos secretos';
- const left=Math.ceil(rule.target-metricValue(save,rule));
- return 'Próximo objetivo: '+left+' '+LABELS[rule.metric];
+ const candidates=(COLLECTIONS[category]||[]).filter(item=>!isDiscovered(save,category,item.id))
+  .map(item=>({item,rule:DISCOVERY_RULES[category+':'+item.id]}))
+  .filter(x=>x.rule&&x.rule.group!=='secret');
+ const income=careerEarnings(save),priority={play:0,record:1,skill:2};
+ // Show progress towards the closest *real* discovery, considering skill
+ // achievement AND the number of coins already earned, without leaking
+ // the hidden item's name, preview or price.
+ const deficit=({item,rule})=>Math.max(
+   Math.max(0,rule.target-metricValue(save,rule))/Math.max(1,rule.target),
+   Math.max(0,requiredCareerEarnings(item.price)-income)/Math.max(1,requiredCareerEarnings(item.price))
+ );
+ candidates.sort((a,b)=>deficit(a)-deficit(b)||
+  a.item.price-b.item.price||priority[a.rule.group]-priority[b.rule.group]);
+ const entry=candidates[0];
+ if(!entry)return 'Sigue jugando: todavía quedan descubrimientos secretos';
+ const {item,rule}=entry,remaining=Math.ceil(rule.target-metricValue(save,rule)),
+  needed=Math.max(0,Math.ceil(requiredCareerEarnings(item.price)-income));
+ if(remaining>0&&needed>0)return 'Próximo objetivo: '+remaining+' '+LABELS[rule.metric]+' · gana '+needed+' monedas más';
+ if(remaining>0)return 'Próximo objetivo: '+remaining+' '+LABELS[rule.metric];
+ return 'Próximo objetivo: gana '+needed+' monedas más (las mejoras cuentan)';
 }

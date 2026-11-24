@@ -21,7 +21,7 @@ test('100 cosméticos: 3 iniciales y 97 reglas únicas con reparto de 4 sistemas
  assert.equal(Object.values(COLLECTIONS).reduce((n,list)=>n+list.length,0),100);
 });
 test('la tienda impide comprar los ocultos; 3 batazos descubren pelota azul y 5 el bate dorado',()=>{
- const s=initialSave();s.coins=100000;
+ const s=initialSave();s.coins=100000;s.earnedCoins=10000;
  const balance=s.coins;
  assert.equal(equipCosmetic(s,'ball','sky'),'locked');
  assert.equal(equipCosmetic(s,'bat','gold'),'locked');
@@ -48,7 +48,7 @@ test('la tienda impide comprar los ocultos; 3 batazos descubren pelota azul y 5 
  assert.equal(unlockEligible(s).length,0,'sin repetir anuncios');
 });
 test('retroactividad: récord, batazos y compras antiguas siguen disponibles sin regalar monedas',()=>{
- const before={version:3,coins:1234,best:3200,shots:77,totalMeters:7500,
+ const before={version:3,coins:1234,best:3200,shots:77,totalMeters:10000,
   owned:['classic','nova'],equipped:'nova',ownedOutfits:['red','pirata'],equippedOutfit:'pirata',
   ownedBalls:['classic','luna'],equippedBall:'luna',levels:{power:49,swing:17,multiplier:9}};
  const s=sanitizeSave(before);
@@ -68,7 +68,7 @@ test('retroactividad: récord, batazos y compras antiguas siguen disponibles sin
  assert.deepEqual(sanitizeSave(JSON.parse(JSON.stringify(s))),s);
 });
 test('cinco contactos perfectos revelan baguette y se conserva el progreso tras guardar',()=>{
- let s=initialSave();
+ let s=initialSave();s.earnedCoins=15000;
  for(let i=0;i<4;i++)recordDiscoveryShot(s,{quality:'perfect'});
  assert.equal(s.discoveryStats.perfectHits,4);
  assert.equal(isDiscovered(s,'bat','baguette'),false);
@@ -81,8 +81,11 @@ test('cinco contactos perfectos revelan baguette y se conserva el progreso tras 
  assert.equal(unlockEligible(s).length,0);
 });
 test('sucesos especiales y récords se contabilizan por separado y solo una vez',()=>{
- const s=initialSave();
- let found=recordDiscoveryShot(s,{quality:'weak',road:true,roof:true,water:true,swamp:true,peakZ:20500,record:true});
+ const s=initialSave();s.earnedCoins=100000;
+ let found=[];
+ found.push(...recordDiscoveryShot(s,{quality:'weak',road:true,roof:true,water:true,swamp:true,peakZ:20500,record:true}));
+ assert.equal(found.length,1,'un aviso como máximo por batazo');
+ for(let i=0;i<16;i++)found.push(...recordDiscoveryShot(s,{quality:'weak'}));
  assert.ok(found.some(x=>x.item.id==='escoba'),'contacto con asfalto');
  assert.ok(found.some(x=>x.item.id==='chef'),'rebote sobre techo');
  assert.ok(found.some(x=>x.item.id==='pescador'),'paso por el río');
@@ -93,7 +96,7 @@ test('sucesos especiales y récords se contabilizan por separado y solo una vez'
 });
 test('no hay elementos irrecuperables y los nombres secretos no se revelan en pistas',()=>{
  const s=initialSave();
- s.shots=1e7;s.best=190000;s.totalMeters=1e9;
+ s.shots=1e7;s.best=190000;s.totalMeters=1e9;s.earnedCoins=1e9;
  s.discoveryStats={perfectHits:10000,preciseHits:10000,goodStreak:100,bestGoodStreak:100,recordBreaks:1000};
  s.discoveryFlags=['road','roof','river','water','district','harbor','forest','mountains','orbit','swamp'];
  const items=unlockEligible(s);
@@ -124,7 +127,7 @@ test('interfaz: no se crean tarjetas ni imágenes de productos ocultos',()=>{
   assert.equal(els.get('shop-items').children.length,1);
   assert.equal(els.get('shop-discovery-count').textContent,'BATES: 1/35 DESCUBIERTOS');
   assert.ok(els.get('shop-discovery-next').textContent.includes('batazos'));
-  game.save.shots=5;unlockEligible(game.save);game.renderShop();
+  game.save.shots=5;game.save.earnedCoins=2000;unlockEligible(game.save);game.renderShop();
   assert.equal(els.get('shop-items').children.length,2);
   assert.equal(els.get('shop-discovery-count').textContent,'BATES: 2/35 DESCUBIERTOS');
   game.showDiscoveries([{category:'bat',item:COLLECTIONS.bat[1]}]);

@@ -1,16 +1,23 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.44.0';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.44.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.45.0';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.45.0';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
 export function skillMaxLevel(key){return key==='multiplier'?MULTIPLIER_MAX_LEVEL:MAX_LEVEL}
 export const BONUS_EVERY=5;
-export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
+export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,earnedCoins:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
 export function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
 export function initialSave(){return JSON.parse(JSON.stringify(DEFAULT_SAVE))}
 export function sanitizeSave(raw){
  const s=initialSave();if(!raw||typeof raw!=='object')return s;
  for(const k of ['coins','best','shots','totalMeters']){const n=Number(raw[k]);if(Number.isFinite(n))s[k]=clamp(Math.floor(n),0,2e12)}
+ // Legacy games did not store gross rewards. Use a conservative, provable
+ // baseline (each shot floors metres*.75), never invent multiplier benefits.
+ // Already bought/discovered items remain intact regardless of this estimate.
+ const legacyEarnings=Math.max(0,Math.floor(s.totalMeters*.75)-s.shots);
+ const storedEarnings=Number(raw.earnedCoins);
+ s.earnedCoins=Number.isFinite(storedEarnings)&&storedEarnings>=0
+  ?clamp(Math.floor(storedEarnings),0,2e12):legacyEarnings;
  for(const k of ['power','swing','multiplier']){
   const n=Number(k==='multiplier'?raw.levels?.multiplier??raw.levels?.reflex:raw.levels?.[k]);
   if(Number.isFinite(n)&&n>=1&&n<=MAX_LEVEL)s.levels[k]=Math.floor(n);
@@ -109,7 +116,9 @@ export function coinRewardBreakdown(meters,levels){
 export function rewardForMeters(meters,levels){return coinRewardBreakdown(meters,levels).total}
 export function settleShot(save,distance){
  const meters=Math.max(0,Math.floor(distance)),reward=coinRewardBreakdown(meters,save.levels);
- save.coins+=reward.total;save.shots++;save.totalMeters+=meters;
+ save.coins+=reward.total;
+ save.earnedCoins=Math.max(0,Math.floor(Number(save.earnedCoins)||0))+reward.total;
+ save.shots++;save.totalMeters+=meters;
  const record=meters>save.best;if(record)save.best=meters;
  return {meters,coins:reward.total,baseCoins:reward.base,bonusCoins:reward.bonus,multiplier:reward.multiplier,record};
 }
