@@ -8,10 +8,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Home Run"/>
 <meta name="description" content="Home Run Beyond: un golpe, un récord, un mundo sin límites."/>
-<link rel="manifest" href="./manifest.webmanifest"/>
-<link rel="apple-touch-icon" href="./icons/icon-192.png"/>
-<link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css?v=0.50.0"/>
+<link rel="manifest" href="./manifest.webmanifest?v=0.51.0"/>
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png?v=0.51.0"/>
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png?v=0.51.0"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png?v=0.51.0"/>
+<link rel="stylesheet" href="./style.css?v=0.51.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -41,7 +42,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.50</small>
+        <small class="menu-version">VERSIÓN 0.51</small>
       </div>
     </div>
   </section>
@@ -107,7 +108,7 @@
       <span class="upgrade-cost"><span class="upgrade-action" id="buy-label-multiplier">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-multiplier">290</span></span></span></button>
     </div>
     <div id="bonus-track" class="bonus-track"><span class="bonus-icon">🎁</span><span id="bonus-text" class="bonus-text">MEJORA EXTRA CADA 5 COMPRAS</span><strong id="bonus-progress">0/4</strong></div>
-    <button type="button" id="again" class="rest-again" hidden>VOLVER A BATEAR <span aria-hidden="true">➜</span></button>
+    <button type="button" id="again" class="rest-again" aria-label="Volver a batear, siguiente lanzamiento" hidden>VOLVER A BATEAR <span aria-hidden="true">➜</span></button>
     <button type="button" id="menu-return" class="return-menu" hidden>⌂ VOLVER AL MENÚ</button>
     <div class="footer-stats"><div>RÉCORD <strong id="best-hud">0 m</strong></div><div>GOLPES <strong id="shots-hud">0</strong></div><div>REGIÓN <strong id="region-hud">ESTADIO</strong></div></div>
   </div>
@@ -172,7 +173,7 @@
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.50</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.51</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -188,6 +189,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.50.0"></script>
+<script type="module" src="./src/main.js?v=0.51.0"></script>
 </body>
 </html>

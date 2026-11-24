@@ -302,3 +302,31 @@
 #audio-credits a{color:#ffdc91;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 #audio-credits a:focus-visible{outline:2px solid #ffe9b5;outline-offset:3px}
 #audio-credits small{display:block;font-size:11px;line-height:1.45;opacity:.83}
+
+/* v0.51: CTA principal durante el descanso — muy por encima del menú secundario. */
+#again.rest-again{
+ min-height:68px;max-width:600px;margin:12px auto 13px;
+ border:2px solid #fff3ad;border-radius:18px;
+ background:linear-gradient(115deg,#fff6ad 0%,#ffcc53 42%,#ff9838 100%);
+ color:#3b1d0a;font-size:clamp(16px,4.2vw,21px);font-style:italic;
+ font-weight:1000;letter-spacing:1.15px;
+ text-shadow:0 1px 0 #fff3b77d;
+ box-shadow:0 6px 0 #ad581d,0 13px 29px #ffab4161, inset 0 1px 0 #fffad4;
+ animation:againAttention 2.6s ease-in-out infinite;
+}
+#again.rest-again span{
+ width:36px;height:36px;display:grid;place-items:center;
+ border-radius:50%;background:#3b1d0a;color:#ffeab2;font-size:24px;
+ box-shadow:0 2px 6px #8c4d2670;
+}
+#again.rest-again:active{
+ transform:translateY(4px);box-shadow:0 2px 0 #ad581d,0 5px 12px #ffab4140;
+ animation:none;
+}
+#again.rest-again:focus-visible{outline:3px solid #fff;outline-offset:4px}
+@keyframes againAttention{
+ 0%,100%{filter:brightness(1);box-shadow:0 6px 0 #ad581d,0 10px 21px #ffab4142}
+ 50%{filter:brightness(1.07);box-shadow:0 6px 0 #ad581d,0 12px 34px #ffcc6096}
+}
+@media(max-height:720px){#again.rest-again{min-height:57px;margin:7px auto 9px;font-size:15px}}
+@media(prefers-reduced-motion:reduce){#again.rest-again{animation:none}}
