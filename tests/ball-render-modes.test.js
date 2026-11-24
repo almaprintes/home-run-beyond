@@ -28,7 +28,7 @@ test('tenis es feltro con dos surcos claros dibujados en la mitad frontal de la 
  assert.match(pattern,/251,252,235,255/,'el canal claro debe contrastar con el fieltro');
  assert.match(ballCode,/tennis felt grooves missing or too faint/,'el arte horneado se comprueba píxel a píxel en CI');
  const path=bakedAssetUrl('ball','tenis');
- assert.ok(path.includes('tenis.webp?v=0.62.0'),'la versión debe invalidar el asset antiguo del iPhone');
+ assert.ok(path.includes('tenis.webp?v=0.63.0'),'la versión debe invalidar el asset antiguo del iPhone');
 });
 test('pelota amarilla no es Mini Sol y ambos artículos permanecen disponibles',()=>{
  const yellow=BALL_CATALOG.find(i=>i.id==='sun');

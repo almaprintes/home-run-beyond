@@ -6,6 +6,7 @@ const PROFILE=Object.freeze({
  brick:{length:.23,low:.07,body:.085,attack:.006,frequency:210,noise:.87,tone:.18,kind:'hard'},
  solid:{length:.22,low:.09,body:.065,attack:.003,frequency:370,noise:.75,tone:.31,kind:'hard'},
  roof:{length:.28,low:.095,body:.125,attack:.005,frequency:165,noise:.72,tone:.26,kind:'hollow'},
+ glass:{length:.24,low:.02,body:.12,attack:.002,frequency:3100,noise:.7,tone:.25,kind:'glass'},
  metal:{length:.34,low:.085,body:.2,attack:.003,frequency:920,noise:.43,tone:.48,kind:'metal'},
  rubber:{length:.21,low:.13,body:.09,attack:.016,frequency:90,noise:.35,tone:.13,kind:'soft'},
  grass:{length:.23,low:.15,body:.13,attack:.024,frequency:80,noise:.46,tone:.05,kind:'soft'},
@@ -88,7 +89,27 @@ function synthHardSurface(kind,rate){
  for(let i=0;i<amount;i++)out[i]=Math.max(-.70,Math.min(.70,out[i]*scale));
  return out;
 }
+// Bright fracture and separated falling shard transients.
+function synthGlass(rate){
+ const length=.22,a=new Float32Array(Math.ceil(length*rate));
+ let seed=0x3d56982b,prev=0;
+ const pulses=[0,.009,.026,.052,.091,.129];
+ for(let i=0;i<a.length;i++){
+  seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+  const v=(seed>>>0)/2147483648-1,t=i/rate,hi=v-prev;prev=v;
+  let s=0;
+  for(let k=0;k<pulses.length;k++){
+   const u=t-pulses[k];if(u<0||u>.085)continue;
+   const amp=Math.pow(.64,k);
+   s+=amp*(hi*.38*Math.exp(-u/.0035)+(Math.sin(2*Math.PI*(2450+k*670)*u)+.53*Math.sin(2*Math.PI*(3890+k*391)*u))*Math.exp(-u/.018)*.18);
+  }
+  a[i]=s*Math.min(1,i/4)*Math.pow(1-t/length,1.2);
+ }
+ let peak=0;for(const v of a)peak=Math.max(peak,Math.abs(v));for(let i=0;i<a.length;i++)a[i]*=.78/Math.max(peak,.001);
+ return a;
+}
 export function synthImpulse(kind='concrete',rate=22050){
+ if(kind==='glass')return synthGlass(rate);
  if(kind==='bat')throw new Error('El bate solo usa la grabación CGEffex');
  if(kind==='asphalt')return synthHardSurface('asphalt',rate);
  if(['concrete','brick','solid','roof'].includes(kind))return synthHardSurface('facade',rate);
@@ -191,7 +212,7 @@ export class GameAudio{
   const job=(async()=>{
    for(const file of files){
     try{
-     const response=await fetch('./assets/audio/'+file+'?v=0.62.0');
+     const response=await fetch('./assets/audio/'+file+'?v=0.63.0');
      if(!response.ok)continue;
      const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
      if(kind==='bat'&&file.endsWith('.mp3')&&decoded.duration<5.22)continue;
@@ -241,7 +262,7 @@ export class GameAudio{
   if(this.playRecorded('bat',gain))return;
   // Solo el WAV real si WebAudio no está listo. Nunca la síntesis del bate.
   if(typeof Audio!=='undefined'){
-   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.62.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
+   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.63.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
   }
   void this.prepareRecorded('bat');
  }
@@ -263,7 +284,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.62.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.63.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();
@@ -310,7 +331,7 @@ export class GameAudio{
   this.init();if(!this.ctx)return;
   const now=this.ctx.currentTime;
   // Evitar el traqueteo de rebotes rápidos sobre el mismo suelo.
-  if(now-this.lastImpactAt<.115||strength<2.25)return;
+  if((material!=='glass'&&now-this.lastImpactAt<.115)||strength<2.25)return;
   this.lastImpactAt=now;
   const kind=material==='road'?'asphalt':material==='puddle'?'puddle':soundProfile(material)===PROFILE.concrete?'concrete':material;
   // El segundo y tercer rebote deben sonar más discretos. El volumen

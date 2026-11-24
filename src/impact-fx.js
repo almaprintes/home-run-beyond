@@ -1,7 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.62.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.63.0';
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
 export const EFFECT_MATERIALS=Object.freeze({
+ glass:{color:'#a8e5f2',secondary:'#f5fdff',count:17,life:.62,spread:15,gravity:31,kind:'shard'},
  solid:{color:'#ffe6ae',secondary:'#fffaf0',count:12,life:.42,spread:14,gravity:30,kind:'spark'},
  concrete:{color:'#b9b8af',secondary:'#dfd8c5',count:10,life:.52,spread:10,gravity:21,kind:'dust'},
  brick:{color:'#d49a78',secondary:'#aa6a52',count:12,life:.55,spread:12,gravity:24,kind:'dust'},
@@ -93,7 +94,10 @@ export class ImpactEffects{
    if(!p||p.x< -16||p.x>width+16||p.y< -16||p.y>height+16)continue;
    const t=f.age/f.life,r=Math.max(.8,Math.min(5,f.size*(1-t)*Math.min(1.4,24/Math.sqrt(p.depth))));
    ctx.save();ctx.globalAlpha=Math.max(0,(1-t)*(f.kind==='soft'?.33:.76));
-   ctx.fillStyle=f.color;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();ctx.restore();
+   ctx.fillStyle=f.color;ctx.beginPath();
+   if(f.kind==='shard'){const angle=f.age*11+f.vx;ctx.moveTo(p.x+Math.cos(angle)*r*1.7,p.y+Math.sin(angle)*r*1.7);ctx.lineTo(p.x+Math.cos(angle+2.1)*r,p.y+Math.sin(angle+2.1)*r);ctx.lineTo(p.x+Math.cos(angle+4.2)*r*1.3,p.y+Math.sin(angle+4.2)*r*1.3);ctx.closePath();}
+   else ctx.arc(p.x,p.y,r,0,Math.PI*2);
+   ctx.fill();ctx.restore();
   }
  }
 }

@@ -1,6 +1,6 @@
-import {lerp} from './engine.js?v=0.62.0';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.62.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.62.0';
+import {lerp} from './engine.js?v=0.63.0';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.63.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.63.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -61,6 +61,44 @@ export function buildingBoxes(b){
   {kind:'roof',material:b.roofMaterial,min:[b.x-halfW-1,b.h,b.z-halfD-1],max:[b.x+halfW+1,b.h+1.4,b.z+halfD+1]},
   {kind:'vent',material:'solid',min:[b.x-b.w*.18,b.h+1,b.z-b.d*.125],max:[b.x+b.w*.18,b.h+3,b.z+b.d*.125]}
  ];
+}
+// Residential shells: render and collision share the actual openings.
+const facadeCache=new Map();
+export function buildingFacade(b){
+ const key=b.i+':'+b.j;
+ if(facadeCache.has(key))return facadeCache.get(key);
+ const walls=[],windows=[],floors=[],levels=Math.max(1,Math.floor(b.h/7)),height=b.h/levels,thick=.64;
+ for(const axis of ['z','x'])for(const side of [-1,1]){
+  const half=(axis==='z'?b.w:b.d)/2,span=2*half;
+  const center=axis==='z'?b.x:b.z,plane=axis==='z'?b.z+side*b.d/2:b.x+side*b.w/2;
+  const n0=Math.min(plane,plane-side*thick),n1=Math.max(plane,plane-side*thick);
+  const cols=span>29?4:2,cell=span/cols;
+  const rect=(target,kind,material,u0,y0,u1,y1,extra={})=>{
+   const a=center+u0,c=center+u1;
+   const [v0,v1]=kind==='glass'?[plane-side*.18-.045,plane-side*.18+.045]:[n0,n1];
+   const min=axis==='z'?[a,y0,v0]:[v0,y0,a],max=axis==='z'?[c,y1,v1]:[v1,y1,c];
+   target.push({kind,material,min,max,...extra});
+  };
+  for(let row=0;row<levels;row++){
+   const bottom=row*height,top=(row+1)*height,low=bottom+1.05,high=top-1.1;
+   rect(walls,'wall','concrete',-half,bottom,half,low);
+   rect(walls,'wall','concrete',-half,high,half,top);
+   for(let col=0;col<cols;col++){
+    const left=-half+col*cell,right=left+cell,margin=Math.min(1.35,cell*.17);
+    rect(walls,'wall','concrete',left,low,left+margin,high);
+    rect(walls,'wall','concrete',right-margin,low,right,high);
+    const id=key+':'+axis+':'+side+':'+row+':'+col;
+    rect(windows,'glass','glass',left+margin,low,right-margin,high,{id,axis,side,color:rand(b.i*31+col*17,b.j*13+row*11+side)>.76?'#e6c786':'#77a9b6'});
+   }
+  }
+ }
+ for(let row=1;row<levels;row++)floors.push({kind:'interior-floor',material:'solid',min:[b.x-b.w/2+thick,row*height-.18,b.z-b.d/2+thick],max:[b.x+b.w/2-thick,row*height+.18,b.z+b.d/2-thick]});
+ const result={walls,windows,floors,roof:buildingBoxes(b).slice(1)};
+ facadeCache.set(key,result);return result;
+}
+export function buildingCollisionParts(b,brokenWindows){
+ const f=buildingFacade(b);
+ return [...f.walls,...f.floors,...f.roof,...f.windows.filter(w=>!brokenWindows?.has(w.id))];
 }
 // Los contenedores de las gradas son sólidos, con la misma posición y
 // giro que la malla visible. Una fuente de datos para render, física y sombras.
@@ -175,7 +213,7 @@ function sweptSphereBox(start,end,radius,box){
  }
  return {t,point,normal:{x:normal[0],y:normal[1],z:normal[2]},kind:box.kind,material:box.material};
 }
-export function traceBuildingCollision(from,to,radius=1.45){
+export function traceBuildingCollision(from,to,radius=1.45,brokenWindows=null){
  if(!from||!to)return null;
  const xMin=Math.min(from.x,to.x)-radius-2,xMax=Math.max(from.x,to.x)+radius+2;
  const zMin=Math.min(from.z,to.z)-radius-2,zMax=Math.max(from.z,to.z)+radius+2;
@@ -186,13 +224,14 @@ export function traceBuildingCollision(from,to,radius=1.45){
  for(let j=jMin;j<=jMax;j++)for(let i=iMin;i<=iMax;i++){
   const b=buildingAt(i,j);if(!b)continue;
   if(b.x+b.w/2+radius+2<xMin||b.x-b.w/2-radius-2>xMax||b.z+b.d/2+radius+2<zMin||b.z-b.d/2-radius-2>zMax)continue;
-  for(const box of buildingBoxes(b)){
+  for(const box of buildingCollisionParts(b,brokenWindows)){
    const hit=sweptSphereBox(from,to,radius,box);
    if(!hit)continue;
    const dot=(to.x-from.x)*hit.normal.x+(to.y-from.y)*hit.normal.y+(to.z-from.z)*hit.normal.z;
-   if(hit.t>0&&dot>=0)continue;
-   if(!nearest||hit.t<nearest.t-1e-8||(Math.abs(hit.t-nearest.t)<1e-8&&hit.normal.y>nearest.normal.y)){
-    nearest={...hit,building:b};
+   if(dot>=-1e-9)continue;
+   const tie=nearest&&Math.abs(hit.t-nearest.t)<1e-8;
+   if(!nearest||hit.t<nearest.t-1e-8||(tie&&((nearest.kind==='glass'&&hit.kind!=='glass')||(hit.kind!=='glass'&&hit.normal.y>nearest.normal.y)))){
+    nearest={...hit,building:b,windowId:box.id};
    }
   }
  }
@@ -261,18 +300,30 @@ function treeObscuresBall(cam,ball,x,z,h){
  const radius=Math.max(4,h*.35);
  return segmentBlockedByBox(cam,ball,{min:[x-radius,0,z-radius],max:[x+radius,h*1.48,z+radius]});
 }
-function city(r,x,z,idx,row,lod,ghost=false){
+function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
  const b=buildingAt(idx,row);if(!b)return;
  if(ghost)r.setLayer?.('ghost');
  const paint=b.color;const y=b.h*.5;const col=paint;
  r.setMaterial?.(rand(idx*17,row*13)<.60?'plaster':'brick');
- r.box(x,y,z,b.w,b.h,b.d,col);
+ const f=buildingFacade(b),nearBall=focusBall&&Math.hypot(focusBall.x-x,focusBall.z-z)<75;
+ const damaged=f.windows.some(w=>brokenWindows?.has(w.id));
+ const detailed=lod<2||nearBall||damaged;
+ const drawPart=(p,color)=>{const [a,c,d]=p.min,[e,g,h]=p.max;r.box((a+e)/2,(c+g)/2,(d+h)/2,e-a,g-c,h-d,color)};
+ if(detailed){for(const p of f.walls)drawPart(p,col);for(const p of f.floors)drawPart(p,'#8d8c81')}
+ else r.box(x,y,z,b.w,b.h,b.d,col);
  r.setMaterial?.(b.roofMaterial==='rubber'?'rubber':'roof');
  r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);
  r.setMaterial?.('metal');
  r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
  r.setMaterial?.('plain');
- if(lod<2){const winColor=rand(idx,row)>.5?'#9fe0dc':'#fbdf9b';const levels=Math.min(4,Math.floor(b.h/7));for(let t=0;t<levels;t++){const yy=3+t*7;for(let s of [-1,1]){r.box(x+s*b.w*.23,yy,z+b.d*.5+.16,3.6,3.3,.27,winColor);r.box(x+s*(b.w*.5+.1),yy,z, .26,3.3,3.6,winColor)}}}
+ for(const w of f.windows){
+  if(brokenWindows?.has(w.id))continue;
+  const [a,c,d]=w.min,[e,g,h]=w.max;
+  const shift=detailed?0:w.side*.31;
+  const xx=(a+e)/2+(w.axis==='x'?shift:0),zz=(d+h)/2+(w.axis==='z'?shift:0);
+  r.box(xx,(c+g)/2,zz,e-a,g-c,h-d,w.color);
+  if(detailed)r.box(xx+(w.axis==='x'?w.side*.055:0),g-.27,zz+(w.axis==='z'?w.side*.055:0),w.axis==='x'?.025:(e-a)*.90,.23,w.axis==='z'?.025:(h-d)*.90,'#c5e3e7');
+ }
  r.setLayer?.('opaque');
 }
 function road(r,x,z,w,d){
@@ -363,7 +414,7 @@ function drawFarBiomeProps(r,viewZ,viewY,focusBall,drawTree){
   }
  }
 }
-export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
+export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,brokenWindows=null){
  const cam=[viewX,viewY,viewZ];
  const drawTree=(x,z,h,seed)=>{
   if(focusBall&&treeObscuresBall(cam,focusBall,x,z,h))r.setLayer?.('ghost');
@@ -426,7 +477,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null){
  }
  if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-4;i<=4;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
  if(!b){drawTree(x,z,8+rand(n+5)*6,n);drawTree(x+15,z+12,5+rand(n+7)*6,n+32)}
- else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b));r.box(x+24,.13,z+25,8,.20,8,'#b9b8ad',0,0,0,'paving')}}}
+ else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall);r.box(x+24,.13,z+25,8,.20,8,'#b9b8ad',0,0,0,'paving')}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
  for(const patch of WET_PATCHES){
   if(Math.abs(patch.z-viewZ)>700)continue;
@@ -575,7 +626,7 @@ export function drawBaseball(r,x,y,z,spin=0){
 export function drawWorld(r,cam,game){
  const z=cam[2],x=cam[0];r.fogDistance=cam[1]>250?1300:540;r.begin();
  sky(r,z,x,cam[1]);
- drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null);
+ drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null,game.brokenWindows);
  // Tráfico volumétrico: misma matriz, misma profundidad, 4 ruedas por coche.
  if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
   !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa');
