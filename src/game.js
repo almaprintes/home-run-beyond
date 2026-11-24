@@ -1,15 +1,15 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.48.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.48.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.48.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.48.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.48.0';
-import {GameAudio} from './audio.js?v=0.48.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.48.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.48.0';
-import {BatterSprites} from './sprites.js?v=0.48.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.48.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.48.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.48.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.49.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision} from './world.js?v=0.49.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.49.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.49.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.49.0';
+import {GameAudio} from './audio.js?v=0.49.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.49.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.49.0';
+import {BatterSprites} from './sprites.js?v=0.49.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.49.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.49.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.49.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -407,8 +407,12 @@ export class BaseballGame{
   b.vy-=9.81*dt;
   const next={x:b.x+b.vx*dt,y:b.y+b.vy*dt,z:b.z+b.vz*dt};
   const buildingHit=traceBuildingCollision(prev,next,radius);
-   const boundaryHit=traceSideBoundary(prev,next,radius);
-   const hit=boundaryHit&&(!buildingHit||boundaryHit.t<=buildingHit.t)?boundaryHit:buildingHit;
+  const boundaryHit=traceSideBoundary(prev,next,radius);
+  const containerHit=traceStadiumContainerCollision(prev,next,radius);
+  // Resolver el primer contacto real de la trayectoria, no un solapamiento
+  // del siguiente fotograma: edificios, muros y contenedores compiten por t.
+  const hit=[buildingHit,boundaryHit,containerHit].filter(Boolean)
+   .reduce((first,candidate)=>!first||candidate.t<first.t?candidate:first,null);
   let touching=false;
   if(hit){
    // El material determina el rebote; ningún número de impactos termina la partida.
@@ -438,7 +442,11 @@ export class BaseballGame{
     b.vx*=rollingDrag;b.vz*=rollingDrag;
     touching=true;
    }
-   b.lastCollision=sideHit?'CHOQUE CON '+hit.obstacle.toUpperCase():n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
+   const stadiumHit=hit.kind?.startsWith('stadium-container-');
+   b.lastCollision=stadiumHit?(n.y>.5?'REBOTE EN CONTENEDOR':'CHOQUE CON CONTENEDOR'):
+    sideHit?'CHOQUE CON '+hit.obstacle.toUpperCase():
+    n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):
+    hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
    if(inward>1){
     if(!sideHit&&n.y>.5)(b.encounters??={}).roof=true;
     b.impactAge=0;b.impactMaterial=mat;

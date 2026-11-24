@@ -1,6 +1,6 @@
-import {lerp} from './engine.js?v=0.48.0';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.48.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.48.0';
+import {lerp} from './engine.js?v=0.49.0';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.49.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.49.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -62,6 +62,64 @@ export function buildingBoxes(b){
   {kind:'vent',material:'solid',min:[b.x-b.w*.18,b.h+1,b.z-b.d*.125],max:[b.x+b.w*.18,b.h+3,b.z+b.d*.125]}
  ];
 }
+// Los contenedores de las gradas son sólidos, con la misma posición y
+// giro que la malla visible. Una fuente de datos para render, física y sombras.
+const STADIUM_CONTAINERS=Object.freeze(Array.from({length:20},(_,n)=>{
+ const i=n*2,a=-1.52+i*3.04/38;
+ return Object.freeze({id:i,x:137*Math.sin(a),z:137*Math.cos(a),yaw:a});
+}));
+export function stadiumContainers(){return STADIUM_CONTAINERS;}
+const STADIUM_CONTAINER_PARTS=Object.freeze([
+ Object.freeze({kind:'stadium-container-body',material:'metal',y:4.2,w:13,h:7,d:10,color:'#315b71'}),
+ Object.freeze({kind:'stadium-container-trim',material:'metal',y:7.9,w:14,h:1.2,d:11,color:'#e6a95c'}),
+ Object.freeze({kind:'stadium-container-top',material:'metal',y:10,w:13,h:1.3,d:12,color:'#264259'})
+]);
+export function stadiumContainerParts(){return STADIUM_CONTAINER_PARTS;}
+function containerLocal(p,c){
+ const co=Math.cos(c.yaw),si=Math.sin(c.yaw);
+ const dx=p.x-c.x,dz=p.z-c.z;
+ return {x:co*dx-si*dz,y:p.y,z:si*dx+co*dz};
+}
+function containerWorld(p,c){
+ const co=Math.cos(c.yaw),si=Math.sin(c.yaw);
+ return {x:c.x+co*p.x+si*p.z,y:p.y,z:c.z-si*p.x+co*p.z};
+}
+function containerNormal(n,c){
+ const co=Math.cos(c.yaw),si=Math.sin(c.yaw);
+ return {x:co*n.x+si*n.z,y:n.y,z:-si*n.x+co*n.z};
+}
+function containerPartBox(part){
+ return {kind:part.kind,material:part.material,
+  min:[-part.w/2,part.y-part.h/2,-part.d/2],
+  max:[part.w/2,part.y+part.h/2,part.d/2]};
+}
+export function traceStadiumContainerCollision(from,to,radius=1.45){
+ if(!from||!to)return null;
+ const xMin=Math.min(from.x,to.x)-radius,xMax=Math.max(from.x,to.x)+radius;
+ const zMin=Math.min(from.z,to.z)-radius,zMax=Math.max(from.z,to.z)+radius;
+ let nearest=null;
+ for(const container of STADIUM_CONTAINERS){
+  // 11 unidades cubren los cuatro vértices y el radio del balón.
+  if(container.x+11<xMin||container.x-11>xMax||
+     container.z+11<zMin||container.z-11>zMax)continue;
+  const start=containerLocal(from,container),end=containerLocal(to,container);
+  for(const part of stadiumContainerParts()){
+   const hit=sweptSphereBox(start,end,radius,containerPartBox(part));
+   if(!hit)continue;
+   const normal=containerNormal(hit.normal,container);
+   const dot=(to.x-from.x)*normal.x+(to.y-from.y)*normal.y+
+     (to.z-from.z)*normal.z;
+   if(hit.t>0&&dot>=0)continue;
+   if(!nearest||hit.t<nearest.t-1e-8||
+      (Math.abs(hit.t-nearest.t)<1e-8&&normal.y>nearest.normal.y)){
+    nearest={...hit,point:containerWorld(hit.point,container),
+     normal,containerId:container.id};
+   }
+  }
+ }
+ return nearest;
+}
+
 function sweptSphereBox(start,end,radius,box){
  const d=[end.x-start.x,end.y-start.y,end.z-start.z],p=[start.x,start.y,start.z];
  let enter=-Infinity,exit=Infinity,axis=-1,sign=0;
@@ -127,6 +185,16 @@ export function surfaceBelowBall(ball){
    if(x<box.min[0]||x>box.max[0]||z<box.min[2]||z>box.max[2])continue;
    const top=box.max[1];
    if(top<=y+1.5&&top>floor.y)floor={y:top,type:box.kind==='roof'?'roof':box.kind==='vent'?'concrete':'building'};
+  }
+ }
+ // Las cubiertas de estos contenedores reciben las sombras a su altura.
+ if(z>-15&&z<155)for(const container of STADIUM_CONTAINERS){
+  if(Math.abs(x-container.x)>11||Math.abs(z-container.z)>11)continue;
+  const p=containerLocal({x,y,z},container);
+  for(const part of stadiumContainerParts()){
+   if(Math.abs(p.x)>part.w/2||Math.abs(p.z)>part.d/2)continue;
+   const top=part.y+part.h/2;
+   if(top<=y+1.5&&top>floor.y)floor={y:top,type:'stadium-container'};
   }
  }
  return floor;
@@ -357,8 +425,13 @@ function stadium(r){r.field(0,-.02,38,285,290,'#448e60');for(let i=0;i<11;i++){c
  line(r,0,0,29,25,.21,.35,'#f5f0d6');line(r,0,0,-29,25,.21,.35,'#f5f0d6');line(r,29,25,0,50,.21,.28,'#f5f0d6');line(r,-29,25,0,50,.21,.28,'#f5f0d6');
  for(const [x,z] of [[0,0],[29,25],[-29,25],[0,50]])r.box(x,.26,z,2,.11,2,'#f9faf4',PI/4);
  r.setMaterial?.('dirt');r.pole(0,.6,21,4,1.1,'#be865a');r.setMaterial?.('plain');r.field(0,.75,21,2.2,1,'#f6f3e8');
- for(let i=0;i<=38;i++){const a=-1.52+i*3.04/38,x=121*Math.sin(a),z=121*Math.cos(a);r.pole(x,3.9,z,.65,8,'#2a6572');if(i<38){const b=-1.52+(i+1)*3.04/38,nx=121*Math.sin(b),nz=121*Math.cos(b);line(r,x,z,nx,nz,2,1.9,i%5===0?'#ff9b52':'#285d67');}
- if(i%2===0){const bx=137*Math.sin(a),bz=137*Math.cos(a);r.box(bx,4.2,bz,13,7,10,'#315b71',a);r.box(bx,7.9,bz,14,1.2,11,'#e6a95c',a);r.box(bx,10,bz,13,1.3,12,'#264259',a);}}
+ for(let i=0;i<=38;i++){const a=-1.52+i*3.04/38,x=121*Math.sin(a),z=121*Math.cos(a);r.pole(x,3.9,z,.65,8,'#2a6572');if(i<38){const b=-1.52+(i+1)*3.04/38,nx=121*Math.sin(b),nz=121*Math.cos(b);line(r,x,z,nx,nz,2,1.9,i%5===0?'#ff9b52':'#285d67');}}
+ // Contenedores: exactamente los mismos prismas en escena y colisiones.
+ for(const container of stadiumContainers())for(const part of stadiumContainerParts()){
+  r.setMaterial?.('plain');
+  r.box(container.x,part.y,container.z,part.w,part.h,part.d,part.color,container.yaw);
+ }
+ r.setMaterial?.('plain');
  // Tribunas detrás del home plate.
  for(let k=0;k<7;k++){for(let s of [-1,1]){r.box(s*(18+k*8),4+k*.9,-32-k*5,7,7+k*1.8,15,'#31566d',s*-.28);r.box(s*(18+k*8),8.1+k*1.8,-34-k*5,8,.7,16,k%2?'#edb662':'#e9e6d3',s*-.28)}}
  // Marcador y focos.
