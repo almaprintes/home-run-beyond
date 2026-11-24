@@ -4,11 +4,11 @@ import {GameAudio,synthImpulse,soundProfile,contactProfile} from '../src/audio.j
 import {readFileSync} from 'node:fs';
 
 test('samples de impactos poseen ataques, decaimiento y perfiles acústicos diferentes',()=>{
- const names=['bat','swing','concrete','brick','metal','roof','rubber','grass','dirt','asphalt','water','puddle','swamp'];
+ const names=['swing','concrete','brick','metal','roof','rubber','grass','dirt','asphalt','water','puddle','swamp'];
  const signatures=[];
  for(const name of names){
   const sound=synthImpulse(name,22050);
-  assert.ok(sound.length>(name==='bat'?1100:2000)&&sound.length<16000,name);
+  assert.ok(sound.length>2000&&sound.length<16000,name);
   const peak=sound.reduce((m,x)=>Math.max(m,Math.abs(x)),0);
   assert.ok(peak>.03&&peak<=.90,'envolvente incorrecta: '+name);
   assert.ok(sound.every(Number.isFinite),'audio inválido: '+name);
@@ -30,11 +30,12 @@ test('audio de bate y materiales usa buffers de ruido filtrado, no pitidos de os
  globalThis.window={AudioContext:FakeContext};
  try{
   const game=new GameAudio();
+  game.init();game.recordedBuffers.set('bat',{name:'CGEffex'});
   game.swing();game.hit('perfect');
   game.impact('concrete',90);game.ctx.currentTime+=.15;game.impact('water',55);
   game.ctx.currentTime+=.15;game.impact('grass',20);
   assert.ok(played.length>=5);
-  assert.ok(game.buffers.has('swing')&&game.buffers.has('bat')&&game.buffers.has('water')&&game.buffers.has('grass'));
+  assert.ok(game.buffers.has('swing')&&!game.buffers.has('bat')&&game.buffers.has('water')&&game.buffers.has('grass'));
   assert.ok(allocated.every(n=>n>1000));
   const count=allocated.length;
   game.ctx.currentTime+=.15;game.hit('good');
@@ -54,29 +55,9 @@ test('mundo sin z-fighting de césped superpuesto y con las nuevas superficies',
 });
 
 
-test('v0.48: bate muy seco, sin ruido ni resonancia sobrante',()=>{
- const sample=synthImpulse('bat',22050),rate=22050;
- assert.ok(contactProfile('bat').length<=.14);
- assert.ok(sample.length<rate*.14);
- const energy=(a,b)=>sample.slice(Math.floor(a*rate),Math.floor(b*rate))
-  .reduce((sum,x)=>sum+x*x,0);
- assert.ok(energy(.0,.022)>energy(.085,.13)*8,'el bate debe ser un crack seco sin cola chirriante');
- assert.ok(Math.abs(sample[sample.length-1])<.005,'final suavizado sin clic');
- const attack=energy(0,.015);
- assert.ok(attack>.02,'el golpe no puede ser inaudible');
-});
-test('v0.48: golpe de bate seco, energía concentrada en primeros milisegundos',()=>{
- for(const rate of [22050,44100,48000]){
-  const data=synthImpulse('bat',rate),profile=contactProfile('bat');
-  assert.ok(profile.length<=.070,'el contacto debe durar 70 ms como máximo');
-  assert.equal(data.length,Math.ceil(profile.length*rate));
-  const power=(from,to)=>data.slice(Math.floor(from*rate),Math.min(data.length,Math.floor(to*rate)))
-    .reduce((n,x)=>n+x*x,0);
-  const onset=power(0,.012),tail=power(.037,.069);
-  assert.ok(onset>tail*18,'el golpe no puede sonar hueco ni reverberante');
-  assert.ok(Math.abs(data.at(-1))<.002,'el búfer debe terminar en silencio');
-  assert.ok(Math.max(...data)<.751,'no introducir clipping');
- }
+test('bate procedural eliminado: no se sintetiza ni se almacena',()=>{
+ assert.equal(contactProfile('bat'),null);
+ assert.throws(()=>synthImpulse('bat',22050),/grabación CGEffex/);
 });
 test('v0.48: los perfiles de botes aprobados siguen idénticos',()=>{
  assert.deepEqual(contactProfile('grass'),{
@@ -96,9 +77,9 @@ test('v0.47: césped es suave y asfalto es más agudo y seco',()=>{
  const grass=contactProfile('grass'),road=contactProfile('asphalt');
  assert.ok(grass.cut<road.cut/2,'el césped debe amortiguar los agudos');
  assert.ok(grass.click>road.click,'el césped tiene ataque más blando');
- for(const key of ['bat','grass','dirt','asphalt','concrete','brick','roof','rubber']){
+ for(const key of ['grass','dirt','asphalt','concrete','brick','roof','rubber']){
   const x=synthImpulse(key,48000),max=Math.max(...x);
-  assert.ok(x.length>=(key==='bat'?3200:4000)&&x.length<=7700,key);
+  assert.ok(x.length>=4000&&x.length<=7700,key);
   assert.ok(max<=.76&&max>.15,key);
   assert.ok(x.every(Number.isFinite),key);
   assert.ok(Math.abs(x[x.length-1])<.005,key);
@@ -118,6 +99,7 @@ test('v0.47: el rebote secundario no se convierte en traqueteo',()=>{
  globalThis.window={AudioContext:FakeCtx};
  try{
   const audio=new GameAudio();
+  audio.init();audio.recordedBuffers.set('bat',{name:'CGEffex'});
   audio.hit('perfect');
   const hitVolume=gains.at(-1).value;
   audio.impact('road',55);

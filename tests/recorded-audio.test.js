@@ -26,7 +26,7 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.match(html,/BranRainey/);
  assert.match(sw,/OPTIONAL_AUDIO/);
  assert.match(sw,/Promise\.allSettled\(OPTIONAL_AUDIO/);
- assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.52\.0/);
+ assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.53\.0/);
  assert.equal((workflow.match(/run: python tools\/build_impact_audio\.py/g)||[]).length,2);
 });
 
@@ -80,7 +80,7 @@ test('superficies reales opcionales no desactivan los rebotes de hierba o metal'
 
 test('precarga sin bloquear el bateo y cae al sonido local si falla Freesound',async()=>{
  const oldWindow=globalThis.window,oldFetch=globalThis.fetch;
- globalThis.window={AudioContext:class{constructor(){this.sampleRate=22050;this.state='running';this.destination={};this.currentTime=0}decodeAudioData(){return Promise.resolve({duration:.4})}}};
+ globalThis.window={AudioContext:class{constructor(){this.sampleRate=22050;this.state='running';this.destination={};this.currentTime=0}decodeAudioData(){return Promise.resolve({duration:6})}}};
  const visited=[];
  globalThis.fetch=async(url)=>{visited.push(url);return {ok:true,arrayBuffer:async()=>new ArrayBuffer(8)}};
  try{
@@ -88,11 +88,17 @@ test('precarga sin bloquear el bateo y cae al sonido local si falla Freesound',a
   a.prepareGameEffects();
   await Promise.all([...a.recordedLoads.values()]);
   assert.deepEqual([...a.recordedBuffers.keys()].sort(),['asphalt','bat','facade']);
-  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.52.0')));
+  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.53.0')));
   assert.ok(visited.some(x=>x.includes('asphalt-ball.mp3')));
   assert.ok(visited.some(x=>x.includes('wall-ball.mp3')));
  }finally{
   if(oldWindow===undefined)delete globalThis.window;else globalThis.window=oldWindow;
   if(oldFetch===undefined)delete globalThis.fetch;else globalThis.fetch=oldFetch;
  }
+});
+
+test('sin buffer WebAudio el bate nunca sintetiza: solo WAV CGEffex',()=>{
+ const oldAudio=globalThis.Audio,played=[];
+ globalThis.Audio=class{constructor(url){this.url=url}play(){played.push(this.url);return Promise.resolve()}};
+ try{const a=new GameAudio();a.prepareRecorded=()=>Promise.resolve(false);a.sound=()=>assert.fail('bate procedural');a.hit('perfect');assert.equal(played.length,1);assert.match(played[0],/bat-cgeffex\.wav/);a.enabled=false;a.hit('good');assert.equal(played.length,1)}finally{if(oldAudio===undefined)delete globalThis.Audio;else globalThis.Audio=oldAudio}
 });

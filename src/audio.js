@@ -2,7 +2,6 @@
 // materializaciones locales para suelos; funciona sin red en Safari/iPhone.
 const PROFILE=Object.freeze({
  swing:{length:.23,low:.045,body:.17,attack:.015,frequency:110,noise:.95,tone:0,kind:'air'},
- bat:{length:.26,low:.092,body:.055,attack:.002,frequency:340,noise:.88,tone:.32,kind:'hard'},
  concrete:{length:.23,low:.075,body:.075,attack:.004,frequency:225,noise:.76,tone:.24,kind:'hard'},
  brick:{length:.23,low:.07,body:.085,attack:.006,frequency:210,noise:.87,tone:.18,kind:'hard'},
  solid:{length:.22,low:.09,body:.065,attack:.003,frequency:370,noise:.75,tone:.31,kind:'hard'},
@@ -22,7 +21,6 @@ export function soundProfile(name){return PROFILE[name]||PROFILE.concrete}
 // El golpe es una suma de impulso breve y resonancias amortiguadas;
 // se elimina la cola de ruido largo (que sonaba a fritura digital).
 const CONTACT=Object.freeze({
- bat:     {length:.069,click:.0021,noise:.0045,cut:2800,body:[210,420,790],decay:.013,snap:.71,ring:.22,weight:.25},
  grass:   {length:.105,click:.0110,noise:.046,cut:480, body:[165,280,535],decay:.047,snap:.08,ring:.33,weight:.52},
  dirt:    {length:.109,click:.0090,noise:.048,cut:790, body:[175,310,610],decay:.047,snap:.14,ring:.34,weight:.46},
  asphalt: {length:.115,click:.0047,noise:.033,cut:1650,body:[215,410,770],decay:.040,snap:.30,ring:.37,weight:.30},
@@ -33,35 +31,6 @@ const CONTACT=Object.freeze({
  rubber:  {length:.106,click:.0140,noise:.044,cut:560, body:[148,280,520],decay:.040,snap:.07,ring:.29,weight:.53}
 });
 export function contactProfile(name){return CONTACT[name]||null}
-// Bate realista: un único golpe seco de madera contra cuero (≈69 ms).
-// El crujido de alta frecuencia muere en 3 ms; cuerpo cálido en 12–16 ms.
-// Ni cola de ruido, ni nota sostenida, ni reverberación artificial.
-function synthDryBat(rate){
- const cfg=CONTACT.bat,length=Math.max(1,Math.ceil(cfg.length*rate));
- const out=new Float32Array(length);
- let seed=0x7b4ca91f,low=0;
- const alpha=1-Math.exp(-2*Math.PI*2700/rate);
- for(let i=0;i<length;i++){
-  seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
-  const white=(seed>>>0)/2147483648-1;
-  low+=(white-low)*alpha;
-  const t=i/rate;
-  const crisp=(white-low)*Math.exp(-t/.00245);
-  const wood=(.66*Math.sin(2*Math.PI*420*t+.18)+
-   .34*Math.sin(2*Math.PI*210*t+.68))*Math.exp(-t/.0125);
-  const leather=low*Math.exp(-t/.0075);
-  // Entrada submilisegundo y salida muda, sin clic de corte del buffer.
-  const entry=Math.min(1,t/.00022);
-  const exit=Math.pow(Math.min(1,(cfg.length-t)/.008),2);
-  out[i]=(.72*crisp+.36*wood+.13*leather)*entry*exit;
- }
- let peak=0;
- for(const v of out)peak=Math.max(peak,Math.abs(v));
- const gain=.72/Math.max(.001,peak);
- for(let i=0;i<out.length;i++)out[i]=Math.max(-.75,Math.min(.75,out[i]*gain));
- return out;
-}
-
 function synthContact(name,rate){
  const p=CONTACT[name],count=Math.max(1,Math.ceil(p.length*rate)),samples=new Float32Array(count);
  let seed=0x613d2baf ^ name.split('').reduce((n,c)=>(Math.imul(n,33)+c.charCodeAt(0))|0,0);
@@ -119,8 +88,8 @@ function synthHardSurface(kind,rate){
  for(let i=0;i<amount;i++)out[i]=Math.max(-.70,Math.min(.70,out[i]*scale));
  return out;
 }
-export function synthImpulse(kind='bat',rate=22050){
- if(kind==='bat')return synthDryBat(rate);
+export function synthImpulse(kind='concrete',rate=22050){
+ if(kind==='bat')throw new Error('El bate solo usa la grabación CGEffex');
  if(kind==='asphalt')return synthHardSurface('asphalt',rate);
  if(['concrete','brick','solid','roof'].includes(kind))return synthHardSurface('facade',rate);
  if(contactProfile(kind))return synthContact(kind,rate);
@@ -178,7 +147,7 @@ export class GameAudio{
   o.connect(g).connect(c.destination);o.start(t);o.stop(t+duration+.05);
  }
  sound(kind,volume=.18){
-  if(!this.enabled)return;this.init();const c=this.ctx;
+  if(!this.enabled||kind==='bat')return;this.init();const c=this.ctx;
   if(!c||!c.createBuffer||!c.createBufferSource||!c.createGain)return;
   let buffer=this.buffers.get(kind);
   if(!buffer){
@@ -196,7 +165,7 @@ export class GameAudio{
   if(!this.enabled)return Promise.resolve(false);
   this.init();
   if(this.recordedBuffers.has(kind))return Promise.resolve(true);
-  if(this.recordedMissing.has(kind))return Promise.resolve(false);
+  if(kind!=='bat'&&this.recordedMissing.has(kind))return Promise.resolve(false);
   if(this.recordedLoads.has(kind))return this.recordedLoads.get(kind);
   // Original recording if the public preview was available at build time,
   // always fall back to a bundled PCM WAV derived from the SAME CGEffex take.
@@ -210,9 +179,10 @@ export class GameAudio{
   const job=(async()=>{
    for(const file of files){
     try{
-     const response=await fetch('./assets/audio/'+file+'?v=0.52.0');
+     const response=await fetch('./assets/audio/'+file+'?v=0.53.0');
      if(!response.ok)continue;
      const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
+     if(kind==='bat'&&file.endsWith('.mp3')&&decoded.duration<5.22)continue;
      this.recordedBuffers.set(kind,decoded);
      let offset=0,duration=.30;
      if(kind==='bat'){
@@ -254,7 +224,7 @@ export class GameAudio{
   const src=this.ctx.createBufferSource(),gain=this.ctx.createGain();
   src.buffer=buffer;
   this.variant=(this.variant+1)%7;
-  src.playbackRate.value=.985+this.variant*.007;
+  src.playbackRate.value=kind==='bat'?1:.985+this.variant*.007;
   gain.gain.value=Math.min(.4,Math.max(.001,gainAmount));
   src.connect(gain);gain.connect(this.ctx.destination);
   const segment=this.recordedSegments.get(kind);
@@ -265,7 +235,13 @@ export class GameAudio{
  hit(q){
   // Golpe único, seco y cálido; no tocar los perfiles de rebote.
   const gain=q==='perfect'?.24:q==='excellent'?.205:q==='good'?.18:.12;
-  if(!this.playRecorded('bat',gain))this.sound('bat',gain);
+  if(!this.enabled)return;
+  if(this.playRecorded('bat',gain))return;
+  // Solo el WAV real si WebAudio no está listo. Nunca la síntesis del bate.
+  if(typeof Audio!=='undefined'){
+   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.53.0');clip.volume=Math.min(1,gain*2);clip.play()?.catch?.(()=>{});}catch{}
+  }
+  void this.prepareRecorded('bat');
  }
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  // Pequeño motivo original y discreto para el menú: nada se reproduce durante el bateo.
@@ -285,7 +261,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.52.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.53.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();

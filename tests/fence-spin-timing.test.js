@@ -16,12 +16,12 @@ test('valla: 39 postes y 38 travesaños metálicos, sin paredes invisibles altas
 });
 test('choque con valla invierte velocidad y usa el mismo audio metálico',()=>{
  const part=stadiumFenceParts().find(p=>p.kind==='stadium-fence-rail'&&p.id===19);
- const n={x:Math.sin(part.yaw),z:Math.cos(part.yaw)};
+ const n={x:Math.cos(part.yaw),z:-Math.sin(part.yaw)};
  const game=Object.create(BaseballGame.prototype);
  game.state='flight';game.simElapsed=0;game.save={reducedEffects:true};
  game.ball={x:part.x-6*n.x,y:2.2,z:part.z-6*n.z,vx:100*n.x,vy:0,vz:100*n.z,bounces:0,maxZ:0,encounters:{}};
  const sounds=[];game.audio={impact:m=>sounds.push(m)};game.finishShot=()=>{};
- game.simulateStep(.12);
+ game.simulateStep(.08);
  assert.ok(game.ball.lastCollision.includes('VALLA'));assert.ok(sounds.includes('metal'));
  assert.ok(game.ball.vx*n.x+game.ball.vz*n.z<0);
 });

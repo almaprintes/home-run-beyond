@@ -48,3 +48,6 @@ Los rebotes de **hierba** y los impactos **metálicos** contra contenedores
 mantienen los sonidos aprobados en las versiones 0.47–0.49.
 
 Ninguno de los sonidos se utiliza para activar o alterar la física.
+
+## 0.53 — solo grabación real
+El WAV PCM de la misma grabación se incluye directamente en el repositorio y en la caché PWA, incluso si Pages publica sin ejecutar el generador. Se precarga antes de empezar a jugar. Se elimina la síntesis del golpe del bate; si WebAudio falla, solo se intenta reproducir el WAV real. Los sonidos de otras superficies permanecen intactos.
