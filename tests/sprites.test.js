@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
-import {BatterSprites,BATTER_ASSETS,selectBatterPose,projectToScreen} from '../src/sprites.js';
+import {BatterSprites,BATTER_ASSETS,selectBatterPose,projectToScreen,weaponPlacement} from '../src/sprites.js';
 import {pitcherBallPosition} from '../src/world.js';
+import {bakedAssetUrl} from '../src/baked-assets.js';
+import {initialSave} from '../src/logic.js';
 
 test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'ready'}),'ready');
@@ -67,4 +69,27 @@ test('el canvas 2D es una capa visual no interactiva que se adapta a la pantalla
  assert.match(sw,/\.\/assets\/batter\/follow\.webp/);
  const sprites=new BatterSprites({getContext:()=>null});
  assert.equal(sprites.ready,false);
+});
+
+test('las armas completas se renderizan fuera del recorte del personaje, sin perder empuñadura',()=>{
+ const sprites=new BatterSprites({getContext:()=>null});
+ const original={naturalWidth:512,naturalHeight:720},dressed={naturalWidth:512,naturalHeight:720},
+  batless={naturalWidth:512,naturalHeight:720},weapon={naturalWidth:320,naturalHeight:116};
+ sprites.images.ready=original;
+ sprites.bakedImages.set(bakedAssetUrl('outfit','red','ready'),dressed);
+ sprites.bakedImages.set(bakedAssetUrl('outfit','red','ready',true),batless);
+ sprites.bakedImages.set(bakedAssetUrl('bat','gold'),weapon);
+ const save=initialSave();save.equipped='gold';
+ assert.equal(sprites.getStyledPose('ready',save),batless,'se usa imagen sin bate para pintar cuerpo delante');
+ const p=weaponPlacement('ready',100,300,270,380);
+ assert.ok(p.scale>0);
+ assert.ok(Number.isFinite(p.angle));
+ const src=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ const poseSource=src.slice(src.indexOf(' getStyledPose('),src.indexOf(' getStyledBall('));
+ assert.doesNotMatch(poseSource,/document\.createElement\('canvas'\)/,'nunca cortar el bate dentro del recorte');
+ const render=src.slice(src.indexOf(' draw(game,zoom='),src.indexOf(' if(!game.save?.reducedEffects)game.impactFX',src.indexOf(' draw(game,zoom=')));
+ const weaponAt=render.indexOf('ctx.drawImage(weapon,-18,-58)');
+ const bodyAt=render.indexOf('ctx.drawImage(sprite,originX,originY,widthPx,heightPx)');
+ assert.ok(weaponAt>=0&&bodyAt>weaponAt,'el arma completa va detrás de manos y cuerpo');
+ assert.ok(render.includes('weaponPlacement(pose,originX,originY,widthPx,heightPx)'));
 });

@@ -1,15 +1,15 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.42.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.42.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.42.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.42.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.42.0';
-import {GameAudio} from './audio.js?v=0.42.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.42.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.42.0';
-import {BatterSprites} from './sprites.js?v=0.42.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.42.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.42.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.42.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.43.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.43.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.43.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.43.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.43.0';
+import {GameAudio} from './audio.js?v=0.43.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.43.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.43.0';
+import {BatterSprites} from './sprites.js?v=0.43.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.43.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.43.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.43.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -62,9 +62,11 @@ export class BaseballGame{
  click('guide-close',()=>{el('welcome').hidden=true;this.showMenu()});
  click('menu-play',()=>this.playFromMenu());
  click('menu-shop',()=>this.openShop());
+ click('discovery-close',()=>this.closeDiscovery());
+ click('discovery-dismiss',()=>this.closeDiscovery());
  click('discovery-shop',()=>{
   if(this.latestDiscoveryCategory)this.shopSection=this.latestDiscoveryCategory;
-  this.openShop();
+  this.closeDiscovery();this.openShop();
  });
  click('menu-settings',()=>this.openSettings());
  click('menu-return',()=>this.showMenu());
@@ -82,13 +84,14 @@ export class BaseballGame{
  for(const key of ['power','swing','multiplier'])click('up-'+key,()=>this.buyUpgrade(key));
  document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
+   if(!el('discovery-banner').hidden){this.closeDiscovery();return}
    if(!el('welcome').hidden){el('welcome').hidden=true;this.showMenu();return}
    if(!el('settings').hidden){this.closeSettings();return}
    if(!el('shop').hidden){this.closeShop();return}
    if(this.state==='rest'){this.showMenu();return}
   }
   if(e.code==='Space'||e.code==='Enter'){
-   if(e.repeat||!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;
+   if(e.repeat||!el('welcome').hidden||!el('shop').hidden||!el('discovery-banner').hidden||!el('settings').hidden||!el('main-menu').hidden)return;
    if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(document.activeElement?.tagName))return;
    e.preventDefault();if(this.state==='rest')this.resetAndPitch();else this.onAction();
   }
@@ -99,6 +102,7 @@ export class BaseballGame{
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
+  this.closeDiscovery();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
   el('main-menu').hidden=false;el('hud').hidden=true;el('controls').hidden=true;
@@ -108,7 +112,7 @@ export class BaseballGame{
   this.musicClock=0;this.drawUI();
  }
  playFromMenu(){
-  if(!el('shop').hidden||!el('settings').hidden)return;
+  if(!el('shop').hidden||!el('settings').hidden||!el('discovery-banner').hidden)return;
   const start=()=>{
    el('menu-play').disabled=false;
    el('menu-play').querySelector('strong').textContent='JUGAR';
@@ -160,6 +164,7 @@ export class BaseballGame{
  closeShop(){el('shop').hidden=true;this.drawUI()}
  openShop(){
   if(!['menu','ready','rest'].includes(this.state))return;
+  this.closeDiscovery();
   this.shopSection=this.shopSection||'bat';
   el('shop').hidden=false;el('shop-scroll').scrollTop=0;this.renderShop();
  }
@@ -208,16 +213,18 @@ export class BaseballGame{
    row.append(preview,detail,btn);container.append(row);
   }
  }
+ closeDiscovery(){const panel=el('discovery-banner');if(panel)panel.hidden=true}
  showDiscoveries(newItems=[]){
   const panel=el('discovery-banner');if(!panel)return;
-  panel.hidden=!newItems.length;
-  if(!newItems.length)return;
+  if(!newItems.length){this.closeDiscovery();return}
+  panel.hidden=false;
   this.latestDiscoveryCategory=newItems[0].category;
   el('discovery-caption').textContent=newItems.length===1?'✨ ¡NUEVO DESCUBRIMIENTO!':
    '✨ ¡'+newItems.length+' NUEVOS DESCUBRIMIENTOS!';
   const names=newItems.slice(0,3).map(({item})=>item.emoji+' '+item.name);
   el('discovery-items').textContent=names.join(' · ')+(newItems.length>3?' · +'+(newItems.length-3)+' más':'');
   el('discovery-shop').textContent='VER EN TIENDA';
+  el('discovery-close').focus?.();
  }
  buyUpgrade(key){
   if(this.state==='pitching'||this.state==='aiming'||this.state==='swinging'||this.state==='flight'||this.rewardPending)return;

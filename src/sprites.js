@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.42.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.42.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.42.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.42.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.42.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.43.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.43.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.43.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.43.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.43.0';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -139,6 +139,16 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
  ctx.rotate(spin?.angle||0);ctx.drawImage(image,-radius,-radius,size,size);
 }
 
+// Coloca el asset completo en el lienzo global, NO en el recorte del bateador.
+// El plano se pinta detrás del personaje; los brazos tapan la empuñadura.
+export function weaponPlacement(pose,originX,originY,width,height){
+ const anchor=WEAPON_POSES[pose]||WEAPON_POSES.ready;
+ const [gx,gy]=anchor.grip,[tx,ty]=anchor.tip;
+ const dx=(tx-gx)*width,dy=(ty-gy)*height;
+ return {x:originX+gx*width,y:originY+gy*height,
+  angle:Math.atan2(dy,dx),scale:Math.hypot(dx,dy)/292};
+}
+
 export class BatterSprites{
  constructor(canvas){
   this.canvas=canvas;
@@ -207,24 +217,11 @@ export class BatterSprites{
   }
   const batless=this.bakedImages.get(bakedAssetUrl('outfit',outfit.id,pose,true));
   const weapon=this.bakedImages.get(bakedAssetUrl('bat',bat.id));
-  if(!batless||!weapon||typeof document==='undefined')return dressed;
-  const width=batless.naturalWidth||batless.width,height=batless.naturalHeight||batless.height;
-  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
-  const ctx=canvas.getContext('2d');
-  if(!ctx)return dressed;
-  const anchor=WEAPON_POSES[pose]||WEAPON_POSES.ready;
-  const [gx,gy]=anchor.grip,[tx,ty]=anchor.tip;
-  const dx=(tx-gx)*width,dy=(ty-gy)*height;
-  // Real weapon asset first; full character pose second, so hands occlude
-  // the handle while no part of an old bat remains stuck to the character.
-  ctx.save();ctx.translate(gx*width,gy*height);ctx.rotate(Math.atan2(dy,dx));
-  const dist=Math.hypot(dx,dy),factor=dist/292;
-  ctx.scale(factor,factor);
-  ctx.drawImage(weapon,-18,-58);
-  ctx.restore();
-  ctx.drawImage(batless,0,0,width,height);
-  this.styledPoses.set(key,canvas);
-  return canvas;
+  // Antes se componía todo en un canvas del tamaño del personaje: al salir
+  // del borde el bate se RECORTABA. La capa principal lo dibuja entero detrás.
+  if(!batless||!weapon)return dressed;
+  this.styledPoses.set(key,batless);
+  return batless;
  }
  getStyledBall(save){
   const item=BALL_STYLES.find(i=>i.id===save?.equippedBall)||BALL_STYLES[0];
@@ -287,7 +284,22 @@ export class BatterSprites{
      ctx.drawImage(this.images.trail,originX-18,originY+heightPx*.23,widthPx*1.7,heightPx*.54);
      ctx.globalAlpha=1;
     }
-    // Son las poses aprobadas: preparados, apuntado a ambos lados y swing.
+    // Arma por detrás del cuerpo sobre el canvas COMPLETO de pantalla.
+    // No hay límite de recorte a la silueta de la pose.
+    const selectedBat=COSMETICS.find(c=>c.id===game.save?.equipped)||COSMETICS[0];
+    const selectedOutfit=OUTFITS.find(c=>c.id===game.save?.equippedOutfit)||OUTFITS[0];
+    if(pose&&selectedBat.id!=='classic'){
+     const weapon=this.bakedImages.get(bakedAssetUrl('bat',selectedBat.id));
+     const withoutBat=this.bakedImages.get(bakedAssetUrl('outfit',selectedOutfit.id,pose,true));
+     if(weapon&&withoutBat&&sprite===withoutBat){
+      const p=weaponPlacement(pose,originX,originY,widthPx,heightPx);
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
+      ctx.scale(p.scale,p.scale);
+      ctx.drawImage(weapon,-18,-58);
+      ctx.restore();
+     }
+    }
+    // Las manos y el cuerpo se pintan encima de la empuñadura.
     ctx.drawImage(sprite,originX,originY,widthPx,heightPx);
     if(!game.save?.reducedEffects&&game.state==='swinging'&&game.pendingShot?.quality!=='miss'&&(game.visualSwingElapsed??game.swingElapsed??0)<.085&&this.images.spark){
      const alpha=Math.max(0,1-(game.visualSwingElapsed??game.swingElapsed??0)*11);

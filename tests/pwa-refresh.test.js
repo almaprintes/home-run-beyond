@@ -3,38 +3,38 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BatterSprites,BATTER_ASSETS} from '../src/sprites.js';
 
-test('v0.42 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
+test('v0.43 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(html,/style\.css\?v=0\.42\.0/);
- assert.match(html,/src\/main\.js\?v=0\.42\.0/);
- assert.match(main,/game\.js\?v=0\.42\.0/);
+ assert.match(html,/style\.css\?v=0\.43\.0/);
+ assert.match(html,/src\/main\.js\?v=0\.43\.0/);
+ assert.match(main,/game\.js\?v=0\.43\.0/);
  for(const src of ['game.js','world.js','sprites.js','traffic.js','discoveries.js','cosmetic-render.js','cosmetic-catalog.js','cosmetic-art.js','baked-assets.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.42.0'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.43.0'),src+' importa módulo sin versión: '+path);
   }
  }
- assert.match(sw,/hrb-v42-20261124-cosmetic-discoveries/);
+ assert.match(sw,/hrb-v43-20261124-bat-and-modal-fixes/);
  assert.match(sw,/fetch\(request,\{cache:'no-store'\}\)/);
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
  assert.match(sw,/\.\/assets\/strike\.mp3/);
- assert.match(sw,/\.\/src\/biomes\.js\?v=0\.42\.0/);
- assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.42\.0/);
- assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.42\.0/);
- assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.42\.0/);
- assert.match(sw,/\.\/src\/baked-assets\.js\?v=0\.42\.0/);
+ assert.match(sw,/\.\/src\/biomes\.js\?v=0\.43\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.43\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.43\.0/);
+ assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.43\.0/);
+ assert.match(sw,/\.\/src\/baked-assets\.js\?v=0\.43\.0/);
  assert.match(sw,/\.\/assets\/baked\/manifest\.json/);
- assert.match(sw,/\.\/src\/traffic\.js\?v=0\.42\.0/);
- assert.match(sw,/\.\/src\/discoveries\.js\?v=0\.42\.0/);
+ assert.match(sw,/\.\/src\/traffic\.js\?v=0\.43\.0/);
+ assert.match(sw,/\.\/src\/discoveries\.js\?v=0\.43\.0/);
  assert.doesNotMatch(sw,/assets\/traffic\//);
 });
 
 test('la interfaz muestra nuevo multiplicador, barra de dirección y desglose de premios',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(html,/Versión 0\.42/);
+ assert.match(html,/Versión 0\.43/);
  assert.match(html,/id="aim-ball"/);
  assert.match(html,/id="aim-sweet-zone"/);
  assert.match(html,/id="up-multiplier"/);

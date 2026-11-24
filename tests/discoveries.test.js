@@ -140,3 +140,33 @@ test('interfaz: no se crean tarjetas ni imágenes de productos ocultos',()=>{
  assert.match(html,/id="shop-discovery-count"/);
  assert.match(html,/id="shop-discovery-next"/);
 });
+
+test('el aviso es un modal superpuesto, independiente del resultado y cerrable',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../style.css',import.meta.url),'utf8');
+ const gameJs=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ const result=html.indexOf('id="result"'),resultEnd=html.indexOf('</section>',result);
+ const modal=html.indexOf('id="discovery-banner"');
+ assert.ok(result>=0&&resultEnd>result&&modal>resultEnd,'el modal debe estar FUERA de la tarjeta');
+ assert.match(html,/class="layer modal-shell discovery-modal-shell" id="discovery-banner"/);
+ for(const id of ['discovery-close','discovery-dismiss','discovery-shop']){
+  assert.ok(html.includes('id="'+id+'"'));
+ }
+ assert.match(css,/#discovery-banner\.discovery-modal-shell\{/);
+ assert.match(css,/z-index:20/);
+ assert.match(css,/#discovery-banner\[hidden\]\{display:none!important\}/);
+ assert.match(gameJs,/click\('discovery-close',\(\)=>this\.closeDiscovery\(\)\)/);
+ assert.match(gameJs,/click\('discovery-dismiss',\(\)=>this\.closeDiscovery\(\)\)/);
+ const prev=globalThis.document;
+ const panel={hidden:true};
+ globalThis.document={getElementById(id){return id==='discovery-banner'?panel:{textContent:'',focus(){}}}};
+ try{
+  const game=Object.create(BaseballGame.prototype);
+  game.closeDiscovery();
+  assert.equal(panel.hidden,true);
+  game.showDiscoveries([{category:'bat',item:COLLECTIONS.bat[1]}]);
+  assert.equal(panel.hidden,false);
+  game.closeDiscovery();
+  assert.equal(panel.hidden,true);
+ }finally{if(prev===undefined)delete globalThis.document;else globalThis.document=prev}
+});
