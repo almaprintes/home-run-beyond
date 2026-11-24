@@ -26,7 +26,7 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.match(html,/BranRainey/);
  assert.match(sw,/OPTIONAL_AUDIO/);
  assert.match(sw,/Promise\.allSettled\(OPTIONAL_AUDIO/);
- assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.56\.0/);
+ assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.57\.0/);
  assert.equal((workflow.match(/run: python tools\/build_impact_audio\.py/g)||[]).length,2);
 });
 
@@ -88,7 +88,7 @@ test('precarga sin bloquear el bateo y cae al sonido local si falla Freesound',a
   a.prepareGameEffects();
   await Promise.all([...a.recordedLoads.values()]);
   assert.deepEqual([...a.recordedBuffers.keys()].sort(),['asphalt','bat','facade']);
-  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.56.0')));
+  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.57.0')));
   assert.ok(visited.some(x=>x.includes('asphalt-ball.mp3')));
   assert.ok(visited.some(x=>x.includes('wall-ball.mp3')));
  }finally{

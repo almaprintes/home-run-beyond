@@ -28,7 +28,7 @@ test('tenis es feltro con dos surcos claros dibujados en la mitad frontal de la 
  assert.match(pattern,/251,252,235,255/,'el canal claro debe contrastar con el fieltro');
  assert.match(ballCode,/tennis felt grooves missing or too faint/,'el arte horneado se comprueba píxel a píxel en CI');
  const path=bakedAssetUrl('ball','tenis');
- assert.ok(path.includes('tenis.webp?v=0.56.0'),'la versión debe invalidar el asset antiguo del iPhone');
+ assert.ok(path.includes('tenis.webp?v=0.57.0'),'la versión debe invalidar el asset antiguo del iPhone');
 });
 test('pelota amarilla no es Mini Sol y ambos artículos permanecen disponibles',()=>{
  const yellow=BALL_CATALOG.find(i=>i.id==='sun');
@@ -68,4 +68,15 @@ test('misma imagen equipada sale del pitcher y llega al bate',()=>{
  }
  assert.equal(painted.length,26);
  assert.equal(rotations.length,18,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
+});
+
+test('dorada es oro pulido con costuras metálicas, no otra pelota amarilla',()=>{
+ const gold=BALL_CATALOG.find(i=>i.id==='dorada'),yellow=BALL_CATALOG.find(i=>i.id==='sun');
+ assert.equal(gold.design,'baseball');assert.equal(gold.price,2300);assert.equal(yellow.price,620);
+ const a=readFileSync(new URL('../assets/baked/balls/dorada.webp',import.meta.url));
+ const b=readFileSync(new URL('../assets/baked/balls/sun.webp',import.meta.url));
+ assert.notDeepEqual(a,b);
+ const py=readFileSync(new URL('../tools/ball_art.py',import.meta.url),'utf8');
+ assert.match(py,/return polished_gold_baseball\(original\)/);
+ assert.match(py,/gold ball must contain bright reflections and dark metallic contrast/);
 });

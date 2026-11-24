@@ -88,12 +88,56 @@ from pathlib import Path
 APPROVED_BASEBALL = Path(__file__).resolve().parent.parent / "assets" / "baseball.webp"
 
 
+def polished_gold_baseball(original):
+    """Polished gold finish on the approved silhouette and embossed stitches."""
+    result = original.copy()
+    src, dst = original.load(), result.load()
+    # A reflective metallic environment, with dark horizon band, bright studio
+    # panels and a warm reflected rim. All highlights stay INSIDE the sphere.
+    stops = [(0.0,(65,29,5)),(.18,(118,62,9)),(.34,(208,132,24)),
+             (.51,(255,200,70)),(.68,(255,232,143)),(.83,(255,247,211)),(1.,(255,255,246))]
+    def palette(t):
+        t=max(0.,min(1.,t))
+        for (a,c),(b,d) in zip(stops,stops[1:]):
+            if t<=b:
+                f=(t-a)/(b-a)
+                return tuple(round(v+(w-v)*f) for v,w in zip(c,d))
+        return stops[-1][1]
+    for y in range(SIZE):
+        for x in range(SIZE):
+            r,g,b,alpha=src[x,y]
+            if not alpha:
+                continue
+            u=(x-79.5)/72.;v=(y-79.5)/72.
+            z=math.sqrt(max(0.,1-u*u-v*v))
+            # Reflected light direction rather than flat leather tint.
+            horizon=math.exp(-((v+.07-.22*u)/.13)**2)
+            panel=math.exp(-((u+.34+.17*v)/.19)**2-((v+.38)/.56)**2)
+            glint=math.exp(-((u+.38)/.09)**2-((v+.49)/.09)**2)
+            rim=math.exp(-((u-.65)/.15)**2-((v-.18)/.65)**2)
+            lower=math.exp(-((v-.55+.18*u)/.20)**2)
+            light=(.36+.19*z+.42*panel+.50*glint+.31*rim+.17*lower-.38*horizon)
+            light*=.82+.18*(r*.25+g*.65+b*.10)/255.
+            red_thread=r>82 and r>g*1.21 and r>b*1.16
+            if red_thread:
+                # Preserve the relief of every original stitch; bronze/gold,
+                # not red thread. Bright edge remains on raised stitch faces.
+                relief=max(0.,min(1.,(r*.52+g*.33+b*.15)/200.))
+                col=palette(.055+.40*relief+.14*panel)
+            else:
+                col=palette(light)
+            dst[x,y]=(*col,alpha)
+    return result
+
+
 def restored_baseball(item):
     """Keep original 3D stitches and leather shading; tint ONLY leather pixels."""
     original = Image.open(APPROVED_BASEBALL).convert("RGBA")
     original = original.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
     if item["id"] == "classic":
         return original   # Bit-for-bit the approved sprite after resizing.
+    if item["id"] == "dorada":
+        return polished_gold_baseball(original)
 
     color = rgb(item["color"])
     result = original.copy()
@@ -354,12 +398,23 @@ def verify_ball(path, design):
                 is_thread=aa>220 and rr>82 and rr>gg*1.21 and rr>bb*1.16
                 if is_thread:
                     seam_pixels+=1
-                    if px[sx,sy]!=original[sx,sy]:
+                    if path.stem=='dorada':
+                        pr,pg,pb,pa=px[sx,sy]
+                        # Same silhouette/relief, but metallic bronze instead of red.
+                        if pa!=aa or not (pr>=pg>=pb) or pg<pr*.38:
+                            altered_stitches+=1
+                    elif px[sx,sy]!=original[sx,sy]:
                         altered_stitches+=1
         if seam_pixels<70:
             raise ValueError(f"{path}: missing original detailed red stitching ({seam_pixels}px)")
         if altered_stitches:
             raise ValueError(f"{path}: original stitching was modified in {altered_stitches} pixels")
+        if path.stem=='dorada':
+            if any(px[x,y][3]!=original[x,y][3] for y in range(SIZE) for x in range(SIZE)):
+                raise ValueError('gold ball silhouette changed')
+            values=[px[x,y] for y in range(30,130) for x in range(30,130) if (x-80)**2+(y-80)**2<48**2]
+            if not any(r>=245 and g>=225 and b>=130 for r,g,b,a in values) or not any(r<145 and g<95 for r,g,b,a in values):
+                raise ValueError('gold ball must contain bright reflections and dark metallic contrast')
         if path.stem=="classic":
             differences=sum(px[x,y]!=original[x,y]
                             for y in range(25,135) for x in range(25,135)
