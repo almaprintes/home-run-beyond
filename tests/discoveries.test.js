@@ -45,12 +45,14 @@ test('la tienda impide comprar los ocultos; 3 batazos descubren pelota azul y 5 
  assert.ok(unlocked.some(x=>x.item.id==='gold'));
  assert.equal(equipCosmetic(s,'bat','gold'),'purchased');
  assert.equal(equipCosmetic(s,'ball','sky'),'equipped');
- assert.equal(unlockEligible(s).length,0,'sin repetir anuncios');
+ const later=unlockEligible(s);
+ assert.ok(!later.some(x=>x.item.id==='sky'||x.item.id==='gold'),'no volver a anunciar artículos conseguidos');
+ assert.equal(unlockEligible(s).length,0,'sin repetir anuncios tras vaciar la cola');
 });
 test('retroactividad: récord, batazos y compras antiguas siguen disponibles sin regalar monedas',()=>{
  const before={version:3,coins:1234,best:3200,shots:77,totalMeters:10000,
   owned:['classic','nova'],equipped:'nova',ownedOutfits:['red','pirata'],equippedOutfit:'pirata',
-  ownedBalls:['classic','luna'],equippedBall:'luna',levels:{power:49,swing:17,multiplier:9}};
+  ownedBalls:['classic','luna'],equippedBall:'luna',discovered:['ball:tierra'],levels:{power:49,swing:17,multiplier:9}};
  const s=sanitizeSave(before);
  assert.equal(s.coins,1234);
  assert.equal(s.best,3200);
@@ -60,7 +62,7 @@ test('retroactividad: récord, batazos y compras antiguas siguen disponibles sin
  assert.ok(isDiscovered(s,'outfit','pirata'));
  assert.ok(isDiscovered(s,'ball','luna'));
  assert.ok(isDiscovered(s,'outfit','blue'),'récord 100m previo');
- assert.ok(isDiscovered(s,'ball','tierra'),'récord 3000m previo');
+ assert.ok(isDiscovered(s,'ball','tierra'),'el desbloqueo de la versión anterior no se revoca');
  assert.ok(isDiscovered(s,'bat','gold'),'5 batazos previos');
  assert.ok(isDiscovered(s,'ball','tenis'),'distancia acumulada anterior');
  assert.ok(s.discoveryFlags.includes('river'),'zona demostrada por récord antiguo');
