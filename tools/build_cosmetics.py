@@ -65,12 +65,79 @@ HELMET={
  "ready":(.22,.04,1,.45),"watch":(.22,.04,1,.45),
  "loaded":(.26,.08,1,.47),"contact":(.09,0,.53,.38),
  "follow":(.25,0,.84,.39)}
-BAT_AREA={
- "ready":[(.03,.0),(.235,.0),(.275,.40),(.29,.46),(.16,.46),(.07,.20)],
- "watch":[(.03,.0),(.235,.0),(.275,.40),(.29,.46),(.16,.46),(.07,.20)],
- "loaded":[(.29,.0),(.52,.0),(.41,.32),(.30,.42),(.17,.35)],
- "contact":[(.55,.34),(.99,.30),(1,.57),(.56,.57)],
- "follow":[(0,.095),(.47,.10),(.49,.30),(0,.35)]}
+# Bat-only extraction regions calibrated against each approved pose.
+# Coordinates are proportions of each image, not the displayed screen size.
+# We never erase a whole rectangle or recolor/paint over the player.
+BAT_ERASE_REGIONS={
+ "ready":[(.01,.00,.35,.40),(.22,.40,.42,.57)],
+ "watch":[(.01,.00,.35,.40),(.22,.40,.42,.57)],
+ "loaded":[(.19,.00,.51,.36),(.13,.35,.34,.46)],
+ "contact":[(.59,.27,.96,.56)],
+ "follow":[(.00,.17,.48,.37)]
+}
+BAT_ERASE_POLYGONS={
+ "ready":[(.03,.00),(.295,.00),(.37,.34),(.37,.52),(.28,.57),(.19,.33),(.06,.18)],
+ "watch":[(.03,.00),(.295,.00),(.37,.34),(.37,.52),(.28,.57),(.19,.33),(.06,.18)],
+ "loaded":[(.245,.00),(.515,.00),(.43,.30),(.34,.43),(.15,.44),(.23,.27)],
+ "contact":[(.56,.33),(.93,.24),(.97,.57),(.61,.58)],
+ "follow":[(.00,.16),(.49,.17),(.53,.34),(.00,.36)]
+}
+# The upper body is not a safe region for indiscriminate alpha cuts.
+# Only the original wood/tan pixels and their adjacent dark outlines are removed.
+_LEGACY_BAT_MASK_CACHE={}
+def legacy_bat_mask(original,pose):
+    if pose in _LEGACY_BAT_MASK_CACHE:return _LEGACY_BAT_MASK_CACHE[pose]
+    w,h=original.size
+    polygon=Image.new("L",(w,h),0)
+    pd=ImageDraw.Draw(polygon)
+    pd.polygon([(round(u*w),round(v*h)) for u,v in BAT_ERASE_POLYGONS[pose]],fill=255)
+    src=original.convert("RGBA").load()
+    region=polygon.load()
+    wood=Image.new("L",(w,h),0)
+    op=wood.load()
+    for y in range(h):
+        for x in range(w):
+            if region[x,y]<128:continue
+            r,g,b,a=src[x,y]
+            if a<10:continue
+            # Orange wooden barrel. Red helmet has G<=B, white cloth G≈B.
+            # Gloves near the hands are excluded from the upper shaft below.
+            in_upper=pose in ('ready','watch') and y/h<.375 or pose=='loaded' and y/h<.32
+            in_right=pose=='contact' and x/w>.615 or pose=='follow' and x/w<.45
+            in_tail=pose in ('ready','watch') and .48<y/h<.56 and .32<x/w<.40
+            wood_tone=r>g*1.07 and g>b*1.11 and r>83 and g>52
+            neutral_dark=max(r,g,b)<135 and abs(r-g)<42 and abs(g-b)<42
+            if wood_tone and (in_upper or in_right or in_tail):
+                op[x,y]=255
+            elif neutral_dark and (in_upper or in_right or in_tail):
+                # Edges and rubber grip are connected to the wooden shaft.
+                # Remove only dark marks close to the known bat axis.
+                if pose in ('ready','watch'):
+                    axis=.14+.22*(y/h)
+                    close=abs(x/w-axis)<.09
+                elif pose=='loaded':
+                    axis=.385-.11*(y/h)
+                    close=abs(x/w-axis)<.10
+                elif pose=='contact':
+                    close=y/h>.30 and .61<x/w<.95
+                else:
+                    close=.0<y/h<.33 and x/w<.40
+                if close:op[x,y]=255
+    # Include antialiased silhouette pixels (outlines) but do not spill into
+    # the red helmet, fingers or sleeve. The source colour is authoritative.
+    spread=wood.filter(ImageFilter.MaxFilter(5))
+    sp=spread.load()
+    for y in range(h):
+        for x in range(w):
+            if sp[x,y]<128 or region[x,y]<128:continue
+            r,g,b,a=src[x,y]
+            red_helmet=r>g*1.32 and r>b*1.18 and g<=b*1.11
+            pale_cloth=max(r,g,b)-min(r,g,b)<35 and min(r,g,b)>120
+            if not (red_helmet or pale_cloth):
+                op[x,y]=255
+    _LEGACY_BAT_MASK_CACHE[pose]=wood
+    return wood
+
 HEAD={
  "ready":(.56,.24),"watch":(.56,.24),"loaded":(.69,.26),
  "contact":(.31,.17),"follow":(.54,.25)}
@@ -128,17 +195,18 @@ def bake_uniform(original,item,pose,remove_bat=False):
             dr.rectangle((hx-sx,hy-sy,hx+sx,hy+sy),fill=(41,74,91,220),outline=(128,222,226,240),width=3)
             dr.line((hx-sx//2,hy,hx+sx//2,hy),fill=(116,249,244,255),width=3)
     if remove_bat:
-        cut=Image.new("L",(w,h),0);dr=ImageDraw.Draw(cut)
-        dr.polygon([(int(u*w),int(v*h)) for u,v in BAT_AREA[pose]],fill=255)
-        cp=cut.load();p=base.load()
+        # Work from the untouched reference, not the recoloured outfit:
+        # the mask must be identical for every uniform and every custom bat.
+        mask=legacy_bat_mask(original,pose).load()
+        p=base.load()
         for y in range(h):
             for x in range(w):
-                if cp[x,y]<128:continue
-                r,g,b,alpha=p[x,y]
-                if alpha<5:continue
-                # Actual old wooden shaft, never the red helmet or player skin.
-                wood=r>78 and r>g*1.11 and g>b*1.23 and g>52
-                if wood or (r<105 and g<105 and b<105 and y<h*.35):
+                # The approved artwork also includes old decorative flourishes.
+                # They are removed only OUTSIDE the body, on no-bat variants:
+                # the aiming arrow (loaded) and old ball/sparks (contact).
+                old_fx=(pose=="loaded" and x/w>.84 and .46<y/h<.69) or (
+                    pose=="contact" and x/w>.83 and .18<y/h<.66)
+                if (mask[x,y] or old_fx) and p[x,y][3]:
                     p[x,y]=(0,0,0,0)
     return base
 
@@ -253,6 +321,13 @@ def main():
     total=0
     for pose in POSES:
         src=Image.open(ROOT/"assets"/"batter"/(pose+".webp")).convert("RGBA")
+        mask=legacy_bat_mask(src,pose)
+        removed=sum(1 for v in mask.getdata() if v>0)
+        if removed<130:
+            raise ValueError(f"{pose}: original bat was not extracted (pixels={removed})")
+        if removed>src.width*src.height*.12:
+            raise ValueError(f"{pose}: bat-only mask erased too much of the player ({removed} pixels)")
+        print(f"  Clean {pose} original bat: {removed} removed pixels",flush=True)
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")

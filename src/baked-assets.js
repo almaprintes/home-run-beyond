@@ -6,12 +6,15 @@ export const BASEBALL_SKIN_IDS=new Set(['classic','sky','sun','mint','lilac','ne
 export function ballRenderMode(item){return item?.design==='baseball'?'baseball':'special'}
 export function bakedAssetUrl(category,id,pose='ready',withoutBat=false){
  if(!/^[a-z0-9_]+$/.test(String(id)))throw Error('Invalid cosmetic id');
+ // Versionar también los WEBP horneados: Safari/PWA no debe conservar
+ // ni la pelota de tenis lisa ni poses con restos del bate anterior.
+ const stamp='?v=0.44.0';
  if(category==='outfit'){
   if(!OUTFIT_POSES.includes(pose))throw Error('Invalid pose');
-  return './assets/baked/outfits/'+id+'/'+pose+(withoutBat?'-nobat':'')+'.webp';
+  return './assets/baked/outfits/'+id+'/'+pose+(withoutBat?'-nobat':'')+'.webp'+stamp;
  }
- if(category==='bat')return './assets/baked/bats/'+id+'.webp';
- if(category==='ball')return './assets/baked/balls/'+id+'.webp';
+ if(category==='bat')return './assets/baked/bats/'+id+'.webp'+stamp;
+ if(category==='ball')return './assets/baked/balls/'+id+'.webp'+stamp;
  throw Error('Unknown cosmetic category');
 }
 export function equippedAssetPaths(outfitId,batId,ballId){

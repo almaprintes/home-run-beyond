@@ -17,6 +17,19 @@ test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajena
   assert.ok(!paths.some(path=>path.includes('ball-textures/')));
  }
 });
+test('tenis es feltro con dos surcos claros dibujados en la mitad frontal de la esfera',()=>{
+ const ball=BALL_CATALOG.find(x=>x.id==='tenis');
+ assert.equal(ball.design,'tennis');
+ assert.equal(ballRenderMode(ball),'special');
+ const ballCode=readFileSync(new URL('../tools/ball_art.py',import.meta.url),'utf8');
+ const pattern=ballCode.slice(ballCode.indexOf('elif mode=="tennis":'),ballCode.indexOf('elif mode=="beach":'));
+ assert.match(pattern,/bezier\(/,'los surcos deben ser curvas, no recolor plano');
+ assert.match(pattern,/for seam in \(left,right\)/,'ambos surcos se dibujan sobre la bola');
+ assert.match(pattern,/251,252,235,255/,'el canal claro debe contrastar con el fieltro');
+ assert.match(ballCode,/tennis felt grooves missing or too faint/,'el arte horneado se comprueba píxel a píxel en CI');
+ const path=bakedAssetUrl('ball','tenis');
+ assert.ok(path.includes('tenis.webp?v=0.44.0'),'la versión debe invalidar el asset antiguo del iPhone');
+});
 test('pelota amarilla no es Mini Sol y ambos artículos permanecen disponibles',()=>{
  const yellow=BALL_CATALOG.find(i=>i.id==='sun');
  const solar=BALL_CATALOG.find(i=>i.id==='sol');

@@ -1,7 +1,7 @@
 // Colección de 100 cosméticos: los no descubiertos no se exponen en la tienda.
 // El precio nunca es un requisito de desbloqueo. Comprar/equipar es otra acción.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.43.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.44.0';
 
 export const COLLECTIONS=Object.freeze({bat:BAT_CATALOG,outfit:OUTFIT_CATALOG,ball:BALL_CATALOG});
 export const STARTER_DISCOVERIES=Object.freeze(['bat:classic','outfit:red','ball:classic']);

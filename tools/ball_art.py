@@ -62,6 +62,19 @@ class Painter:
                     stroke_width=max(0, SCALE//3), stroke_fill=fill)
 
 
+def bezier(points,steps=36):
+    """Smooth tennis-felt grooves; paths are visible across the front hemisphere."""
+    p0,p1,p2,p3=points
+    result=[]
+    for i in range(steps+1):
+        t=i/steps;u=1-t
+        result.append((
+          u**3*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t**3*p3[0],
+          u**3*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t**3*p3[1]
+        ))
+    return result
+
+
 def circle_mask():
     mask=Image.new("L", (DIAM, DIAM))
     ImageDraw.Draw(mask).ellipse(tuple(v*SCALE for v in BODY), fill=255)
@@ -206,9 +219,28 @@ def draw_ball(item):
         d.ellipse((50,47,110,110),(255,255,249,255))
         d.text((80,79),"8",(19,21,28,255),38)
     elif mode=="tennis":
-        # Two clean white curved seams entirely confined to the ball.
-        d.arc((20,13,103,148),109,251,(253,253,248,255),5)
-        d.arc((61,13,143,148),289,71,(253,253,248,255),5)
+        # Tennis is FELT with recessed WHITE CURVED GROOVES, not a smooth
+        # green baseball. The previous arcs sat along the outer silhouette
+        # and vanished when downsampled to the 20-36px moving ball.
+        # Broad spherical shading keeps the ball readable on light grass.
+        d.ellipse((30,39,148,150),(47,81,18,39))
+        d.ellipse((26,23,116,96),(248,255,173,53))
+        rnd=random.Random("tennis-felt-v44")
+        for i in range(980):
+            x=rnd.uniform(21,139);y=rnd.uniform(21,139)
+            if (x-80)**2+(y-80)**2>59**2:continue
+            size=rnd.choice((.45,.65,.9,1.2))
+            tone=(240,255,164,25) if i%3 else (81,118,34,26)
+            d.ellipse((x-size,y-size,x+size,y+size),tone)
+        # Two continuous S-curves across the frontal hemisphere.
+        left=(bezier(((65,27),(32,37),(29,65),(58,78)))+
+              bezier(((58,78),(80,94),(75,115),(65,133))))
+        right=[(160-x,y) for x,y in left]
+        for seam in (left,right):
+            # Dark recessed channel, cream felt seam and one fine glint.
+            d.line(seam,(105,138,36,220),11)
+            d.line(seam,(251,252,235,255),7)
+            d.line([(x-1,y-1) for x,y in seam],(255,255,249,128),2)
     elif mode=="beach":
         colors=[(246,84,93,255),(246,213,81,255),(78,181,222,255),
                 (95,206,133,255),(245,245,240,255),(154,102,205,255)]
@@ -298,6 +330,17 @@ def verify_ball(path, design):
             for x in range(28,133):
                 if (x-80)**2+(y-80)**2<=50**2 and px[x,y][3]!=255:
                     raise ValueError(f"{path}: transparent core at {x},{y}: {px[x,y][3]}")
+    if design=="tennis":
+        # Required visible pale grooves on BOTH halves, not just on the rim.
+        left=right=0
+        for sy in range(34,127):
+            for sx in range(34,127):
+                rr,gg,bb,aa=px[sx,sy]
+                if aa>240 and rr>215 and gg>215 and bb>175:
+                    if sx<78:left+=1
+                    if sx>82:right+=1
+        if left<85 or right<85:
+            raise ValueError(f"{path}: tennis felt grooves missing or too faint: left={left} right={right}")
     if design=="baseball":
         # Regression test against the ORIGINAL physical stitching art.
         reference=Image.open(APPROVED_BASEBALL).convert("RGBA")
