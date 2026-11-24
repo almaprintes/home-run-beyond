@@ -1,6 +1,7 @@
-import {lerp} from './engine.js?v=0.63.0';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.63.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.63.0';
+import {lerp} from './engine.js?v=0.64.0';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.64.0';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.64.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.64.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -307,7 +308,7 @@ function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
  r.setMaterial?.(rand(idx*17,row*13)<.60?'plaster':'brick');
  const f=buildingFacade(b),nearBall=focusBall&&Math.hypot(focusBall.x-x,focusBall.z-z)<75;
  const damaged=f.windows.some(w=>brokenWindows?.has(w.id));
- const detailed=lod<2||nearBall||damaged;
+ const detailed=!!(nearBall||damaged); // Hollow geometry only when a ball can interact.
  const drawPart=(p,color)=>{const [a,c,d]=p.min,[e,g,h]=p.max;r.box((a+e)/2,(c+g)/2,(d+h)/2,e-a,g-c,h-d,color)};
  if(detailed){for(const p of f.walls)drawPart(p,col);for(const p of f.floors)drawPart(p,'#8d8c81')}
  else r.box(x,y,z,b.w,b.h,b.d,col);
@@ -318,6 +319,7 @@ function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
  r.setMaterial?.('plain');
  for(const w of f.windows){
   if(brokenWindows?.has(w.id))continue;
+  if(!detailed&&lod>=2&&Number(w.id.split(':').at(-1))%2!==0)continue;
   const [a,c,d]=w.min,[e,g,h]=w.max;
   const shift=detailed?0:w.side*.31;
   const xx=(a+e)/2+(w.axis==='x'?shift:0),zz=(d+h)/2+(w.axis==='z'?shift:0);
@@ -520,21 +522,65 @@ function stadium(r){r.field(0,-.02,38,285,290,'#448e60');for(let i=0;i<11;i++){c
  for(const [x,z] of [[-116,32],[116,32],[-75,-65],[75,-65]]){r.pole(x,18,z,1.35,36,'#a2b8b9');r.box(x,36,z,13,4,3,'#d9e9de');for(let d=-1;d<=1;d++)r.ball(x+d*4,36,z-1.8,2.4,'#fff5c3')}
  for(let i=-7;i<8;i++){if(i===0)continue;tree(r,i*35,150+Math.abs(i)*7,7+rand(i)*5,i)}
 }
-function person(r,x,z,team,phase=0,batting=false,batColor='#e7b56e'){const bob=batting?Math.sin(phase*6)*.08:Math.sin(phase*2)*.04;
- const palette=team==='pitcher'?{shirt:'#f4dfce',pants:'#e8e8e9',cap:'#22677e',skin:'#e6a47c'}:{shirt:'#feaa45',pants:'#fcf7e8',cap:'#152e50',skin:'#bc815f'};
- const bend=batting?Math.sin(phase)*.3:0;
- // ground shadow
- r.add('ball',x,.035,z,2,.05,1.3,'#2b6553');
- for(let side of [-1,1]){r.pole(x+side*.51,1.05,z+side*.1,.36,2.1,palette.pants,0,side*bend);r.box(x+side*.56,.22,z+.32,.9,.38,1.4,'#203249')}
- r.box(x,3.06+bob,z,2.2,2.4,1.35,palette.shirt);
- r.ball(x,4.95+bob,z,1.82,palette.skin);r.add('ball',x,5.67+bob,z-.03,1.96,.43,1.92,palette.cap);
- r.box(x,5.58+bob,z+.84,1.63,.18,.92,palette.cap);
- r.ball(x-.32,4.98,z+.83,.13,'#1e2330');r.ball(x+.32,4.98,z+.83,.13,'#1e2330');
- if(batting){const swing=phase;const lift=Math.sin(swing*Math.PI)*.4;r.pole(x-1.35,3.5+bob,z+.2,.28,1.8,palette.skin,0,.3,-.65+lift);r.pole(x+1.1,3.45+bob,z+.3,.28,1.8,palette.skin,0,-.5,1.1-lift);
- const angle= -.55+swing*3.6;
- r.pole(x+Math.sin(angle)*2.15,4.55+bob,z+Math.cos(angle)*1.25,.21,4.8,batColor,0,.22,1.45-angle);
- r.box(x,3.2+bob,z+1.0,.65,.18,.15,'#fff0d4');
- }else{r.pole(x-1.35,3.13+bob,z+.3,.29,1.5,palette.skin,0,-.1,-.35);r.pole(x+1.35,3.1+bob,z+.3,.29,1.5,palette.skin,0,-.1,.35);r.ball(x-1.6,2.7+bob,z+.65,.65,'#89533b')}
+// Articulated 3D pitcher: jersey, piping, belt, cap, cleats and leather mitt.
+export function drawPitcher(r,pose=pitcherPose()){
+ const x=pose.shift||0,z=PITCHER_Z,base=.76+(pose.lift||0);
+ const side=pose.side||0,reach=pose.reach||0,throwing=pose.throw||0,step=pose.step||0;
+ const lean=pose.lean||0,skin='#d99b73',jersey='#e9edf1',pants='#cdd7e1',navy='#1e3657',trim='#b93b45',leather='#94582e';
+ r.setMaterial?.('plain');
+ r.add('ball',x,.78,z,2.6,.045,1.65,'#845e41');
+ const body=(u,v,w)=>[x+u+lean*Math.max(0,v-1.8),base+v,z+w];
+ for(const s of [-1,1]){
+  const hip=body(s*.47,2.16,0),knee=body(s*(.52+.38*step),1.23+(s===1?.38*step:0),s===1?-.35*step:.20*step);
+  const ankle=body(s*(.64+.30*step),.32+(s===1?.55*step:0),s===1?-.67*step:.28*step);
+  limb(r,hip,knee,.39,pants);r.ball(...knee,.70,pants);limb(r,knee,ankle,.31,pants);
+  limb(r,[ankle[0],ankle[1]-.05,ankle[2]],[ankle[0],ankle[1]+.39,ankle[2]],.30,navy);
+  r.add('ball',ankle[0],ankle[1]-.14,ankle[2]-.24,.82,.39,1.30,navy);
+  r.box(ankle[0],ankle[1]-.30,ankle[2]-.24,.70,.10,1.05,'#15202d');
+  for(const stud of [-1,1])r.box(ankle[0]+stud*.20,ankle[1]-.36,ankle[2]-.43,.12,.09,.13,'#a6b4c2');
+ }
+ const waist=body(0,2.32,0),chest=body(0,3.49,.05*throwing);
+ r.add('ball',...waist,1.65,.72,1.10,pants);
+ r.add('ball',...chest,2.03,2.18,1.30,jersey,0,0,-lean*.30);
+ r.box(...body(0,2.37,-.48),1.58,.19,.18,navy);
+ r.box(...body(0,2.37,-.60),.30,.20,.10,'#a9b5c2');
+ // Jersey front is toward the batter (negative Z).
+ for(const s of [-1,1]){
+  limb(r,body(s*.19,2.57,-.59),body(s*.30,4.16,-.58),.045,trim);
+ }
+ for(let i=0;i<4;i++)r.ball(...body(0,2.73+i*.30,-.65),.10,'#9daab8');
+ r.box(...body(-.55,3.76,-.60),.36,.33,.07,navy);
+ r.box(...body(-.55,3.76,-.65),.18,.18,.05,trim);
+ const neck=body(0,4.49,0);r.pole(...neck,.34,.48,skin);
+ const head=body((pose.look||0)*.10,5.00,-.04);
+ r.add('ball',...head,1.54,1.73,1.38,skin);
+ for(const s of [-1,1]){
+  r.ball(head[0]+s*.72,head[1]-.03,head[2],.30,skin);
+  r.ball(head[0]+s*.28,head[1]+.09,head[2]-.66,.15,'#202a37');
+  r.box(head[0]+s*.28,head[1]+.24,head[2]-.63,.24,.075,.09,'#654536');
+ }
+ r.ball(head[0],head[1]-.10,head[2]-.73,.24,skin);
+ r.box(head[0],head[1]-.37,head[2]-.58,.30,.065,.08,'#8e5243');
+ r.add('ball',head[0],head[1]+.62,head[2]+.03,1.68,.82,1.56,navy);
+ r.add('ball',head[0],head[1]+.35,head[2]-.72,1.45,.14,.97,navy);
+ r.box(head[0],head[1]+.57,head[2]-.70,.27,.26,.08,'#f2f4f7');
+ const gloveSide=1; // Left glove stays on the same hand throughout the animation.
+ const glove=body(gloveSide*.57+side*reach*1.30,3.05+reach*(1.35+1.62*(pose.reachHeight||0)),-.86+reach*.63);
+ const gloveElbow=body(gloveSide*1.16+side*reach*.13,3.32+reach*.82,-.24);
+ const throwingHand=body(-gloveSide*(.57+throwing*1.53+reach*.38),3.08+throwing*.95+reach*.43,-.75-throwing*.95);
+ const throwingElbow=body(-gloveSide*1.28,3.38+throwing*.92,-.15);
+ for(const [s,elbow,hand] of [[gloveSide,gloveElbow,glove],[-gloveSide,throwingElbow,throwingHand]]){
+  const shoulder=body(s*.82,4.01,0);
+  const cuff=shoulder.map((v,i)=>v+(elbow[i]-v)*.47);
+  limb(r,shoulder,cuff,.42,jersey);r.ball(...cuff,.70,jersey);
+  limb(r,cuff,elbow,.29,skin);limb(r,elbow,hand,.25,skin);
+  r.ball(...hand,.53,skin);
+ }
+ // Open mitt and stitched webbing; reaches but never contacts the simulation.
+ r.add('ball',glove[0],glove[1],glove[2]-.19,.98,1.12,.58,leather);
+ r.add('ball',glove[0],glove[1]+.10,glove[2]-.46,.70,.75,.13,'#63391f');
+ for(let i=0;i<4;i++)r.ball(glove[0]-.30+i*.20,glove[1]+.41,glove[2]-.28,.25,'#b97942');
+ for(const s of [-1,1])limb(r,[glove[0]+s*.29,glove[1]-.30,glove[2]-.43],[glove[0]+s*.34,glove[1]+.27,glove[2]-.42],.045,'#e4b37a');
 }
 // Cilindro orientado entre dos puntos: brazos y bate procedurales de perfil.
 function limb(r,a,b,radius,color){
@@ -590,9 +636,9 @@ export function pitcherBallPosition(throwProgress){
  if(!Number.isFinite(t)||t<=0||t>=1.26)return null;
  return {x:-4.5*t,y:2.5+.35*Math.sin(Math.min(t,1)*PI),z:20.5-25.4*t};
 }
-export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',hideBatter=false,hidePitchBall=false,pitchBallColor='#fffefa'){
+export function drawActors(r,throwProgress=0,swingProgress=0,batColor='#e7b56e',hideBatter=false,hidePitchBall=false,pitchBallColor='#fffefa',pose=pitcherPose({state:'pitching',pitchElapsed:throwProgress,pitchDuration:1})){
  if(!hideBatter)drawBatter(r,-2.3,-5,swingProgress,batColor);
- person(r,0,21,'pitcher',throwProgress*3,false);
+ drawPitcher(r,pose);
  const ball=pitcherBallPosition(throwProgress);
  if(ball&&!hidePitchBall){
   r.ball(ball.x,ball.y,ball.z,.72,pitchBallColor);
@@ -628,8 +674,9 @@ export function drawWorld(r,cam,game){
  sky(r,z,x,cam[1]);
  drawTerrain(r,z,x,cam[1],game.clock||0,game.state==='flight'?game.ball:null,game.brokenWindows);
  // Tráfico volumétrico: misma matriz, misma profundidad, 4 ruedas por coche.
- if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing')drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
-  !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa');
+ if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&cam[1]<340){stadium(r);if(game.state!=='flight'&&game.state!=='landing'&&!(game.state==='rest'&&game.ball))drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
+  !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa',pitcherPose(game));
+ else drawPitcher(r,pitcherPose(game));
  // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.
  }
  if(game.ball&&['flight','landing'].includes(game.state)){const b=game.ball;

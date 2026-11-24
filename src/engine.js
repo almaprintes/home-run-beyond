@@ -1,3 +1,4 @@
+import {pitcherPose} from './pitcher.js?v=0.64.0';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -238,7 +239,7 @@ export class Renderer{
    }
   };
   atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible; se conservan los colores base')};
-  atlas.src='./assets/materials-atlas-v2.png?v=0.63.0';
+  atlas.src='./assets/materials-atlas-v2.png?v=0.64.0';
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}
@@ -310,13 +311,15 @@ export class CanvasRenderer{
  c.restore();}
  cloud(x,y,s){let c=this.ctx;c.beginPath();c.ellipse(x,y,s*1.5,s*.33,0,0,Math.PI*2);c.ellipse(x-s*.6,y-s*.25,s*.7,s*.52,0,0,Math.PI*2);c.ellipse(x+s*.4,y-s*.3,s*.9,s*.68,0,0,Math.PI*2);c.fill()}
  poly(points,color){const c=this.ctx;c.fillStyle=color;c.beginPath();points.forEach((p,i)=>i?c.lineTo(...p):c.moveTo(...p));c.closePath();c.fill()}
- person(x,y,s,batter,phase=0){const c=this.ctx;c.save();c.translate(x,y);c.scale(s,s);
+ person(x,y,s,batter,phase=0,pose=null){const c=this.ctx;c.save();c.translate(x+(pose?.shift||0)*5*s,y);c.scale(s,s);
  c.fillStyle='#2f684c';c.beginPath();c.ellipse(0,0,40,11,0,0,Math.PI*2);c.fill();
+ if(pose)c.translate(0,-(pose.lift||0)*26);
  c.lineCap='round';c.strokeStyle='#f0eadb';c.lineWidth=15;for(let side of [-1,1]){c.beginPath();c.moveTo(side*10,-60);c.lineTo(side*16,-8);c.stroke()}
  this.poly([[-25,-115],[25,-115],[20,-60],[-20,-60]],batter?'#f4a144':'#f2efe8');
  c.strokeStyle='#e0a079';c.lineWidth=12;c.beginPath();c.moveTo(-22,-105);c.lineTo(-35,-78);c.moveTo(22,-105);c.lineTo(36,-76);c.stroke();
  c.fillStyle='#c58c69';c.beginPath();c.arc(0,-140,27,0,Math.PI*2);c.fill();this.poly([[-26,-153],[-12,-169],[24,-163],[27,-150]],batter?'#142e4a':'#28708b');
- c.strokeStyle=batter?(this.game?.batColor||'#e7b56e'):'#e0a078';c.lineWidth=9;c.beginPath();if(batter){c.moveTo(29,-97);c.lineTo(29+Math.sin(phase*3.3+.6)*67,-150-Math.cos(phase*3.3)*29)}else{c.moveTo(25,-92);c.lineTo(44,-87)}c.stroke();
+ c.strokeStyle=batter?(this.game?.batColor||'#e7b56e'):'#e0a078';c.lineWidth=9;c.beginPath();if(batter){c.moveTo(29,-97);c.lineTo(29+Math.sin(phase*3.3+.6)*67,-150-Math.cos(phase*3.3)*29)}else{c.moveTo(25,-92);c.lineTo(44+(pose?.side||0)*14,-87-(pose?.reach||0)*92-(pose?.throw||0)*24)}c.stroke();
+ if(!batter){const gx=44+(pose?.side||0)*14,gy=-87-(pose?.reach||0)*92-(pose?.throw||0)*24;c.fillStyle='#995f32';c.beginPath();c.ellipse(gx,gy,14,18,0,0,Math.PI*2);c.fill();c.strokeStyle='#e2ad76';c.lineWidth=2;c.stroke();c.strokeStyle='#253d5e';c.lineWidth=4;c.beginPath();c.moveTo(0,-110);c.lineTo(0,-62);c.stroke();}
  c.restore()}
  stadiumScene(c,w,h,g){this.poly([[0,h*.34],[w,h*.34],[w,h],[0,h]],'#72b472');
  for(let i=0;i<10;i++){let y=h*(.35+i*.074);this.poly([[0,y],[w,y],[w,y+h*.027],[0,y+h*.027]],i%2?'#74b677':'#64aa6d')}
@@ -326,7 +329,7 @@ export class CanvasRenderer{
  this.poly([[w*.5,h*.55],[w*.72,h*.63],[w*.5,h*.72],[w*.28,h*.63]],'#7bb875');
  c.strokeStyle='#fff4da';c.lineWidth=2.5;c.beginPath();c.moveTo(w*.5,h*.75);c.lineTo(w*.73,h*.62);c.moveTo(w*.5,h*.75);c.lineTo(w*.27,h*.62);c.stroke();
  c.fillStyle='#f8ead9';c.beginPath();c.ellipse(w*.5,h*.6,w*.055,h*.016,0,0,Math.PI*2);c.fill();
- this.person(w*.50,h*.585,.39,false,g?.pitch||0);this.person(w*.74,h*.82,.71,true,g?.swing||0);
+ this.person(w*.50,h*.585,.39,false,g?.pitch||0,pitcherPose(g));this.person(w*.74,h*.82,.71,true,g?.swing||0);
  if(g?.state==='pitching'&&!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){let p=g.pitch||0,ballx=lerp(w*.50,w*.72,p),bally=lerp(h*.48,h*.72,p);c.fillStyle=g.ballStyleColor||'#fff';c.beginPath();c.arc(ballx,bally,Math.max(5,p*9),0,Math.PI*2);c.fill();}
  }
  flightScene(c,w,h,g){const b=g.ball||{z:0,x:0,y:0};const ratio=b.z/1300;
@@ -334,6 +337,7 @@ export class CanvasRenderer{
  for(let i=0;i<10;i++){let z=i*170+Math.floor(b.z/250)*250;let k=1-i/14;let bw=(13+((i*11)%12))*k,xx=((i*127-b.z*.22)% (w+160)+w+160)%(w+160)-60,by=h*(.44+i*.056),bh=20+(i*19)%80;
  this.poly([[xx,by],[xx+bw,by],[xx+bw,by-bh],[xx,by-bh]],['#d7b5a1','#d6daca','#d8c8a0','#b6cee1'][i%4]);
  this.poly([[xx,by-bh],[xx+bw*.2,by-bh-11],[xx+bw*1.2,by-bh-11],[xx+bw,by-bh]],'#db886d')}
+ if(b.z<95&&b.z>=-10)this.person(w*.5,h*.61+Math.max(0,b.z-21)*1.4,.39,false,0,pitcherPose(g));
  const y=h*.65;this.poly([[0,y],[w,y-h*.16],[w,y-h*.08],[0,y+h*.12]],'#405e63');
  c.save();c.translate(w*.52,h*.48);c.shadowColor='#f9b06a';c.shadowBlur=26;c.strokeStyle='#ffdb8b';c.lineWidth=9;c.lineCap='round';c.beginPath();c.moveTo(-80,50);c.lineTo(-8,6);c.stroke();c.shadowBlur=0;
  if(!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){
