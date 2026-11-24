@@ -35,8 +35,9 @@ test('la tienda impide comprar los ocultos; 3 batazos descubren pelota azul y 5 
  assert.equal(isDiscovered(s,'ball','sky'),true);
  assert.ok(unlocked.some(x=>x.item.id==='sky'));
  assert.equal(isDiscovered(s,'bat','gold'),false);
+ const beforeBuying=s.coins;
  assert.equal(equipCosmetic(s,'ball','sky'),'purchased');
- assert.equal(s.coins,balance-280);
+ assert.equal(s.coins,beforeBuying-280);
  for(let i=0;i<2;i++){
   settleShot(s,90);
   unlocked=recordDiscoveryShot(s,{quality:'good',peakZ:90});

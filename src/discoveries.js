@@ -152,7 +152,8 @@ export function nextDiscoveryHint(save,category){
  candidates.sort((a,b)=>{
   const ra=(a.target-metricValue(save,a))/Math.max(1,a.target);
   const rb=(b.target-metricValue(save,b))/Math.max(1,b.target);
-  return ra-rb||a.target-b.target;
+  const priority={play:0,record:1,skill:2};
+  return ra-rb||(priority[a.group]-priority[b.group])||a.target-b.target;
  });
  const rule=candidates[0];
  if(!rule)return 'Sigue jugando: todavía quedan descubrimientos secretos';
