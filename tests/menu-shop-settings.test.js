@@ -37,6 +37,7 @@ test('los guardados anteriores conservan niveles, monedas y bates sin exigir cue
 });
 test('ropa, pelota y bate son tres catálogos con monedas compartidas',()=>{
  const save=initialSave();save.coins=2000;
+ save.discovered.push('outfit:blue','ball:sky','bat:gold','outfit:gold');
  assert.deepEqual(Object.keys(SHOP_SECTIONS),['bat','outfit','ball']);
  assert.equal(equipCosmetic(save,'outfit','blue'),'purchased');
  assert.equal(save.coins,1650);
@@ -58,6 +59,7 @@ test('ropa, pelota y bate son tres catálogos con monedas compartidas',()=>{
 });
 test('equipar ropa, bate y pelota no cambia física, distancia ni economía',()=>{
  const save=initialSave();save.coins=10000;
+ save.discovered.push('outfit:purple','ball:lilac','bat:nova');
  const shot=calculateShot(save.levels,0),reward=rewardForMeters(900,save.levels);
  for(const [kind,id] of [['outfit','purple'],['ball','lilac'],['bat','nova']]){
   assert.equal(equipCosmetic(save,kind,id),'purchased');

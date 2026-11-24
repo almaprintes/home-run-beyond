@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="./icons/icon-192.png"/>
 <link rel="icon" href="./icons/icon-192.png"/>
-<link rel="stylesheet" href="./style.css?v=0.41.0"/>
+<link rel="stylesheet" href="./style.css?v=0.42.0"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -41,7 +41,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.41</small>
+        <small class="menu-version">VERSIÓN 0.42</small>
       </div>
     </div>
   </section>
@@ -79,6 +79,12 @@
         <div class="result-reward"><span class="coin">✦</span> <strong id="result-coins">0</strong><small>MONEDAS</small><small id="coin-breakdown" class="coin-breakdown">BASE 0 · BONO 0 · x1.00</small></div>
       </div>
       <div class="result-bottom"><span id="best-label" class="best-label">RÉCORD: 0 M</span><span class="result-quiet">GOLPE TERMINADO</span></div>
+      <div id="discovery-banner" class="discovery-banner" role="status" aria-live="polite" hidden>
+        <span id="discovery-caption" class="discovery-caption">✨ ¡NUEVO DESCUBRIMIENTO!</span>
+        <strong id="discovery-items" class="discovery-items"></strong>
+        <span class="discovery-explain">Ya están disponibles para comprar con monedas.</span>
+        <button type="button" id="discovery-shop" class="discovery-shop">VER EN TIENDA</button>
+      </div>
     </div>
   </section>
   <div class="layer upgrades" id="upgrades">
@@ -109,6 +115,11 @@
         </div>
       </div>
       <div class="shop-scroll" id="shop-scroll" role="region" aria-label="Catálogo de artículos" tabindex="0">
+        <div id="shop-discovery-info" class="shop-discovery-info" aria-live="polite">
+          <strong id="shop-discovery-count">BATES: 1/35 DESCUBIERTOS</strong>
+          <div class="shop-discovery-track" aria-hidden="true"><span id="shop-discovery-bar"></span></div>
+          <small id="shop-discovery-next">Juega para descubrir más artículos</small>
+        </div>
         <div id="shop-items" class="shop-items"></div>
         <div class="foot-note">Compras con monedas del juego. Sin cuentas ni compras reales.</div>
       </div>
@@ -138,7 +149,7 @@
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.41</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.42</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -154,6 +165,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.41.0"></script>
+<script type="module" src="./src/main.js?v=0.42.0"></script>
 </body>
 </html>

@@ -1,10 +1,11 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.41.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.42.0';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.42.0';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
 export function skillMaxLevel(key){return key==='multiplier'?MULTIPLIER_MAX_LEVEL:MAX_LEVEL}
 export const BONUS_EVERY=5;
-export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
+export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
 export function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
 export function initialSave(){return JSON.parse(JSON.stringify(DEFAULT_SAVE))}
 export function sanitizeSave(raw){
@@ -46,6 +47,7 @@ export function sanitizeSave(raw){
   s.bonusClaims=Math.max(0,earnedNew-Math.min(earnedNew,pending));
   s.pendingLegacyBonuses=Math.max(0,pending-earnedNew);
  }
+ sanitizeDiscovery(s,raw);
  return s;
 }
 export const formatInt=n=>Math.round(n).toLocaleString('es-ES');
@@ -125,10 +127,13 @@ export function equipCosmetic(save,section,id){
  const catalog=SHOP_SECTIONS[section];
  const item=catalog?.items.find(x=>x.id===id);
  if(!catalog||!item)return 'invalid';
+ if(!save[catalog.owned].includes(id)&&!isDiscovered(save,section,id))return 'locked';
  if(!save[catalog.owned].includes(id)){
   if(save.coins<item.price)return 'insufficient';
   save.coins-=item.price;
   save[catalog.owned].push(id);
+  if(!Array.isArray(save.discovered))save.discovered=[...STARTER_DISCOVERIES];
+  if(!save.discovered.includes(section+':'+id))save.discovered.push(section+':'+id);
   save[catalog.equipped]=id;
   return 'purchased';
  }

@@ -1,14 +1,15 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.41.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.41.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.41.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.41.0';
-import {GameAudio} from './audio.js?v=0.41.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.41.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.41.0';
-import {BatterSprites} from './sprites.js?v=0.41.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.41.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.41.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.41.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.42.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision} from './world.js?v=0.42.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.42.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,batSpeedMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.42.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.42.0';
+import {GameAudio} from './audio.js?v=0.42.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.42.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.42.0';
+import {BatterSprites} from './sprites.js?v=0.42.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.42.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.42.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.42.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -61,6 +62,10 @@ export class BaseballGame{
  click('guide-close',()=>{el('welcome').hidden=true;this.showMenu()});
  click('menu-play',()=>this.playFromMenu());
  click('menu-shop',()=>this.openShop());
+ click('discovery-shop',()=>{
+  if(this.latestDiscoveryCategory)this.shopSection=this.latestDiscoveryCategory;
+  this.openShop();
+ });
  click('menu-settings',()=>this.openSettings());
  click('menu-return',()=>this.showMenu());
  click('settings-close',()=>this.closeSettings());
@@ -165,8 +170,13 @@ export class BaseballGame{
    const tab=el('shop-tab-'+key),active=key===this.shopSection;
    tab.classList.toggle('active',active);tab.setAttribute('aria-pressed',String(active));
   }
+  const count=discoveredCount(this.save,this.shopSection);
+  el('shop-discovery-count').textContent=category.label.toUpperCase()+': '+count.found+'/'+count.total+' DESCUBIERTOS';
+  el('shop-discovery-next').textContent=nextDiscoveryHint(this.save,this.shopSection);
+  el('shop-discovery-bar').style.width=(100*count.found/count.total).toFixed(1)+'%';
   const container=el('shop-items');container.replaceChildren();
   for(const item of category.items){
+   if(!isDiscovered(this.save,this.shopSection,item.id))continue;
    const owned=this.save[category.owned].includes(item.id);
    const equipped=this.save[category.equipped]===item.id;
    const row=document.createElement('div');row.className='shop-item'+(equipped?' selected':'');
@@ -189,7 +199,7 @@ export class BaseballGame{
    btn.setAttribute('aria-label',(equipped?'Equipado ':owned?'Equipar ':'Comprar ')+item.name);
    btn.addEventListener('click',()=>{
     const status=equipCosmetic(this.save,this.shopSection,item.id);
-    if(status==='invalid'||status==='insufficient')return;
+    if(status==='invalid'||status==='insufficient'||status==='locked')return;
     if(status==='purchased')this.audio.cash();
     this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
     this.persist();this.drawUI();this.renderShop();
@@ -197,6 +207,17 @@ export class BaseballGame{
    });
    row.append(preview,detail,btn);container.append(row);
   }
+ }
+ showDiscoveries(newItems=[]){
+  const panel=el('discovery-banner');if(!panel)return;
+  panel.hidden=!newItems.length;
+  if(!newItems.length)return;
+  this.latestDiscoveryCategory=newItems[0].category;
+  el('discovery-caption').textContent=newItems.length===1?'✨ ¡NUEVO DESCUBRIMIENTO!':
+   '✨ ¡'+newItems.length+' NUEVOS DESCUBRIMIENTOS!';
+  const names=newItems.slice(0,3).map(({item})=>item.emoji+' '+item.name);
+  el('discovery-items').textContent=names.join(' · ')+(newItems.length>3?' · +'+(newItems.length-3)+' más':'');
+  el('discovery-shop').textContent='VER EN TIENDA';
  }
  buyUpgrade(key){
   if(this.state==='pitching'||this.state==='aiming'||this.state==='swinging'||this.state==='flight'||this.rewardPending)return;
@@ -337,9 +358,9 @@ export class BaseballGame{
   el('result-meters').textContent='0';el('result-coins').textContent='+0';el('coin-breakdown').textContent='SIN CONTACTO · x0';
   el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
-  this.drawUI();
+  this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0};this.ball=b;initBallSpin(b);this.distance=0;if(!this.save?.reducedEffects)this.impactFX?.spawnBat({x:b.x,y:b.y,z:b.z,quality:hit.quality});this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.distance=0;if(!this.save?.reducedEffects)this.impactFX?.spawnBat({x:b.x,y:b.y,z:b.z,quality:hit.quality});this.audio.hit(hit.quality);if(hit.quality==='miss')this.audio.miss();el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  emitCollision(material,point,strength,normal={x:0,y:1,z:0}){
   if(!Number.isFinite(strength)||strength<1.2)return;
@@ -389,6 +410,7 @@ export class BaseballGame{
    }
    b.lastCollision=sideHit?'CHOQUE CON '+hit.obstacle.toUpperCase():n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
    if(inward>1){
+    if(!sideHit&&n.y>.5)(b.encounters??={}).roof=true;
     b.impactAge=0;b.impactMaterial=mat;
     b.bounces++;
     onSpinImpact(b,n,mat);
@@ -408,6 +430,8 @@ export class BaseballGame{
    const wet=type==='water'||type==='swamp'||type==='puddle';
    const incomingSpeed=Math.hypot(b.vx,b.vy,b.vz);
    if(wet){
+    (b.encounters??={}).water=true;
+    if(type==='swamp')(b.encounters??={}).swamp=true;
     // El agua absorbe casi todo el impulso, pero no para de forma artificial al tocar.
     const retention=type==='water'?.035:type==='swamp'?.12:.20;
     b.vx*=retention;b.vz*=retention;
@@ -423,6 +447,7 @@ export class BaseballGame{
    }else{
     const normalImpact=Math.abs(Math.min(0,b.vy));
     if(normalImpact>.9){
+     if(type==='road')(b.encounters??={}).road=true;
      b.vy=normalImpact*(type==='road'?.78:.39);
      b.vz*=type==='road'?.92:.70;b.vx*=type==='road'?.92:.70;
      b.impactAge=0;b.impactMaterial=type;
@@ -454,10 +479,14 @@ export class BaseballGame{
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }
- finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b));this.persist();this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);
+ finishShot(){if(this.state!=='flight')return;const b=this.ball;this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b));
+ const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
+  peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
+  water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
+ this.persist();this.showDiscoveries(newly);this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);
  el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
- resetAndPitch(){el('result').hidden=true;el('menu-return').hidden=true;this.impactFX?.clear();this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.startPitch()}
+ resetAndPitch(){this.showDiscoveries([]);el('result').hidden=true;el('menu-return').hidden=true;this.impactFX?.clear();this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.startPitch()}
  update(dt){this.clock+=dt;
   if(this.state==='menu'&&this.save.music&&this.save.sound){
    this.musicClock=(this.musicClock||0)-dt;

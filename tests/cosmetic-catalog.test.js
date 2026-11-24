@@ -103,6 +103,9 @@ test('guardar 0.33: compras y colores siguen presentes después de ampliar el ca
  assert.equal(save.equipped,'nova');
  assert.equal(save.equippedBall,'sun');
  assert.equal(cosmeticItem('ball',save.equippedBall).name,'Pelota amarilla');
+ // Compras antiguas siempre visibles; los productos nuevos requieren descubrirlos.
+ assert.equal(equipCosmetic(save,'bat','escoba'),'locked');
+ save.discovered.push('bat:escoba','ball:luna','outfit:futbol_azulgrana');
  const balanceBefore=save.coins;
  assert.equal(equipCosmetic(save,'bat','escoba'),'insufficient');
  assert.equal(save.coins,balanceBefore);
