@@ -130,3 +130,18 @@ test('0.55: las anclas siguen la mano y la punta del bate de las cinco poses ori
  const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
  assert.match(generator,/BAT_FRAME_MASKS/);assert.doesNotMatch(generator,/wood_tone=/);
 });
+
+test('las 100 vistas previas son archivos únicos del catálogo, sin emoji sustituto',()=>{
+ const entries=[...BAT_CATALOG.map(item=>['bat',item]),...OUTFIT_CATALOG.map(item=>['outfit',item]),...BALL_CATALOG.map(item=>['ball',item])];
+ assert.equal(entries.length,100);
+ const urls=entries.map(([category,item])=>bakedAssetUrl(category,item.id));
+ assert.equal(new Set(urls).size,100);
+ urls.forEach(assertWebP);
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ assert.match(game,/img\.onload=\(\)=>\{img\.hidden=false;status\.hidden=true\}/);
+ assert.doesNotMatch(game,/preview\.textContent=item\.emoji/);
+ const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
+ assert.match(sw,/previews\.length!==100/);
+ const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
+ assert.match(workflow,/git add assets\/baked/);
+});

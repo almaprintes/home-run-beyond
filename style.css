@@ -338,3 +338,9 @@
 .pitch-touch-label[data-timing=perfect]{background:#12603c;color:#fff;border-color:#a8ffbf;box-shadow:0 0 24px #64ff9c85;}
 .pitch-touch-label[data-timing=late]{color:#ffd1a2;}
 #app.hide-help .pitch-touch-label[data-timing]::after{display:none;}
+
+/* Real artwork only; no generic emoji in cosmetic cards. */
+#shop .shop-preview-art img[hidden]{display:none!important}
+#shop .shop-preview-art .shop-preview-status{font-size:10px;color:#b5d4e5;text-align:center;padding:4px;line-height:1.2}
+#shop .shop-preview-status[role=button]{cursor:pointer;text-decoration:underline;pointer-events:auto}
+#shop .shop-preview-art img{padding:3px;content-visibility:visible}

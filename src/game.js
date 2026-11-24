@@ -1,15 +1,15 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.55.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.55.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.55.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.55.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.55.0';
-import {GameAudio} from './audio.js?v=0.55.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.55.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.55.0';
-import {BatterSprites} from './sprites.js?v=0.55.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.55.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.55.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.55.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.56.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.56.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.56.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.56.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.56.0';
+import {GameAudio} from './audio.js?v=0.56.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.56.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.56.0';
+import {BatterSprites} from './sprites.js?v=0.56.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.56.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.56.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.56.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -191,12 +191,21 @@ export class BaseballGame{
    const row=document.createElement('div');row.className='shop-item'+(equipped?' selected':'');
    const preview=document.createElement('div');preview.className='shop-preview shop-preview-art';
    const img=document.createElement('img');
-   img.loading='lazy';img.decoding='async';
+   img.loading='eager';img.decoding='async';
    img.alt='Aspecto real de '+item.name;
+   const url=bakedAssetUrl(this.shopSection,item.id);
+   const status=document.createElement('span');status.className='shop-preview-status';status.textContent='Cargando…';
+   img.hidden=true;
+   let retry=false;
+   img.onload=()=>{img.hidden=false;status.hidden=true};
+   img.onerror=()=>{
+    if(!retry){retry=true;img.src=url.split('?')[0];return}
+    console.warn('Vista previa no disponible',url);
+    img.hidden=true;status.hidden=false;status.textContent='Reintentar';status.setAttribute('role','button');
+    status.onclick=()=>{retry=false;status.textContent='Cargando…';img.src=url};
+   };
+   preview.append(img,status);
    img.src=bakedAssetUrl(this.shopSection,item.id);
-   img.onerror=()=>{img.remove();preview.textContent=item.emoji};
-   preview.append(img);
-   const swatch=document.createElement('span');swatch.className='shop-swatch';swatch.style.background=item.color;preview.append(swatch);
    const detail=document.createElement('div');detail.className='shop-detail';
    const strong=document.createElement('strong');strong.textContent=item.name;
    const small=document.createElement('small');

@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -40,6 +40,18 @@ jobs:
       - run: python -m pip install 'Pillow==12.0.0'
       - run: python tools/build_cosmetics.py
       - run: python tools/build_impact_audio.py
+      # Persist generated assets so even branch-based Pages publishes real art.
+      # A token-created commit does not start another push workflow.
+      - name: Guardar los 397 assets reales en main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/baked
+          if ! git diff --cached --quiet; then
+            git commit -m "build: guardar assets cosméticos generados [skip ci]"
+            git push origin HEAD:main
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
