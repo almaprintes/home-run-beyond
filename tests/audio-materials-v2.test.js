@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {GameAudio,synthImpulse,soundProfile} from '../src/audio.js';
+import {GameAudio,synthImpulse,soundProfile,contactProfile} from '../src/audio.js';
 import {readFileSync} from 'node:fs';
 
 test('samples de impactos poseen ataques, decaimiento y perfiles acústicos diferentes',()=>{
@@ -51,4 +51,60 @@ test('mundo sin z-fighting de césped superpuesto y con las nuevas superficies',
  assert.match(world,/setMaterial\?\.\(rand\(idx\*17,row\*13\)<\.60\?'plaster':'brick'\)/);
  assert.match(world,/setMaterial\?\.\(b\.roofMaterial==='rubber'\?'rubber':'roof'\)/);
  assert.match(world,/'paving'/);
+});
+
+
+test('v0.47: bate con ataque corto y silencio final, no una cola de estática',()=>{
+ const sample=synthImpulse('bat',22050),rate=22050;
+ assert.ok(contactProfile('bat').length<=.14);
+ assert.ok(sample.length<rate*.14);
+ const energy=(a,b)=>sample.slice(Math.floor(a*rate),Math.floor(b*rate))
+  .reduce((sum,x)=>sum+x*x,0);
+ assert.ok(energy(.0,.022)>energy(.085,.13)*8,'el bate debe ser un crack seco sin cola chirriante');
+ assert.ok(Math.abs(sample[sample.length-1])<.005,'final suavizado sin clic');
+ const attack=energy(0,.015);
+ assert.ok(attack>.02,'el golpe no puede ser inaudible');
+});
+test('v0.47: césped es suave y asfalto es más agudo y seco',()=>{
+ const grass=contactProfile('grass'),road=contactProfile('asphalt');
+ assert.ok(grass.cut<road.cut/2,'el césped debe amortiguar los agudos');
+ assert.ok(grass.click>road.click,'el césped tiene ataque más blando');
+ for(const key of ['bat','grass','dirt','asphalt','concrete','brick','roof','rubber']){
+  const x=synthImpulse(key,48000),max=Math.max(...x);
+  assert.ok(x.length>=4000&&x.length<=7700,key);
+  assert.ok(max<=.76&&max>.15,key);
+  assert.ok(x.every(Number.isFinite),key);
+  assert.ok(Math.abs(x[x.length-1])<.005,key);
+ }
+});
+test('v0.47: el rebote secundario no se convierte en traqueteo',()=>{
+ const was=globalThis.window,gains=[],played=[],sizes=[];
+ class FakeCtx{
+  constructor(){this.sampleRate=22050;this.currentTime=1;this.state='running';this.destination={}}
+  createBuffer(_channels,n){const d=new Float32Array(n);sizes.push(n);return {getChannelData:()=>d}}
+  createBufferSource(){
+   let gainNode;
+   return {playbackRate:{value:1},connect(g){gainNode=g;return g},start(){played.push(gains[gains.length-1])}}
+  }
+  createGain(){const g={gain:{value:1},connect(){}};gains.push(g.gain);return g}
+ }
+ globalThis.window={AudioContext:FakeCtx};
+ try{
+  const audio=new GameAudio();
+  audio.hit('perfect');
+  const hitVolume=gains.at(-1).value;
+  audio.impact('road',55);
+  const firstVolume=gains.at(-1).value;
+  assert.ok(firstVolume<hitVolume*.70,'el suelo no debe tapar al bate');
+  audio.ctx.currentTime+=.04;
+  audio.impact('road',48);
+  assert.equal(played.length,2,'rebotes inmediatos no deben sonar duplicados');
+  audio.ctx.currentTime+=.15;
+  audio.impact('grass',9);
+  assert.equal(played.length,3);
+  assert.ok(gains.at(-1).value<firstVolume,'un rebote leve en hierba es más suave');
+  audio.ctx.currentTime+=.15;audio.impact('grass',1.8);
+  assert.equal(played.length,3,'rodadura no genera ruido de impactos');
+  assert.ok(audio.buffers.has('asphalt')&&audio.buffers.has('grass'));
+ }finally{if(was===undefined)delete globalThis.window;else globalThis.window=was}
 });

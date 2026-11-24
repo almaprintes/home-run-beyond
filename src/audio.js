@@ -17,7 +17,55 @@ const PROFILE=Object.freeze({
  puddle:{length:.35,low:.105,body:.21,attack:.018,frequency:120,noise:.73,tone:.06,kind:'water'}
 });
 export function soundProfile(name){return PROFILE[name]||PROFILE.concrete}
+
+// Sonido directo de materiales, generado una sola vez en memoria.
+// El golpe es una suma de impulso breve y resonancias amortiguadas;
+// se elimina la cola de ruido largo (que sonaba a fritura digital).
+const CONTACT=Object.freeze({
+ bat:     {length:.132,click:.0027,noise:.016,cut:3500,body:[185,370,690],decay:.031,snap:.56,ring:.31,weight:.20},
+ grass:   {length:.105,click:.0110,noise:.046,cut:480, body:[165,280,535],decay:.047,snap:.08,ring:.33,weight:.52},
+ dirt:    {length:.109,click:.0090,noise:.048,cut:790, body:[175,310,610],decay:.047,snap:.14,ring:.34,weight:.46},
+ asphalt: {length:.115,click:.0047,noise:.033,cut:1650,body:[215,410,770],decay:.040,snap:.30,ring:.37,weight:.30},
+ concrete:{length:.117,click:.0047,noise:.037,cut:1450,body:[190,370,680],decay:.043,snap:.26,ring:.37,weight:.34},
+ brick:   {length:.124,click:.0060,noise:.042,cut:1130,body:[190,350,650],decay:.050,snap:.23,ring:.38,weight:.35},
+ solid:   {length:.121,click:.0040,noise:.031,cut:1900,body:[220,430,810],decay:.038,snap:.34,ring:.39,weight:.28},
+ roof:    {length:.158,click:.0060,noise:.047,cut:1120,body:[160,320,575],decay:.070,snap:.18,ring:.39,weight:.38},
+ rubber:  {length:.106,click:.0140,noise:.044,cut:560, body:[148,280,520],decay:.040,snap:.07,ring:.29,weight:.53}
+});
+export function contactProfile(name){return CONTACT[name]||null}
+function synthContact(name,rate){
+ const p=CONTACT[name],count=Math.max(1,Math.ceil(p.length*rate)),samples=new Float32Array(count);
+ let seed=0x613d2baf ^ name.split('').reduce((n,c)=>(Math.imul(n,33)+c.charCodeAt(0))|0,0);
+ let mid=0,low=0;
+ const midAlpha=1-Math.exp(-2*Math.PI*p.cut/rate);
+ const lowAlpha=1-Math.exp(-2*Math.PI*Math.min(270,p.cut*.52)/rate);
+ const [f1,f2,f3]=p.body;
+ for(let i=0;i<count;i++){
+  seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+  const white=((seed>>>0)/2147483648)-1,t=i/rate;
+  mid+=(white-mid)*midAlpha;
+  low+=(mid-low)*lowAlpha;
+  const crack=(white-mid)*Math.exp(-t/p.click);
+  const grain=(mid-low)*Math.exp(-t/p.noise);
+  const thud=low*Math.exp(-t/(p.decay*1.1));
+  // Formantes cortos y no armónicos de madera / cuero. Sin zumbidos estables.
+  const body=(
+    Math.sin(2*Math.PI*f1*t)*.59+
+    Math.sin(2*Math.PI*f2*t+.36)*.30+
+    Math.sin(2*Math.PI*f3*t+.81)*.11
+   )*Math.exp(-t/p.decay);
+  const leading=1-Math.exp(-t*rate/9);
+  const trailing=Math.pow(Math.max(0,1-t/p.length),2);
+  samples[i]=(p.snap*crack+.55*grain+p.weight*thud+p.ring*body)*leading*trailing;
+ }
+ let peak=0;
+ for(const x of samples)peak=Math.max(peak,Math.abs(x));
+ const gain=.72/Math.max(peak,.001);
+ for(let i=0;i<count;i++)samples[i]=Math.max(-.76,Math.min(.76,samples[i]*gain));
+ return samples;
+}
 export function synthImpulse(kind='bat',rate=22050){
+ if(contactProfile(kind))return synthContact(kind,rate);
  const cfg=soundProfile(kind),count=Math.max(1,Math.ceil(cfg.length*rate)),a=new Float32Array(count);
  let seed=0x7f4a7c15^kind.split('').reduce((h,c)=>Math.imul(h,31)+c.charCodeAt(0)|0,0);
  let slow=0,fast=0;
@@ -85,8 +133,12 @@ export class GameAudio{
   gain.gain.value=Math.min(.4,Math.max(.001,volume));
   src.connect(gain);gain.connect(c.destination);src.start();
  }
- swing(){this.sound('swing',.20)}
- hit(q){this.sound('bat',q==='perfect'?.38:q==='excellent'?.32:q==='good'?.26:.16)}
+ swing(){this.sound('swing',.115)}
+ hit(q){
+  // El bate es un chasquido de madera contra cuero, no una explosión de ruido.
+  const gain=q==='perfect'?.24:q==='excellent'?.205:q==='good'?.18:.12;
+  this.sound('bat',gain);
+ }
  cash(){this.tone(560,.12,'sine',.11);this.tone(830,.17,'sine',.1,.085)}
  // Pequeño motivo original y discreto para el menú: nada se reproduce durante el bateo.
  menuMusic(){
@@ -105,7 +157,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.46.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.47.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();
@@ -151,12 +203,17 @@ export class GameAudio{
   if(!this.enabled)return;
   this.init();if(!this.ctx)return;
   const now=this.ctx.currentTime;
-  if(now-this.lastImpactAt<.075)return;
+  // Evitar el traqueteo de rebotes rápidos sobre el mismo suelo.
+  if(now-this.lastImpactAt<.115||strength<2.25)return;
   this.lastImpactAt=now;
-  const normalized=Math.min(1,Math.log1p(Math.max(0,strength))/Math.log(115));
   const kind=material==='road'?'asphalt':material==='puddle'?'puddle':soundProfile(material)===PROFILE.concrete?'concrete':material;
-  this.sound(kind,.09+.23*normalized);
+  // El segundo y tercer rebote deben sonar más discretos. El volumen
+  // depende de la velocidad normal de impacto, no del total de impactos.
+  const normalized=Math.min(1,Math.log1p(Math.max(0,strength))/Math.log(90));
+  const soft=['grass','dirt','rubber','swamp'].includes(kind);
+  const volume=(.022+.105*Math.pow(normalized,1.55))*(soft?.78:1);
+  this.sound(kind,volume);
  }
- land(){this.sound('grass',.12)}
+ land(){this.sound('grass',.045)}
  record(){[440,554,659,880].forEach((n,i)=>this.tone(n,.29,'sine',.09,i*.12))}
 }
