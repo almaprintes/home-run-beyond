@@ -34,6 +34,99 @@ export function visibleRoadTraffic(viewZ,time,range=360){
  return ROAD_CENTERS.filter(z=>Math.abs(z-viewZ)<=range)
   .flatMap(z=>roadTraffic(z,time));
 }
+// Collision shapes share the rendered chassis and axle dimensions.
+export function trafficCollisionParts(car){
+ const L=car.length,W=car.width,R=car.radius,dir=car.dir;
+ const parts=[
+  {kind:'traffic-body',material:'metal',min:[-L*.49,.47,-W*.45],max:[L*.49,1.72,W*.45]},
+  {kind:'traffic-roof',material:'metal',min:[-L*.29,1.72,-W*.365],max:[L*.29,car.kind==='suv'?3.34:3.12,W*.365]}
+ ];
+ for(const axle of [-1,1])for(const side of [-1,1]){
+  const x=dir*axle*L*.306,z=side*(W*.485+.46*.23);
+  parts.push({kind:'traffic-wheel',material:'rubber',min:[x-R,.14,z-.23],max:[x+R,2*R+.14,z+.23]});
+ }
+ return parts;
+}
+// Continuous relative-motion sweep of a sphere against rounded box bounds.
+function sweepPart(a,b,r,part){
+ const d=a.map((v,i)=>b[i]-v);
+ let lo=0,hi=1;
+ for(let i=0;i<3;i++){
+  const min=part.min[i]-r,max=part.max[i]+r;
+  if(Math.abs(d[i])<1e-10){if(a[i]<min||a[i]>max)return null;continue}
+  const p=(min-a[i])/d[i],q=(max-a[i])/d[i];
+  lo=Math.max(lo,Math.min(p,q));hi=Math.min(hi,Math.max(p,q));
+  if(lo>hi)return null;
+ }
+ const at=t=>a.map((v,i)=>v+d[i]*t);
+ const gap=p=>p.map((v,i)=>v-Math.max(part.min[i],Math.min(part.max[i],v)));
+ const dist=t=>gap(at(t)).reduce((sum,v)=>sum+v*v,0);
+ let t=lo;
+ if(dist(lo)>r*r+1e-9){
+  // Squared distance to a box is convex along a straight segment.
+  let x=lo,y=hi;
+  for(let k=0;k<22;k++){const p=(2*x+y)/3,q=(x+2*y)/3;if(dist(p)<dist(q))y=q;else x=p}
+  const closest=(x+y)/2;
+  if(dist(closest)>r*r+1e-8)return null;
+  let left=lo,right=closest;
+  for(let k=0;k<24;k++){const mid=(left+right)/2;if(dist(mid)>r*r)left=mid;else right=mid}
+  t=right;
+ }
+ const p=at(t),g=gap(p),len=Math.hypot(...g);
+ let n;
+ if(len>1e-8)n=g.map(v=>v/len);
+ else{
+  const faces=[];for(let i=0;i<3;i++){faces.push([p[i]-part.min[i],i,-1],[part.max[i]-p[i],i,1])}
+  faces.sort((a,b)=>a[0]-b[0]);n=[0,0,0];n[faces[0][1]]=faces[0][2];
+ }
+ if(d.reduce((sum,v,i)=>sum+v*n[i],0)>=-1e-8)return null;
+ const closest=p.map((v,i)=>Math.max(part.min[i],Math.min(part.max[i],v)));
+ const point=len>1e-8?closest.map((v,i)=>v+n[i]*r):p.map((v,i)=>n[i]===0?v:(n[i]<0?part.min[i]-r:part.max[i]+r));
+ return {t,point,normal:{x:n[0],y:n[1],z:n[2]},kind:part.kind,material:part.material};
+}
+export function traceVehicleCollision(from,to,car,startX,endX,radius=1.45){
+ const a=[from.x-startX,from.y,from.z-car.z],b=[to.x-endX,to.y,to.z-car.z];
+ let first=null;
+ for(const part of trafficCollisionParts(car)){
+  const hit=sweepPart(a,b,radius,part);
+  if(hit&&(!first||hit.t<first.t)){
+   const x=startX+(endX-startX)*hit.t;
+   first={...hit,point:{x:hit.point[0]+x,y:hit.point[1],z:hit.point[2]+car.z},car};
+  }
+ }
+ return first;
+}
+export function traceTrafficCollision(from,to,t0,t1,radius=1.45,physicsDt=t1-t0){
+ if(!from||!to||Math.min(from.y,to.y)>3.4+radius)return null;
+ let first=null;
+ for(const z of ROAD_CENTERS){
+  if(Math.min(from.z,to.z)>z+9+radius||Math.max(from.z,to.z)<z-9-radius)continue;
+  const cars=roadTraffic(z,t0);
+  for(const car of cars){
+   const endX=car.x+car.dir*car.speed*Math.max(0,t1-t0);
+   // Recycling is outside the rendered road; never sweep across a teleport.
+   if(Math.min(Math.abs(car.x),Math.abs(endX))>284)continue;
+   if(Math.min(from.x,to.x)>Math.max(car.x,endX)+car.length*.5+radius||
+      Math.max(from.x,to.x)<Math.min(car.x,endX)-car.length*.5-radius)continue;
+   const hit=traceVehicleCollision(from,to,car,car.x,endX,radius);
+   if(hit&&(!first||hit.t<first.t))first={...hit,vehicleVx:physicsDt>0?(endX-car.x)/physicsDt:0};
+  }
+ }
+ return first;
+}
+// Impulse in the car's moving frame. Vehicle keeps its speed and course.
+export function trafficDeflection(ball,hit){
+ const n=hit.normal,cv=hit.vehicleVx||0,rx=ball.vx-cv,ry=ball.vy,rz=ball.vz;
+ const dot=rx*n.x+ry*n.y+rz*n.z,inward=Math.max(0,-dot);
+ if(inward<=0)return null;
+ const wheel=hit.kind==='traffic-wheel',e=wheel?.42:.54,tangent=wheel?.78:.84;
+ const vx=cv+(rx-dot*n.x)*tangent+inward*e*n.x;
+ let vy=(ry-dot*n.y)*tangent+inward*e*n.y;
+ const vz=(rz-dot*n.z)*tangent+inward*e*n.z;
+ // A low tyre strike can squeeze the ball sideways and produce a modest hop.
+ if(wheel&&hit.point.y<=2.2&&n.y>-.35)vy=Math.max(vy,Math.min(4,inward*.16));
+ return {vx,vy,vz,inward};
+}
 export function drawProceduralTraffic(r,vehicles,cam=[0,15,0]){
  if(!r||typeof r.add!=='function')return 0;
  let drawn=0;

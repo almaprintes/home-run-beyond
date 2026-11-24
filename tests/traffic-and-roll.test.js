@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {TRAFFIC_VEHICLES,ROAD_CENTERS,TRAFFIC_HALF_SPAN,roadTraffic,
- visibleRoadTraffic,drawProceduralTraffic} from '../src/traffic.js';
+ visibleRoadTraffic,drawProceduralTraffic,traceVehicleCollision,traceTrafficCollision,trafficDeflection} from '../src/traffic.js';
 import {opaqueBaseballPixels,BALL_SURFACE_SIZE,BatterSprites} from '../src/sprites.js';
 import {BaseballGame,groundRollRetention} from '../src/game.js';
 import {groundAt} from '../src/world.js';
@@ -130,4 +130,38 @@ test('se conserva exactamente el rozamiento de la versión afinada 0.24',()=>{
  for(let i=0;i<10&&game.ball.bounces===0;i++)game.simulateStep(1/60);
  assert.ok(game.ball.bounces>=1);
  assert.equal(game.ball.bounceVisual,1,'el primer bote debe tener respuesta visual');
+});
+
+test('ruedas y carrocería: colisión barrida, desvío lateral y vuelo alto libre',()=>{
+ const car={...roadTraffic(265,0)[0],x:0,z:265};
+ const wheelZ=car.z+car.width*.485+.46*.23;
+ const from={x:car.length*.306,y:1.45,z:wheelZ+7},to={...from,z:wheelZ-7};
+ const hit=traceVehicleCollision(from,to,car,0,0);
+ assert.ok(hit);assert.equal(hit.kind,'traffic-wheel');assert.equal(hit.material,'rubber');
+ assert.ok(hit.t>0&&hit.t<1);
+ const bounced=trafficDeflection({vx:0,vy:0,vz:-30},{...hit,vehicleVx:16});
+ assert.ok(bounced.vx>0&&bounced.vz>0);
+ assert.ok(bounced.vy>=0);
+ assert.equal(traceVehicleCollision({...from,y:9},{...to,y:9},car,0,0),null);
+});
+test('coche en movimiento detecta bola casi parada y conserva el sentido de marcha',()=>{
+ const car={...roadTraffic(265,0)[0],x:0,z:265};
+ const p={x:8,y:1.45,z:car.z};
+ const hit=traceVehicleCollision(p,p,car,0,10);
+ assert.ok(hit&&hit.normal.x>0);
+ const kick=trafficDeflection({vx:0,vy:0,vz:0},{...hit,vehicleVx:16});
+ assert.ok(kick.vx>16&&kick.vx<30);
+ const mirror=trafficDeflection({vx:0,vy:0,vz:0},{...hit,normal:{x:-1,y:0,z:0},vehicleVx:-16});
+ assert.ok(mirror.vx< -16);
+});
+test('integración: un coche real en su carril desvía la pelota y emite impacto',()=>{
+ const t=5,car=roadTraffic(265,t).find(c=>Math.abs(c.x)<240);
+ const game=Object.create(BaseballGame.prototype);
+ game.state='flight';game.simElapsed=0;game.clock=t;game.save={reducedEffects:true};
+ game.ball={x:car.x+car.dir*(car.length*.5+1.7),y:1.45,z:car.z,vx:0,vy:0,vz:0,bounces:0,maxZ:car.z,encounters:{}};
+ const sounds=[];game.audio={impact:m=>sounds.push(m)};game.finishShot=()=>{};
+ game.simulateStep(.08,t,t+.08);
+ assert.ok(game.ball.vx*car.dir>0);assert.ok(game.ball.lastCollision.includes('COCHE')||game.ball.lastCollision.includes('NEUMÁTICO'));
+ assert.ok(sounds.includes('metal')||sounds.includes('rubber'));
+ assert.ok(game.ball.encounters.road);
 });
