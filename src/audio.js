@@ -147,7 +147,7 @@ export class GameAudio{
   o.connect(g).connect(c.destination);o.start(t);o.stop(t+duration+.05);
  }
  sound(kind,volume=.18){
-  if(!this.enabled||kind==='bat')return;this.init();const c=this.ctx;
+  if(!this.enabled||kind==='bat'||kind==='swing')return;this.init();const c=this.ctx;
   if(!c||!c.createBuffer||!c.createBufferSource||!c.createGain)return;
   let buffer=this.buffers.get(kind);
   if(!buffer){
@@ -179,7 +179,7 @@ export class GameAudio{
   const job=(async()=>{
    for(const file of files){
     try{
-     const response=await fetch('./assets/audio/'+file+'?v=0.53.0');
+     const response=await fetch('./assets/audio/'+file+'?v=0.54.0');
      if(!response.ok)continue;
      const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
      if(kind==='bat'&&file.endsWith('.mp3')&&decoded.duration<5.22)continue;
@@ -225,21 +225,22 @@ export class GameAudio{
   src.buffer=buffer;
   this.variant=(this.variant+1)%7;
   src.playbackRate.value=kind==='bat'?1:.985+this.variant*.007;
-  gain.gain.value=Math.min(.4,Math.max(.001,gainAmount));
+  gain.gain.value=Math.min(kind==='bat'?.85:.4,Math.max(.001,gainAmount));
   src.connect(gain);gain.connect(this.ctx.destination);
   const segment=this.recordedSegments.get(kind);
   if(segment)src.start(0,segment.offset,segment.duration);else src.start();
   return true;
  }
- swing(){this.sound('swing',.115)}
+ swing(){} // El movimiento del bate es silencioso.
  hit(q){
   // Golpe único, seco y cálido; no tocar los perfiles de rebote.
-  const gain=q==='perfect'?.24:q==='excellent'?.205:q==='good'?.18:.12;
+  if(q==='miss')return;
+  const gain=q==='perfect'?.72:q==='excellent'?.615:q==='good'?.54:.36;
   if(!this.enabled)return;
   if(this.playRecorded('bat',gain))return;
   // Solo el WAV real si WebAudio no está listo. Nunca la síntesis del bate.
   if(typeof Audio!=='undefined'){
-   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.53.0');clip.volume=Math.min(1,gain*2);clip.play()?.catch?.(()=>{});}catch{}
+   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.54.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
   }
   void this.prepareRecorded('bat');
  }
@@ -250,7 +251,7 @@ export class GameAudio{
   for(const [hz,offset,duration] of [[261.63,0,.34],[329.63,.39,.35],[392,.83,.38],[523.25,1.33,.62]])
    this.tone(hz,duration,'sine',.027,offset);
  }
- miss(){this.sound('swing',.09)}
+ miss(){} // Solo se oye la voz de strike cuando no hay contacto.
  // Voz grabada localmente: en iOS no dependemos del sintetizador de voz.
  // Comparte AudioContext con los efectos del bate, y se precarga al tocar jugar.
  prepareStrike(){
@@ -261,7 +262,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.53.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.54.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();

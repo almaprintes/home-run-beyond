@@ -51,3 +51,6 @@ Ninguno de los sonidos se utiliza para activar o alterar la física.
 
 ## 0.53 — solo grabación real
 El WAV PCM de la misma grabación se incluye directamente en el repositorio y en la caché PWA, incluso si Pages publica sin ejecutar el generador. Se precarga antes de empezar a jugar. Se elimina la síntesis del golpe del bate; si WebAudio falla, solo se intenta reproducir el WAV real. Los sonidos de otras superficies permanecen intactos.
+
+## 0.54 — impacto aislado y más fuerte
+Ganancia WebAudio del golpe CGEffex multiplicada por tres (perfecto 0,72), sin modificar velocidad ni añadir efectos. El movimiento del bate y los swings al aire quedan silenciosos; se conserva la voz de strike. Las superficies mantienen sus ganancias originales.

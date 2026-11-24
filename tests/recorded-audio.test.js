@@ -26,7 +26,7 @@ test('CGEffex: el juego distribuye una grabación real, atribuida y reproducible
  assert.match(html,/BranRainey/);
  assert.match(sw,/OPTIONAL_AUDIO/);
  assert.match(sw,/Promise\.allSettled\(OPTIONAL_AUDIO/);
- assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.53\.0/);
+ assert.match(sw,/assets\/audio\/bat-cgeffex\.wav\?v=0\.54\.0/);
  assert.equal((workflow.match(/run: python tools\/build_impact_audio\.py/g)||[]).length,2);
 });
 
@@ -88,7 +88,7 @@ test('precarga sin bloquear el bateo y cae al sonido local si falla Freesound',a
   a.prepareGameEffects();
   await Promise.all([...a.recordedLoads.values()]);
   assert.deepEqual([...a.recordedBuffers.keys()].sort(),['asphalt','bat','facade']);
-  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.53.0')));
+  assert.ok(visited.some(x=>x.includes('bat-cgeffex.mp3?v=0.54.0')));
   assert.ok(visited.some(x=>x.includes('asphalt-ball.mp3')));
   assert.ok(visited.some(x=>x.includes('wall-ball.mp3')));
  }finally{
@@ -101,4 +101,14 @@ test('sin buffer WebAudio el bate nunca sintetiza: solo WAV CGEffex',()=>{
  const oldAudio=globalThis.Audio,played=[];
  globalThis.Audio=class{constructor(url){this.url=url}play(){played.push(this.url);return Promise.resolve()}};
  try{const a=new GameAudio();a.prepareRecorded=()=>Promise.resolve(false);a.sound=()=>assert.fail('bate procedural');a.hit('perfect');assert.equal(played.length,1);assert.match(played[0],/bat-cgeffex\.wav/);a.enabled=false;a.hit('good');assert.equal(played.length,1)}finally{if(oldAudio===undefined)delete globalThis.Audio;else globalThis.Audio=oldAudio}
+});
+
+test('0.54: bate tres veces más fuerte, sin movimiento ni golpe si falla',()=>{
+ const volumes=[],played=[];const a=new GameAudio();
+ a.ctx={destination:{},createBufferSource(){const s={buffer:null,playbackRate:{value:1},connect(){return s},start(){played.push(s.buffer)}};return s},createGain(){const g={gain:{value:0},connect(){return g}};volumes.push(g.gain);return g}};
+ a.recordedBuffers.set('bat',{name:'CGEffex'});a.sound=()=>assert.fail('efecto añadido');
+ a.swing();a.miss();a.hit('miss');assert.equal(played.length,0);
+ for(const q of ['perfect','excellent','good','weak'])a.hit(q);
+ assert.equal(played.length,4);assert.deepEqual(volumes.map(g=>g.value),[.72,.615,.54,.36]);assert.ok(played.every(b=>b.name==='CGEffex'));
+ a.enabled=false;a.hit('perfect');assert.equal(played.length,4);
 });

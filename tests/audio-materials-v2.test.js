@@ -34,8 +34,8 @@ test('audio de bate y materiales usa buffers de ruido filtrado, no pitidos de os
   game.swing();game.hit('perfect');
   game.impact('concrete',90);game.ctx.currentTime+=.15;game.impact('water',55);
   game.ctx.currentTime+=.15;game.impact('grass',20);
-  assert.ok(played.length>=5);
-  assert.ok(game.buffers.has('swing')&&!game.buffers.has('bat')&&game.buffers.has('water')&&game.buffers.has('grass'));
+  assert.equal(played.length,4,'solo impacto real y tres superficies; swing silencioso');
+  assert.ok(!game.buffers.has('swing')&&!game.buffers.has('bat')&&game.buffers.has('water')&&game.buffers.has('grass'));
   assert.ok(allocated.every(n=>n>1000));
   const count=allocated.length;
   game.ctx.currentTime+=.15;game.hit('good');
