@@ -2,7 +2,7 @@
 // Comprar/equipar es otra acción: el precio orienta cuándo revelar cada objeto,
 // pero gastar en habilidades nunca hace retroceder los descubrimientos.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.58.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.59.0';
 
 export const COLLECTIONS=Object.freeze({bat:BAT_CATALOG,outfit:OUTFIT_CATALOG,ball:BALL_CATALOG});
 export const STARTER_DISCOVERIES=Object.freeze(['bat:classic','outfit:red','ball:classic']);
@@ -50,8 +50,11 @@ if(ordered.length!==100)throw Error('El catálogo de descubrimientos debe tener 
 const reserved=Object.fromEntries(Object.keys(QUOTAS).map(g=>[g,0]));
 for(const value of Object.values(OVERRIDES))reserved[value.group]++;
 const remaining=Object.fromEntries(Object.entries(QUOTAS).map(([g,n])=>[g,n-reserved[g]]));
+// Preserve the original challenge allocation for unaffected IDs when prices change.
+const LEGACY_RULE_PRICES=Object.freeze({'bat:ruby':1500,'outfit:purple':1400,'ball:mint':1100,'ball:lilac':1800,'ball:negra':1950,'ball:rosa':2450});
+const rulePrice=v=>LEGACY_RULE_PRICES[v.key]??v.item.price;
 const rest=ordered.filter(v=>!BASE_KEYS.has(v.key)&&!OVERRIDES[v.key])
- .sort((a,b)=>a.item.price-b.item.price||a.key.localeCompare(b.key));
+ .sort((a,b)=>rulePrice(a)-rulePrice(b)||a.key.localeCompare(b.key));
 const generated=new Map(),idx={play:0,record:0,skill:0,secret:0};
 const availableSecrets=SECRET_FLAGS.filter(flag=>!Object.values(OVERRIDES).some(r=>r.group==='secret'&&r.metric===flag));
 for(let i=0;i<rest.length;i++){
@@ -72,7 +75,15 @@ for(let i=0;i<rest.length;i++){
  generated.set(rest[i].key,Object.freeze({group,metric,target}));
 }
 if(Object.values(remaining).some(n=>n!==0))throw Error('Faltan reglas de descubrimiento');
-export const DISCOVERY_RULES=Object.freeze(Object.fromEntries(ordered.filter(v=>!BASE_KEYS.has(v.key))
+// Simple recolours belong to the early collection, not secret/late challenges.
+ // Exchange challenge slots with themed designs to preserve the 47/25/15/10 balance.
+ const exchange=(a,b)=>{const first=generated.get(a);generated.set(a,generated.get(b));generated.set(b,first)};
+ exchange('ball:lilac','bat:platano');
+ exchange('ball:negra','outfit:futbol_blanco');
+ for(const [key,target] of [['ball:rosa',12],['ball:lilac',14],['ball:negra',18]]){
+  generated.set(key,Object.freeze({group:'play',metric:'shots',target}));
+ }
+ export const DISCOVERY_RULES=Object.freeze(Object.fromEntries(ordered.filter(v=>!BASE_KEYS.has(v.key))
  .map(({key})=>[key,Object.freeze(OVERRIDES[key]||generated.get(key))])));
 if(Object.keys(DISCOVERY_RULES).length!==97)throw Error('97 desbloqueos esperados');
 export const DISCOVERY_GROUP_COUNTS=Object.freeze(Object.fromEntries(Object.keys(QUOTAS).map(g=>[

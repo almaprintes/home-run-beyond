@@ -166,3 +166,12 @@ test('la tienda enseña los WebP definitivos de la partida, no un rectángulo de
  assert.doesNotMatch(game,/makeCosmeticPreview/);
  assert.doesNotMatch(sprites,/composeSpecialPose|overlayOutfit/);
 });
+
+test('colores básicos no cuestan como acabados exclusivos',()=>{
+ const plain=BALL_CATALOG.filter(x=>x.design==='baseball'&&x.id!=='dorada');
+ assert.equal(plain.length,7);assert.ok(plain.every(x=>x.rarity==='COMÚN'&&x.price<=620));
+ assert.equal(cosmeticItem('ball','dorada').price,2300);
+ assert.equal(cosmeticItem('ball','dorada').rarity,'RARO');
+ assert.equal(cosmeticItem('bat','ruby').price,cosmeticItem('bat','ocean').price);
+ assert.equal(cosmeticItem('outfit','purple').price,cosmeticItem('outfit','green').price);
+});

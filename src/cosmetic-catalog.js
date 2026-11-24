@@ -20,7 +20,7 @@ export const BAT_CATALOG=parse(`
 classic|Bate clásico|0|classic|#e7b56e|#b67941|🏏
 gold|Bate dorado|320|wood|#ffc85b|#fff1a1|✨
 ocean|Bate oceánico|850|wood|#52d1e5|#b8f4ff|🌊
-ruby|Bate rubí|1500|wood|#ee5265|#ffbdc4|❤️
+ruby|Bate rubí|850|wood|#ee5265|#ffbdc4|❤️
 nova|Bate Nova|3400|nebula|#ab8dff|#69dafa|🚀
 carbono|Fibra de carbono|1100|carbon|#2e3d51|#a8b5c4|🏏
 neon|Neón eléctrico|1800|neon|#48f6b6|#152d5b|⚡
@@ -57,7 +57,7 @@ export const OUTFIT_CATALOG=parse(`
 red|Clásico rojo|0|classic|#bd454c|#fff5e9|👕
 blue|Azul océano|350|classic|#3b9fde|#e5f9ff|👕
 green|Verde estadio|780|classic|#4dc496|#f1ffe2|👕
-purple|Violeta|1400|classic|#a785fa|#f9dcff|👕
+purple|Violeta|780|classic|#a785fa|#f9dcff|👕
 gold|Dorado campeón|2400|classic|#f3be4c|#fff7db|👕
 futbol_azulgrana|Fútbol azul y granate|2700|stripes|#294eaf|#a83e61|⚽
 futbol_blanco|Fútbol blanco total|2600|shoulders|#e9edf2|#cbb77c|⚽
@@ -92,11 +92,11 @@ export const BALL_CATALOG=parse(`
 classic|Pelota clásica|0|baseball|#ffffff|#dd3f45|⚾
 sky|Pelota azul|280|baseball|#9cdafa|#e35b52|⚾
 sun|Pelota amarilla|620|baseball|#ffd26c|#d65b4d|⚾
-mint|Pelota verde menta|1100|baseball|#a1f0c4|#d95659|⚾
-lilac|Pelota lavanda|1800|baseball|#ccb0fc|#d85b6a|⚾
-negra|Pelota negra|1950|baseball|#343744|#e8a259|⚾
+mint|Pelota verde menta|620|baseball|#a1f0c4|#d95659|⚾
+lilac|Pelota lavanda|620|baseball|#ccb0fc|#d85b6a|⚾
+negra|Pelota negra|620|baseball|#343744|#e8a259|⚾
 dorada|Pelota dorada|2300|baseball|#d9a52e|#8b5010|⚾
-rosa|Pelota rosa|2450|baseball|#f5a6cc|#ffffff|⚾
+rosa|Pelota rosa|620|baseball|#f5a6cc|#ffffff|⚾
 arcoiris|Pelota arcoíris|3500|rainbow|#f7d973|#76dcea|🌈
 sol|Mini Sol|4300|sun|#ffb835|#ffea79|☀️
 luna|Mini Luna|4900|moon|#c6cbd4|#8a929e|🌕

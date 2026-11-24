@@ -1,15 +1,15 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.58.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.58.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.58.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.58.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.58.0';
-import {GameAudio} from './audio.js?v=0.58.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.58.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.58.0';
-import {BatterSprites} from './sprites.js?v=0.58.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.58.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.58.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.58.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.59.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.59.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.59.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.59.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.59.0';
+import {GameAudio} from './audio.js?v=0.59.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.59.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.59.0';
+import {BatterSprites} from './sprites.js?v=0.59.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.59.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.59.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.59.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -184,7 +184,7 @@ export class BaseballGame{
   el('shop-discovery-next').textContent=nextDiscoveryHint(this.save,this.shopSection);
   el('shop-discovery-bar').style.width=(100*count.found/count.total).toFixed(1)+'%';
   const container=el('shop-items');container.replaceChildren();
-  for(const item of category.items){
+  for(const item of [...category.items].sort((a,b)=>a.price-b.price)){
    if(!isDiscovered(this.save,this.shopSection,item.id))continue;
    const owned=this.save[category.owned].includes(item.id);
    const equipped=this.save[category.equipped]===item.id;

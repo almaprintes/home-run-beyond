@@ -178,3 +178,13 @@ test('el aviso es un modal superpuesto, independiente del resultado y cerrable',
   assert.equal(panel.hidden,true);
  }finally{if(prev===undefined)delete globalThis.document;else globalThis.document=prev}
 });
+
+test('rosa, lavanda y negra se descubren en los primeros 18 batazos y conservan compras anteriores',()=>{
+ for(const [id,target] of [['rosa',12],['lilac',14],['negra',18]]){
+  assert.deepEqual(DISCOVERY_RULES['ball:'+id],{group:'play',metric:'shots',target});
+ }
+ const s=initialSave();s.earnedCoins=6000;s.shots=18;unlockEligible(s);
+ for(const id of ['rosa','lilac','negra'])assert.ok(isDiscovered(s,'ball',id));
+ const old=sanitizeSave({version:3,coins:519,earnedCoins:6000,ownedBalls:['classic','rosa'],equippedBall:'rosa',discovered:['ball:rosa','ball:dorada']});
+ assert.equal(old.coins,519);assert.equal(old.equippedBall,'rosa');assert.ok(isDiscovered(old,'ball','dorada'));
+});

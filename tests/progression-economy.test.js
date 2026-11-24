@@ -10,7 +10,7 @@ test('auditoría completa: los 97 desbloqueos tienen precio, logro y economía c
  assert.equal(entries.length,97);
  assert.deepEqual(DISCOVERY_GROUP_COUNTS,{play:47,record:25,skill:15,secret:10});
  const prices=entries.map(({item})=>item.price);
- assert.equal(prices.reduce((a,b)=>a+b,0),519000);
+ assert.equal(prices.reduce((a,b)=>a+b,0),512910);
  assert.ok(entries.every(x=>x.rule && x.rule.target>=1),'cada cosmético tiene logro');
  assert.ok(entries.every(x=>requiredCareerEarnings(x.item.price)>0),'cada cosmético tiene umbral de ingresos');
  for(const {item} of entries){
@@ -61,12 +61,12 @@ test('desbloqueos reales en 7-9 batazos normales, manteniendo inversión en skil
  assert.equal(isDiscovered(save,'ball','mint'),false);
 });
 
-test('un artículo de 1100 exige logros Y dinero de carrera, incluso con perfecto inicial',()=>{
+test('un color básico de 620 exige logros Y dinero de carrera, incluso con perfecto inicial',()=>{
  const save=initialSave();save.shots=1;save.best=140;save.discoveryStats.perfectHits=1;
  assert.ok(!isDiscovered(save,'ball','mint'));
- save.earnedCoins=2399;assert.equal(unlockEligible(save).length,1,'otros objetos baratos pueden salir');
+ save.earnedCoins=1343;assert.equal(unlockEligible(save).length,1,'otros objetos baratos pueden salir');
  assert.equal(isDiscovered(save,'ball','mint'),false);
- save.earnedCoins=2400;assert.ok(unlockEligible(save).some(x=>x.item.id==='mint'));
+ save.earnedCoins=1344;assert.ok(unlockEligible(save).some(x=>x.item.id==='mint'));
  assert.equal(isDiscovered(save,'ball','mint'),true);
 });
 
