@@ -20,7 +20,7 @@ test('descanso persistente con mejoras y volver a batear fuera del resultado',()
  const panel=markup.match(/<section class="layer result"[^]*?<\/section>/)?.[0]||'';
  const shop=markup.match(/<div class="layer upgrades"[^]*?<\/div>\s*<section class="layer modal-shell"/)?.[0]||'';
  assert.doesNotMatch(panel,/id="again"/);
- assert.match(shop,/id="again" class="rest-again" hidden/);
+ assert.match(shop,/id="again" class="rest-again"[^>]* hidden/);
  assert.match(game,/this\.state='rest'/);
  assert.match(game,/el\('again'\)\.hidden=false/);
  assert.match(game,/el\('again'\)\.hidden=true/);
