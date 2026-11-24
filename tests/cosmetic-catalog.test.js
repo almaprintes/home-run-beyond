@@ -158,7 +158,9 @@ test('la tienda enseña los WebP definitivos de la partida, no un rectángulo de
  const style=readFileSync(new URL('../style.css',import.meta.url),'utf8');
  const sprites=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
  assert.match(game,/img\.src=bakedAssetUrl\(this\.shopSection,item\.id\)/);
- assert.match(game,/img\.loading='lazy'/);
+ assert.match(game,/img\.loading='eager'/);
+ assert.match(game,/img\.onload=/);
+ assert.match(game,/img\.onerror=/);
  assert.match(style,/\.shop-preview-art img/);
  assert.match(game,/item\.rarity/);
  assert.doesNotMatch(game,/makeCosmeticPreview/);
