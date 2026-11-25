@@ -91,5 +91,19 @@ test('las armas completas se renderizan fuera del recorte del personaje, sin per
  const weaponAt=render.indexOf('ctx.drawImage(weapon,-18,-58)');
  const bodyAt=render.indexOf('ctx.drawImage(sprite,originX,originY,widthPx,heightPx)');
  assert.ok(weaponAt>=0&&bodyAt>weaponAt,'el arma completa va detrás de manos y cuerpo');
- assert.ok(render.includes('weaponPlacement(pose,originX,originY,widthPx,heightPx)'));
+ assert.ok(render.includes('weaponPlacement(pose,originX,originY,widthPx,heightPx,selectedOutfit.id)'));
+});
+
+test('Athletic uses the supplied full poses and its own grip coordinates',()=>{
+ const data=JSON.parse(readFileSync(new URL('../assets/approved/outfits/futbol_rojo/anchors.json',import.meta.url),'utf8'));
+ for(const [pose,anchor] of Object.entries(data)){
+  const p=weaponPlacement(pose,10,20,300,365,'futbol_rojo');
+  assert.ok(Math.abs(p.x-(10+anchor.grip[0]*300))<1e-6);
+  assert.ok(Math.abs(p.y-(20+anchor.grip[1]*365))<1e-6);
+  const source=readFileSync(new URL('../assets/approved/outfits/futbol_rojo/'+pose+'-nobat.webp',import.meta.url));
+  assert.equal(source.toString('ascii',8,12),'WEBP');
+  const a=readFileSync(new URL('../assets/baked/outfits/futbol_rojo/'+pose+'.webp',import.meta.url));
+  const b=readFileSync(new URL('../assets/baked/outfits/futbol_rojo/'+pose+'-nobat.webp',import.meta.url));
+  assert.notDeepEqual(a,b);
+ }
 });

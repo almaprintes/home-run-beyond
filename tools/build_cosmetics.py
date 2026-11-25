@@ -337,6 +337,22 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
+                approved=ROOT/"assets"/"approved"/"outfits"/item["id"]
+                if approved.is_dir():
+                    # Approved complete character, never recolor or mask its body.
+                    anchors=json.loads((approved/"anchors.json").read_text(encoding="utf-8"))
+                    source=approved/(pose+"-nobat.webp")
+                    baked=opaque_core(Image.open(source).convert("RGBA"))
+                    if not nobat:
+                        anchor=anchors[pose];w,h=baked.size
+                        gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h
+                        tx,ty=anchor["tip"][0]*w,anchor["tip"][1]*h
+                        c=(tx-gx)/292;s=(ty-gy)/292;den=c*c+s*s
+                        affine=(c/den,s/den,18-(c*gx+s*gy)/den,-s/den,c/den,58-(-s*gx+c*gy)/den)
+                        weapon=classic.transform(baked.size,Image.Transform.AFFINE,affine,resample=Image.Resampling.BICUBIC)
+                        baked=opaque_core(Image.alpha_composite(weapon,baked))
+                    save(baked,path);verify_uniform(path,baked);total+=1
+                    continue
                 baked=bake_uniform(src,item,pose,nobat)
                 if not nobat:baked=apply_classic_bat(baked,src,pose,classic)
                 save(baked,path);verify_uniform(path,baked);total+=1

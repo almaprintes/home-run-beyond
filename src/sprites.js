@@ -2,7 +2,7 @@ import {lookAt,perspective,mul4} from './engine.js?v=0.77.0';
 import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.77.0';
 import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.0';
 import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.77.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.0';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -183,8 +183,8 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
 
 // Coloca el asset completo en el lienzo global, NO en el recorte del bateador.
 // El plano se pinta detrás del personaje; los brazos tapan la empuñadura.
-export function weaponPlacement(pose,originX,originY,width,height){
- const anchor=WEAPON_POSES[pose]||WEAPON_POSES.ready;
+export function weaponPlacement(pose,originX,originY,width,height,outfitId){
+ const anchor=OUTFIT_WEAPON_POSES[outfitId]?.[pose]||WEAPON_POSES[pose]||WEAPON_POSES.ready;
  const [gx,gy]=anchor.grip,[tx,ty]=anchor.tip;
  const dx=(tx-gx)*width,dy=(ty-gy)*height;
  return {x:originX+gx*width,y:originY+gy*height,
@@ -316,7 +316,9 @@ export class BatterSprites{
    if(foot&&crown){
     const heightPx=Math.max(180,Math.min(height*.60,Math.abs(foot.y-crown.y)*.78));
     const widthPx=heightPx*((sprite.naturalWidth||sprite.width)/(sprite.naturalHeight||sprite.height));
-    const originX=foot.x-widthPx*.47;
+    const outfitId=game.save?.equippedOutfit;
+    const registration=sprite!==this.images[pose]?OUTFIT_WEAPON_POSES[outfitId]?.[pose]:null;
+    const originX=foot.x-widthPx*(registration?.foot??.47);
     const originY=foot.y-heightPx;
     ctx.save();
     // Una sombra mínima bajo el sprite lo integra en el estadio 3D.
@@ -335,7 +337,7 @@ export class BatterSprites{
      const weapon=this.bakedImages.get(bakedAssetUrl('bat',selectedBat.id));
      const withoutBat=this.bakedImages.get(bakedAssetUrl('outfit',selectedOutfit.id,pose,true));
      if(weapon&&withoutBat&&sprite===withoutBat){
-      const p=weaponPlacement(pose,originX,originY,widthPx,heightPx);
+      const p=weaponPlacement(pose,originX,originY,widthPx,heightPx,selectedOutfit.id);
       ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
       ctx.scale(p.scale,p.scale);
       ctx.drawImage(weapon,-18,-58);
