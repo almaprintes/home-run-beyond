@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.9';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.77.9';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.9';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.9';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.9';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.10';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.77.10';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.10';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.10';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.10';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni

@@ -186,3 +186,13 @@ test('approved orange and snowball art survives the bake byte for byte',()=>{
   assert.equal(BALL_CATALOG.find(x=>x.id===id).price,price);
  }
 });
+
+
+test('approved thunder hammer artwork is preserved exactly',()=>{
+ const approved=readFileSync(new URL('../assets/approved/bats/martillo.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/bats/martillo.webp',import.meta.url));
+ assert.equal(approved.toString('ascii',8,12),'WEBP');
+ assert.deepEqual(baked,approved);
+ assert.match(bakedAssetUrl('bat','martillo'),/v=0\.77\.10$/);
+ assert.equal(BAT_CATALOG.find(x=>x.id==='martillo').price,6500);
+});
