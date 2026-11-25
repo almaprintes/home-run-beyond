@@ -226,3 +226,13 @@ test('approved Mini Sol plasma artwork survives the bake byte for byte',()=>{
  assert.match(bakedAssetUrl('ball','sol'),/v=0\.77\.15$/);
  assert.equal(BALL_CATALOG.find(x=>x.id==='sol').price,4300);
 });
+
+
+test('approved wire bat artwork survives the bake byte for byte',()=>{
+ const approved=readFileSync(new URL('../assets/approved/bats/alambre.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/bats/alambre.webp',import.meta.url));
+ assert.equal(approved.toString('ascii',8,12),'WEBP');
+ assert.deepEqual(baked,approved);
+ assert.match(bakedAssetUrl('bat','alambre'),/v=0\.77\.17$/);
+ assert.equal(BAT_CATALOG.find(x=>x.id==='alambre').price,4600);
+});
