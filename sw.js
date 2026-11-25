@@ -1,4 +1,4 @@
-const CACHE='hrb-v77-20261125-baguette-art-approved-sports-20';
+const CACHE='hrb-v77-20261125-baguette-art-approved-sports-21';
 const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/gulls.js','./src/pitcher.js','./src/engine.js','./src/world.js','./src/biomes.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js','./src/traffic.js','./src/discoveries.js','./src/cosmetic-render.js','./src/cosmetic-catalog.js','./src/cosmetic-art.js','./src/baked-assets.js','./assets/baked/manifest.json','./src/impact-fx.js','./src/ball-visuals.js','./src/ball-spin.js','./assets/materials-atlas-v2.png',
  './assets/strike.mp3','./assets/audio/bat-cgeffex.wav','./assets/baseball.webp',
  './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
@@ -7,10 +7,10 @@ const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/
  './assets/batter/contact.webp','./assets/batter/follow.webp',
  './icons/icon-32.png','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png',
  './icons/icon-32.png?v=0.77.0','./icons/icon-180.png?v=0.77.0','./icons/icon-192.png?v=0.77.0','./icons/icon-512.png?v=0.77.0',
- './manifest.webmanifest?v=0.77.0','./style.css?v=0.77.0','./src/main.js?v=0.77.20','./src/game.js?v=0.77.20',
- './src/gulls.js?v=0.77.20','./src/pitcher.js?v=0.77.20','./src/world.js?v=0.77.20','./src/biomes.js?v=0.77.20','./src/engine.js?v=0.77.20','./src/logic.js?v=0.77.20',
- './src/audio.js?v=0.77.20','./src/rewarded.js?v=0.77.20','./src/aiming.js?v=0.77.20',
- './src/sprites.js?v=0.77.20','./src/traffic.js?v=0.77.20','./src/discoveries.js?v=0.77.20','./src/cosmetic-render.js?v=0.77.20','./src/cosmetic-catalog.js?v=0.77.20','./src/cosmetic-art.js?v=0.77.20','./src/baked-assets.js?v=0.77.20','./src/impact-fx.js?v=0.77.20','./src/ball-visuals.js?v=0.77.20','./src/ball-spin.js?v=0.77.20','./assets/materials-atlas-v2.png?v=0.77.0','./assets/strike.mp3?v=0.77.0','./assets/audio/bat-cgeffex.wav?v=0.77.0'];
+ './manifest.webmanifest?v=0.77.0','./style.css?v=0.77.0','./src/main.js?v=0.77.21','./src/game.js?v=0.77.21',
+ './src/gulls.js?v=0.77.21','./src/pitcher.js?v=0.77.21','./src/world.js?v=0.77.21','./src/biomes.js?v=0.77.21','./src/engine.js?v=0.77.21','./src/logic.js?v=0.77.21',
+ './src/audio.js?v=0.77.21','./src/rewarded.js?v=0.77.21','./src/aiming.js?v=0.77.21',
+ './src/sprites.js?v=0.77.21','./src/traffic.js?v=0.77.21','./src/discoveries.js?v=0.77.21','./src/cosmetic-render.js?v=0.77.21','./src/cosmetic-catalog.js?v=0.77.21','./src/cosmetic-art.js?v=0.77.21','./src/baked-assets.js?v=0.77.21','./src/impact-fx.js?v=0.77.21','./src/ball-visuals.js?v=0.77.21','./src/ball-spin.js?v=0.77.21','./assets/materials-atlas-v2.png?v=0.77.0','./assets/strike.mp3?v=0.77.0','./assets/audio/bat-cgeffex.wav?v=0.77.0'];
 const OPTIONAL_AUDIO=[
  './assets/audio/bat-cgeffex.mp3?v=0.77.0',
  './assets/audio/asphalt-ball.mp3?v=0.77.0',
@@ -22,7 +22,7 @@ self.addEventListener('install',e=>e.waitUntil(
  caches.open(CACHE).then(async cache=>{
   await cache.addAll(ASSETS.map(path=>new Request(path,{cache:'reload'})));
   await Promise.allSettled(OPTIONAL_AUDIO.map(path=>cache.add(path)));
-  // Las 100 miniaturas reales también están disponibles sin red.
+  // Las 101 miniaturas reales también están disponibles sin red.
   const manifestResponse=await cache.match('./assets/baked/manifest.json');
   const manifest=await manifestResponse.json();
   const previews=[
@@ -30,8 +30,8 @@ self.addEventListener('install',e=>e.waitUntil(
    ...manifest.outfits.map(id=>'./assets/baked/outfits/'+id+'/ready.webp'),
    ...manifest.balls.map(id=>'./assets/baked/balls/'+id+'.webp')
   ];
-  if(previews.length!==100)throw Error('Catálogo incompleto');
-  for(let i=0;i<previews.length;i+=12)await cache.addAll(previews.slice(i,i+12).map(p=>p+(/\/bats\/rastrillo\.webp$/.test(p)?'?v=0.77.20':/\/bats\/hockey\.webp$/.test(p)?'?v=0.77.18':/\/bats\/alambre\.webp$/.test(p)?'?v=0.77.17':/\/balls\/sol\.webp$/.test(p)?'?v=0.77.15':/\/outfits\/chef\/ready\.webp$/.test(p)?'?v=0.77.14':/\/outfits\/luchador\/ready\.webp$/.test(p)?'?v=0.77.13':/\/bats\/trucha\.webp$/.test(p)?'?v=0.77.12':/\/balls\/playa\.webp$/.test(p)?'?v=0.77.11':/\/bats\/martillo\.webp$/.test(p)?'?v=0.77.10':/\/outfits\/basket_lila\/ready\.webp$/.test(p)?'?v=0.77.9':/\/balls\/(?:naranja|nieve)\.webp$/.test(p)?'?v=0.77.8':/\/outfits\/(?:hockey_hielo|basket_rojo)\/ready\.webp$/.test(p)?'?v=0.77.6':/\/bats\/(?:escoba|platano)\.webp$/.test(p)?'?v=0.77.5':/\/outfits\/(?:basket_negro|atletismo|tenis_blanco)\/ready\.webp$/.test(p)?'?v=0.77.4':/\/(?:balls\/(?:tenis|arcoiris)\.webp|bats\/(?:nova|paraguas)\.webp)$/.test(p)?'?v=0.77.3':p.includes('/outfits/futbol_verde/')?'?v=0.77.2':p.includes('/outfits/futbol_rojo/')?'?v=0.77.1':'?v=0.77.0')));
+  if(previews.length!==101)throw Error('Catálogo incompleto');
+  for(let i=0;i<previews.length;i+=12)await cache.addAll(previews.slice(i,i+12).map(p=>p+(/\/bats\/pata_de_palo\.webp$/.test(p)?'?v=0.77.21':/\/bats\/rastrillo\.webp$/.test(p)?'?v=0.77.20':/\/bats\/hockey\.webp$/.test(p)?'?v=0.77.18':/\/bats\/alambre\.webp$/.test(p)?'?v=0.77.17':/\/balls\/sol\.webp$/.test(p)?'?v=0.77.15':/\/outfits\/chef\/ready\.webp$/.test(p)?'?v=0.77.14':/\/outfits\/luchador\/ready\.webp$/.test(p)?'?v=0.77.13':/\/bats\/trucha\.webp$/.test(p)?'?v=0.77.12':/\/balls\/playa\.webp$/.test(p)?'?v=0.77.11':/\/bats\/martillo\.webp$/.test(p)?'?v=0.77.10':/\/outfits\/basket_lila\/ready\.webp$/.test(p)?'?v=0.77.9':/\/balls\/(?:naranja|nieve)\.webp$/.test(p)?'?v=0.77.8':/\/outfits\/(?:hockey_hielo|basket_rojo)\/ready\.webp$/.test(p)?'?v=0.77.6':/\/bats\/(?:escoba|platano)\.webp$/.test(p)?'?v=0.77.5':/\/outfits\/(?:basket_negro|atletismo|tenis_blanco)\/ready\.webp$/.test(p)?'?v=0.77.4':/\/(?:balls\/(?:tenis|arcoiris)\.webp|bats\/(?:nova|paraguas)\.webp)$/.test(p)?'?v=0.77.3':p.includes('/outfits/futbol_verde/')?'?v=0.77.2':p.includes('/outfits/futbol_rojo/')?'?v=0.77.1':'?v=0.77.0')));
  }).then(()=>self.skipWaiting())
 ));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

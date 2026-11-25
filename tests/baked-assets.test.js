@@ -17,19 +17,19 @@ function assertWebP(uri){
  assert.equal(buffer.toString('ascii',8,12),'WEBP',uri);
  return createHash('sha256').update(buffer).digest('hex');
 }
-test('397 imágenes WebP completas publicables, sin generación al renderizar ni overlays',()=>{
+test('398 imágenes WebP completas publicables, sin generación al renderizar ni overlays',()=>{
  const manifest=JSON.parse(readFileSync(abs('./assets/baked/manifest.json'),'utf8'));
- assert.equal(BAKED_ASSET_COUNT,397);
- assert.equal(manifest.counts.total,397);
+ assert.equal(BAKED_ASSET_COUNT,398);
+ assert.equal(manifest.counts.total,398);
  assert.equal(manifest.counts.outfitFrames,330);
  assert.equal(manifest.counts.uniformAlphaValidated,330);
- assert.equal(manifest.counts.bats,35);
+ assert.equal(manifest.counts.bats,36);
  assert.equal(manifest.counts.balls,32);
  assert.equal(manifest.counts.ballsValidated,32);
  assert.equal(manifest.verified,true);
  assert.deepEqual(manifest.poses,OUTFIT_POSES);
  assert.equal(OUTFIT_CATALOG.length,33);
- assert.equal(BAT_CATALOG.length,35);
+ assert.equal(BAT_CATALOG.length,36);
  assert.equal(BALL_CATALOG.length,32);
  for(const item of OUTFIT_CATALOG){
   for(const pose of OUTFIT_POSES){
@@ -122,7 +122,7 @@ test('el código de juego no usa las superposiciones rectangulares anteriores',(
  assert.match(sprite,/bakedAssetUrl\('outfit',outfit\.id,pose/);
  assert.match(game,/img\.src=bakedAssetUrl\(this\.shopSection,item\.id\)/);
  assert.match(wf,/python tools\/build_cosmetics\.py/);
- assert.match(assets,/BAKED_ASSET_COUNT=397/);
+ assert.match(assets,/BAKED_ASSET_COUNT=398/);
 });
 
 test('0.55: las anclas siguen la mano y la punta del bate de las cinco poses originales',()=>{
@@ -132,17 +132,17 @@ test('0.55: las anclas siguen la mano y la punta del bate de las cinco poses ori
  assert.match(generator,/BAT_FRAME_MASKS/);assert.doesNotMatch(generator,/wood_tone=/);
 });
 
-test('las 100 vistas previas son archivos únicos del catálogo, sin emoji sustituto',()=>{
+test('las 101 vistas previas son archivos únicos del catálogo, sin emoji sustituto',()=>{
  const entries=[...BAT_CATALOG.map(item=>['bat',item]),...OUTFIT_CATALOG.map(item=>['outfit',item]),...BALL_CATALOG.map(item=>['ball',item])];
- assert.equal(entries.length,100);
+ assert.equal(entries.length,101);
  const urls=entries.map(([category,item])=>bakedAssetUrl(category,item.id));
- assert.equal(new Set(urls).size,100);
+ assert.equal(new Set(urls).size,101);
  urls.forEach(assertWebP);
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.match(game,/img\.onload=\(\)=>\{img\.hidden=false;status\.hidden=true\}/);
  assert.doesNotMatch(game,/preview\.textContent=item\.emoji/);
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
- assert.match(sw,/previews\.length!==100/);
+ assert.match(sw,/previews\.length!==101/);
  const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
  assert.match(workflow,/git add assets\/baked/);
 });
@@ -256,3 +256,5 @@ test('approved rake artwork survives the bake byte for byte',()=>{
  assert.match(bakedAssetUrl('bat','rastrillo'),/v=0\.77\.20$/);
  assert.equal(BAT_CATALOG.find(x=>x.id==='rastrillo').price,4800);
 });
+
+ test('approved pirate peg leg artwork is preserved exactly',()=>{const approved=readFileSync(new URL('../assets/approved/bats/pata_de_palo.webp',import.meta.url));const baked=readFileSync(new URL('../assets/baked/bats/pata_de_palo.webp',import.meta.url));assert.deepEqual(baked,approved);assert.equal(approved.toString('ascii',8,12),'WEBP');assert.match(bakedAssetUrl('bat','pata_de_palo'),/v=0\.77\.21$/);assert.equal(BAT_CATALOG.find(x=>x.id==='pata_de_palo').price,5900);});

@@ -5,10 +5,10 @@
     "outfits": 33,
     "outfitFrames": 330,
     "uniformAlphaValidated": 330,
-    "bats": 35,
+    "bats": 36,
     "balls": 32,
     "ballsValidated": 32,
-    "total": 397
+    "total": 398
   },
   "poses": [
     "ready",
@@ -87,7 +87,8 @@
     "pala",
     "rastrillo",
     "zanahoria",
-    "antorcha"
+    "antorcha",
+    "pata_de_palo"
   ],
   "balls": [
     "classic",

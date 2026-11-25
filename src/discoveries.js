@@ -1,8 +1,8 @@
-// Colección de 100 cosméticos: los no descubiertos no se exponen en la tienda.
+// Colección de 101 cosméticos: los no descubiertos no se exponen en la tienda.
 // Comprar/equipar es otra acción: el precio orienta cuándo revelar cada objeto,
 // pero gastar en habilidades nunca hace retroceder los descubrimientos.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.20';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.21';
 
 export const COLLECTIONS=Object.freeze({bat:BAT_CATALOG,outfit:OUTFIT_CATALOG,ball:BALL_CATALOG});
 export const STARTER_DISCOVERIES=Object.freeze(['bat:classic','outfit:red','ball:classic']);
@@ -26,6 +26,8 @@ const OVERRIDES=Object.freeze({
  'ball:sandia':{group:'secret',metric:'water',target:1},
  'outfit:astronauta':{group:'secret',metric:'orbit',target:1}
 });
+// Additional explicit challenges do not modify the legacy allocation.
+const EXTRA_RULES=Object.freeze({'bat:pata_de_palo':Object.freeze({group:'play',metric:'shots',target:120})});
 const QUOTAS={play:47,record:25,skill:15,secret:10}; // + 3 básicos = 100.
 const GROUP_PATTERN=['play','record','play','skill','play','record','play','secret',
  'play','record','play','skill','play','record','play','secret',
@@ -46,14 +48,14 @@ const ordered=[];
 for(const [category,items] of Object.entries(COLLECTIONS)){
  for(const item of items)ordered.push({category,item,key:category+':'+item.id});
 }
-if(ordered.length!==100)throw Error('El catálogo de descubrimientos debe tener 100 artículos');
+if(ordered.length!==101)throw Error('El catálogo de descubrimientos debe tener 101 artículos');
 const reserved=Object.fromEntries(Object.keys(QUOTAS).map(g=>[g,0]));
 for(const value of Object.values(OVERRIDES))reserved[value.group]++;
 const remaining=Object.fromEntries(Object.entries(QUOTAS).map(([g,n])=>[g,n-reserved[g]]));
 // Preserve the original challenge allocation for unaffected IDs when prices change.
 const LEGACY_RULE_PRICES=Object.freeze({'bat:ruby':1500,'outfit:purple':1400,'ball:mint':1100,'ball:lilac':1800,'ball:negra':1950,'ball:rosa':2450});
 const rulePrice=v=>LEGACY_RULE_PRICES[v.key]??v.item.price;
-const rest=ordered.filter(v=>!BASE_KEYS.has(v.key)&&!OVERRIDES[v.key])
+const rest=ordered.filter(v=>!BASE_KEYS.has(v.key)&&!OVERRIDES[v.key]&&!EXTRA_RULES[v.key])
  .sort((a,b)=>rulePrice(a)-rulePrice(b)||a.key.localeCompare(b.key));
 const generated=new Map(),idx={play:0,record:0,skill:0,secret:0};
 const availableSecrets=SECRET_FLAGS.filter(flag=>!Object.values(OVERRIDES).some(r=>r.group==='secret'&&r.metric===flag));
@@ -84,8 +86,8 @@ if(Object.values(remaining).some(n=>n!==0))throw Error('Faltan reglas de descubr
   generated.set(key,Object.freeze({group:'play',metric:'shots',target}));
  }
  export const DISCOVERY_RULES=Object.freeze(Object.fromEntries(ordered.filter(v=>!BASE_KEYS.has(v.key))
- .map(({key})=>[key,Object.freeze(OVERRIDES[key]||generated.get(key))])));
-if(Object.keys(DISCOVERY_RULES).length!==97)throw Error('97 desbloqueos esperados');
+ .map(({key})=>[key,Object.freeze(EXTRA_RULES[key]||OVERRIDES[key]||generated.get(key))])));
+if(Object.keys(DISCOVERY_RULES).length!==98)throw Error('98 desbloqueos esperados');
 export const DISCOVERY_GROUP_COUNTS=Object.freeze(Object.fromEntries(Object.keys(QUOTAS).map(g=>[
  g,Object.values(DISCOVERY_RULES).filter(rule=>rule.group===g).length
 ])));

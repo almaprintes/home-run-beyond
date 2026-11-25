@@ -427,7 +427,7 @@ def wimbledon_uniform(image,pose):
 
 def main():
     outfits=catalog("outfit");bats=catalog("bat");balls=catalog("ball")
-    if (len(outfits),len(bats),len(balls))!=(33,35,32):
+    if (len(outfits),len(bats),len(balls))!=(33,36,32):
         raise ValueError("Unexpected cosmetic catalogue size")
     total=0
     classic=Image.open(APPROVED_CLASSIC).convert('RGBA')

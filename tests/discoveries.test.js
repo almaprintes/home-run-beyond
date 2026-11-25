@@ -6,10 +6,10 @@ import {COLLECTIONS,DISCOVERY_RULES,DISCOVERY_GROUP_COUNTS,STARTER_DISCOVERIES,
  discoveredCount,isDiscovered,unlockEligible,recordDiscoveryShot,nextDiscoveryHint} from '../src/discoveries.js';
 import {BaseballGame} from '../src/game.js';
 
-test('100 cosméticos: 3 iniciales y 97 reglas únicas con reparto de 4 sistemas',()=>{
+test('101 cosméticos: 3 iniciales y 98 reglas únicas con reparto de 4 sistemas',()=>{
  assert.deepEqual(STARTER_DISCOVERIES,['bat:classic','outfit:red','ball:classic']);
- assert.equal(Object.keys(DISCOVERY_RULES).length,97);
- assert.deepEqual(DISCOVERY_GROUP_COUNTS,{play:47,record:25,skill:15,secret:10});
+ assert.equal(Object.keys(DISCOVERY_RULES).length,98);
+ assert.deepEqual(DISCOVERY_GROUP_COUNTS,{play:48,record:25,skill:15,secret:10});
  for(const [category,items] of Object.entries(COLLECTIONS)){
   for(const item of items){
    const key=category+':'+item.id;
@@ -18,7 +18,7 @@ test('100 cosméticos: 3 iniciales y 97 reglas únicas con reparto de 4 sistemas
  }
  const s=initialSave();
  assert.deepEqual(Object.keys(COLLECTIONS).map(k=>discoveredCount(s,k).found),[1,1,1]);
- assert.equal(Object.values(COLLECTIONS).reduce((n,list)=>n+list.length,0),100);
+ assert.equal(Object.values(COLLECTIONS).reduce((n,list)=>n+list.length,0),101);
 });
 test('la tienda impide comprar los ocultos; 3 batazos descubren pelota azul y 5 el bate dorado',()=>{
  const s=initialSave();s.coins=100000;s.earnedCoins=10000;
@@ -106,7 +106,7 @@ test('no hay elementos irrecuperables y los nombres secretos no se revelan en pi
  s.discoveryFlags=['road','roof','river','water','district','harbor','forest','mountains','orbit','swamp'];
  const items=unlockEligible(s);
  assert.equal(items.length,97);
- assert.deepEqual(Object.keys(COLLECTIONS).map(k=>discoveredCount(s,k).found),[35,33,32]);
+ assert.deepEqual(Object.keys(COLLECTIONS).map(k=>discoveredCount(s,k).found),[36,33,32]);
  assert.equal(unlockEligible(s).length,0);
  const fresh=initialSave(),hint=nextDiscoveryHint(fresh,'ball');
  assert.ok(hint.includes('batazos'));
@@ -130,11 +130,11 @@ test('interfaz: no se crean tarjetas ni imágenes de productos ocultos',()=>{
   game.save=initialSave();game.shopSection='bat';
   game.renderShop();
   assert.equal(els.get('shop-items').children.length,1);
-  assert.equal(els.get('shop-discovery-count').textContent,'BATES: 1/35 DESCUBIERTOS');
+  assert.equal(els.get('shop-discovery-count').textContent,'BATES: 1/36 DESCUBIERTOS');
   assert.ok(els.get('shop-discovery-next').textContent.includes('batazos'));
   game.save.shots=5;game.save.earnedCoins=2000;unlockEligible(game.save);game.renderShop();
   assert.equal(els.get('shop-items').children.length,2);
-  assert.equal(els.get('shop-discovery-count').textContent,'BATES: 2/35 DESCUBIERTOS');
+  assert.equal(els.get('shop-discovery-count').textContent,'BATES: 2/36 DESCUBIERTOS');
   game.showDiscoveries([{category:'bat',item:COLLECTIONS.bat[1]}]);
   assert.equal(els.get('discovery-banner').hidden,false);
   const card=els.get('discovery-items').children[0];
@@ -194,3 +194,5 @@ test('rosa, lavanda y negra se descubren en los primeros 18 batazos y conservan 
  const old=sanitizeSave({version:3,coins:519,earnedCoins:6000,ownedBalls:['classic','rosa'],equippedBall:'rosa',discovered:['ball:rosa','ball:dorada']});
  assert.equal(old.coins,519);assert.equal(old.equippedBall,'rosa');assert.ok(isDiscovered(old,'ball','dorada'));
 });
+
+ test('new pirate peg leg has an independent discovery and does not reallocate existing challenges',()=>{const s=initialSave();s.earnedCoins=1e6;s.shots=119;unlockEligible(s);assert.equal(isDiscovered(s,'bat','pata_de_palo'),false);s.shots=120;unlockEligible(s);assert.equal(isDiscovered(s,'bat','pata_de_palo'),true);assert.deepEqual(DISCOVERY_RULES['bat:pata_de_palo'],{group:'play',metric:'shots',target:120});});

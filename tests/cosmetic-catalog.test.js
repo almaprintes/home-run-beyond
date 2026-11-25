@@ -23,11 +23,11 @@ function recordingContext(){
  return ctx;
 }
 
-test('catálogo cerrado de 100 cosméticos con IDs únicos en cada categoría',()=>{
- assert.equal(BAT_CATALOG.length,35);
+test('catálogo cerrado de 101 cosméticos con IDs únicos en cada categoría',()=>{
+ assert.equal(BAT_CATALOG.length,36);
  assert.equal(OUTFIT_CATALOG.length,33);
  assert.equal(BALL_CATALOG.length,32);
- assert.equal(ALL_COSMETIC_COUNT,100);
+ assert.equal(ALL_COSMETIC_COUNT,101);
  assert.deepEqual(COSMETICS,BAT_CATALOG);
  assert.deepEqual(OUTFITS,OUTFIT_CATALOG);
  assert.deepEqual(BALL_STYLES,BALL_CATALOG);

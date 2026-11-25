@@ -1,4 +1,4 @@
-// Catálogo de 100 cosméticos. NUNCA afecta a la física ni a la economía.
+// Catálogo de 101 cosméticos. NUNCA afecta a la física ni a la economía.
 // Cada entrada tiene un diseño visible y una identidad visual (no etiquetas vacías).
 // Campos: id|nombre|precio|diseño|color principal|acento|emblema
 function parse(rows,category){
@@ -52,6 +52,7 @@ pala|Pala de jardín|4300|shovel|#92a2a6|#ce8659|🪏
 rastrillo|Rastrillo de campo|4800|rake|#b89464|#decb9f|🧹
 zanahoria|Zanahoria descomunal|9600|carrot|#f59647|#5cb77b|🥕
 antorcha|Antorcha ancestral|15000|torch|#a6784c|#ffc45a|🔥
+pata_de_palo|Bate pata de palo|5900|pegleg|#a86c36|#d8a847|🏴‍☠️
 `,'bat');
 export const OUTFIT_CATALOG=parse(`
 red|Clásico rojo|0|classic|#bd454c|#fff5e9|👕
@@ -123,7 +124,7 @@ cristal|Cristal encantado|12500|crystal|#8bd9ea|#e3ffff|💎
 futbol|Balón de fútbol|6800|soccer|#f6f5f0|#26323e|⚽
 `,'ball');
 export const ALL_COSMETIC_COUNT=BAT_CATALOG.length+OUTFIT_CATALOG.length+BALL_CATALOG.length;
-if(ALL_COSMETIC_COUNT!==100)throw Error('Se esperaban 100 cosméticos, hay '+ALL_COSMETIC_COUNT);
+if(ALL_COSMETIC_COUNT!==101)throw Error('Se esperaban 101 cosméticos, hay '+ALL_COSMETIC_COUNT);
 export function cosmeticItem(category,id){
  const list=category==='bat'?BAT_CATALOG:category==='outfit'?OUTFIT_CATALOG:category==='ball'?BALL_CATALOG:null;
  return list?.find(x=>x.id===id)||null;
