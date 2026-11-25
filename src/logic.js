@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.22';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.22';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.23';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.23';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
