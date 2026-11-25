@@ -55,9 +55,9 @@ antorcha|Antorcha ancestral|15000|torch|#a6784c|#ffc45a|🔥
 `,'bat');
 export const OUTFIT_CATALOG=parse(`
 red|Clásico rojo|0|classic|#bd454c|#fff5e9|👕
-blue|Azul océano|350|classic|#3b9fde|#e5f9ff|👕
-green|Verde estadio|780|classic|#4dc496|#f1ffe2|👕
-purple|Violeta|780|classic|#a785fa|#f9dcff|👕
+blue|Clásico azul|350|classic|#3b9fde|#e5f9ff|👕
+green|Clásico verde|780|classic|#4dc496|#f1ffe2|👕
+purple|Clásico violeta|780|classic|#a785fa|#f9dcff|👕
 gold|Dorado campeón|2400|classic|#f3be4c|#fff7db|👕
 futbol_azulgrana|Fútbol azul y granate|2700|stripes|#294eaf|#a83e61|⚽
 futbol_blanco|Fútbol blanco total|2600|shoulders|#e9edf2|#cbb77c|⚽
