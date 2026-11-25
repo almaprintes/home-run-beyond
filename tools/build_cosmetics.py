@@ -481,7 +481,12 @@ def main():
         total+=1
     for item in balls:
         path=OUT/"balls"/(item["id"]+".webp")
-        save(draw_ball(item),path,lossless=True)
+        approved=ROOT/"assets"/"approved"/"balls"/(item["id"]+".webp")
+        if approved.is_file():
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_bytes(approved.read_bytes())
+        else:
+            save(draw_ball(item),path,lossless=True)
         verify_ball(path,item["design"])
         total+=1
     manifest={

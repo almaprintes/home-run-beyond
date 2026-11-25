@@ -174,3 +174,15 @@ test('escoba and Canary banana use the exact approved full artwork',()=>{
  assert.equal(BAT_CATALOG.find(x=>x.id==='platano').price,3100);
  assert.equal(BAT_CATALOG.find(x=>x.id==='escoba').price,2600);
 });
+
+
+test('approved orange and snowball art survives the bake byte for byte',()=>{
+ for(const [id,price] of [['naranja',4800],['nieve',5500]]){
+  const approved=readFileSync(new URL('../assets/approved/balls/'+id+'.webp',import.meta.url));
+  const baked=readFileSync(new URL('../assets/baked/balls/'+id+'.webp',import.meta.url));
+  assert.equal(approved.toString('ascii',8,12),'WEBP');
+  assert.deepEqual(baked,approved);
+  assert.match(bakedAssetUrl('ball',id),/v=0\.77\.8$/);
+  assert.equal(BALL_CATALOG.find(x=>x.id===id).price,price);
+ }
+});
