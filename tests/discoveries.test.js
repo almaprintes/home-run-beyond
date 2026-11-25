@@ -71,6 +71,9 @@ test('retroactividad: récord, batazos y compras antiguas siguen disponibles sin
 });
 test('cinco contactos perfectos revelan baguette y se conserva el progreso tras guardar',()=>{
  let s=initialSave();s.earnedCoins=15000;s.furthestZ=150;
+ // Isolate the baguette challenge from the paced discovery queue.
+ s.discovered=Object.entries(COLLECTIONS).flatMap(([category,items])=>items.map(item=>category+':'+item.id)).filter(key=>key!=='bat:baguette');
+ s.shots=20;
  for(let i=0;i<4;i++)recordDiscoveryShot(s,{quality:'perfect'});
  assert.equal(s.discoveryStats.perfectHits,4);
  assert.equal(isDiscovered(s,'bat','baguette'),false);
@@ -90,7 +93,7 @@ test('sucesos especiales y récords se contabilizan por separado y solo una vez'
  let found=[];
  found.push(...recordDiscoveryShot(s,{quality:'weak',road:true,roof:true,water:true,swamp:true,peakZ:20500,record:true}));
  assert.equal(found.length,1,'un aviso como máximo por batazo');
- for(let i=0;i<500;i++){s.shots++;found.push(...recordDiscoveryShot(s,{quality:'weak'}));}
+ for(let i=0;i<1500;i++){s.shots++;found.push(...recordDiscoveryShot(s,{quality:'weak'}));}
  assert.ok(found.some(x=>x.item.id==='escoba'),'contacto con asfalto');
  assert.ok(found.some(x=>x.item.id==='chef'),'rebote sobre techo');
  assert.ok(found.some(x=>x.item.id==='pescador'),'paso por el río');

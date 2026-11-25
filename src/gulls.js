@@ -1,6 +1,6 @@
 // Rare encounters are sampled ONCE per successful hit, not per frame.
 export const GULL_HIT_CHANCE=.01;
-export const GULL_RANGE=1000;
+export const GULL_RANGE=2000;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const hash=(i,k)=>{const n=Math.sin(i*127.1+k*311.7+6.21)*43758.5453;return n-Math.floor(n)};
 export function planGullEncounter(ball,clock=0,rng=Math.random){
@@ -9,15 +9,19 @@ export function planGullEncounter(ball,clock=0,rng=Math.random){
  // Choose a plausible crossing on the initial unobstructed ballistic arc.
  // A wall or other collision can prevent the encounter: never teleport the ball.
  const speed=Math.hypot(ball.vx,ball.vz),mult=clamp(speed/58,1,22);
- const possible=[];
- for(let z=35;z<=960;z+=12){
+ const possible=[],port=[];
+ for(let z=35;z<=1980;z+=12){
   const t=(z-ball.z)/ball.vz,x=ball.x+ball.vx*t,y=ball.y+ball.vy*t-4.905*t*t;
   if(t<=0||y<8||y>100||Math.abs(x)>260)continue;
-  possible.push({x,y:y-.10,z,t});
-  if(possible.length>=8)break; // favour the stadium outskirts, before buildings
+  if(z<1000&&possible.length<8)possible.push({x,y:y-.10,z,t});
+  else if(z>=1500)port.push({x,y:y-.10,z,t});
  }
- if(!possible.length)return null;
- const p=possible[Math.floor(clamp(rng(),0,.999999)*possible.length)];
+ if(!possible.length&&!port.length)return null;
+ // Prefer the harbor for long hits; retain the single 1% roll per shot.
+ const choice=clamp(rng(),0,.999999);
+ const candidates=port.length&&(!possible.length||choice>=.5)?port:possible;
+ const fraction=port.length&&possible.length?(choice>=.5?(choice-.5)*2:choice*2):choice;
+ const p=candidates[Math.floor(fraction*candidates.length)];
  const dir=rng()<.5?-1:1;
  return {id:'rare-gull',x:p.x+.35*dir,y:p.y,z:p.z,centerTime:clock+p.t/mult,dir,speed:8.5,phase:rng()*Math.PI*2,struckAt:null};
 }
@@ -28,8 +32,9 @@ export function gullPosition(b,t){
 }
 export function ambientGulls(t,cam,ball=null){
  const birds=[];
- for(let f=0;f<5;f++){
-  const z=100+f*190;
+ const centers=[100,290,480,670,860,1540,1730,1920];
+ for(let f=0;f<centers.length;f++){
+  const z=centers[f];
   if(Math.abs(z-cam[2])>300||Math.abs(cam[1]-28)>140)continue;
   for(let i=0;i<3;i++){
    const j=f*3+i,dir=f%2?-1:1,center=dir*(95+18*i);
