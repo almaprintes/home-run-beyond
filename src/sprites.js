@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.65.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.65.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.65.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.65.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.65.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.66.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.66.0';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.66.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.66.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.66.0';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -206,7 +206,6 @@ export class BatterSprites{
   if(!original||!save)return original;
   const outfit=OUTFITS.find(i=>i.id===save.equippedOutfit)||OUTFITS[0];
   const bat=COSMETICS.find(i=>i.id===save.equipped)||COSMETICS[0];
-  if(outfit.id==='red'&&bat.id==='classic')return original;
   const key=[pose,outfit.id,bat.id].join('/');
   if(this.styledPoses.has(key))return this.styledPoses.get(key);
   const dressed=this.bakedImages.get(bakedAssetUrl('outfit',outfit.id,pose));

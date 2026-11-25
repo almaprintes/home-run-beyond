@@ -22,6 +22,7 @@ test('397 imágenes WebP completas publicables, sin generación al renderizar ni
  assert.equal(BAKED_ASSET_COUNT,397);
  assert.equal(manifest.counts.total,397);
  assert.equal(manifest.counts.outfitFrames,330);
+ assert.equal(manifest.counts.uniformAlphaValidated,330);
  assert.equal(manifest.counts.bats,35);
  assert.equal(manifest.counts.balls,32);
  assert.equal(manifest.counts.ballsValidated,32);
@@ -76,7 +77,7 @@ test('cada selección prepara las poses completas y su propio bate y pelota',()=
  assert.ok(options.includes(bakedAssetUrl('outfit','futbol_azulgrana','follow',true)));
  assert.ok(options.includes(bakedAssetUrl('bat','trucha')));
  assert.ok(options.includes(bakedAssetUrl('ball','luna')));
- assert.deepEqual(equippedAssetPaths('red','classic','classic'),[bakedAssetUrl('ball','classic')]);
+ assert.deepEqual(equippedAssetPaths('red','classic','classic'),[...OUTFIT_POSES.map(pose=>bakedAssetUrl('outfit','red',pose)),bakedAssetUrl('ball','classic')]);
  assert.throws(()=>bakedAssetUrl('outfit','../../bad','ready'));
 });
 test('el sprite completo se elige por pose, sin volver a pintar el cuerpo encima',()=>{
@@ -151,4 +152,10 @@ test('Dorado campeón usa acabado de oro y tejido negro en las cinco poses',()=>
  assert.match(gen,/champion_helmet/);assert.match(gen,/champion_cloth/);
  const gold=OUTFIT_CATALOG.find(i=>i.id==='gold');assert.equal(gold.price,2400);
  for(const pose of OUTFIT_POSES){const g=assertWebP(bakedAssetUrl('outfit','gold',pose));assert.notEqual(g,assertWebP(bakedAssetUrl('outfit','red',pose)));assert.notEqual(g,assertWebP(bakedAssetUrl('outfit','blue',pose)));assertWebP(bakedAssetUrl('outfit','gold',pose,true));}
+});
+
+test('el uniforme original también usa el fotograma reparado cuando está disponible',()=>{
+ const sprites=new BatterSprites({getContext:()=>null});const original={naturalWidth:194,naturalHeight:347},repaired={...original,id:'repaired'};
+ sprites.images.ready=original;sprites.bakedImages.set(bakedAssetUrl('outfit','red','ready'),repaired);
+ assert.equal(sprites.getStyledPose('ready',initialSave()),repaired);
 });

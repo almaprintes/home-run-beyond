@@ -7,6 +7,7 @@ from __future__ import annotations
 import json, math, re, sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
+from outfit_alpha import repair_reference, opaque_core, verify_uniform
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "src" / "cosmetic-catalog.js"
@@ -154,7 +155,7 @@ def bake_uniform(original,item,pose,remove_bat=False):
             if color:px[x,y]=(*color,alpha)
     # High-contrast details painted into the SAME complete full-frame asset.
     if mode not in ("classic","shoulders","polo","stripes","pinstripes","hoops","chevron","hockey","basket","cycling","running","boxing","kimono","wrestling","retro","golf","jersey","rugby","fireman"):
-        dr=ImageDraw.Draw(base,"RGBA")
+        overlay=Image.new("RGBA",base.size);dr=ImageDraw.Draw(overlay,"RGBA")
         head=HEAD[pose];hx,hy=int(head[0]*w),int(head[1]*h)
         sx=max(7,int(w*.15));sy=max(6,int(h*.045))
         if mode=="chef":
@@ -175,6 +176,7 @@ def bake_uniform(original,item,pose,remove_bat=False):
         elif mode=="robot":
             dr.rectangle((hx-sx,hy-sy,hx+sx,hy+sy),fill=(41,74,91,220),outline=(128,222,226,240),width=3)
             dr.line((hx-sx//2,hy,hx+sx//2,hy),fill=(116,249,244,255),width=3)
+        base=Image.alpha_composite(base,overlay)
     if remove_bat:
         # Work from the untouched reference, not the recoloured outfit:
         # the mask must be identical for every uniform and every custom bat.
@@ -189,7 +191,7 @@ def bake_uniform(original,item,pose,remove_bat=False):
                     pose=="contact" and x/w>.79 and .24<y/h<.63)
                 if (mask[x,y] or old_fx) and p[x,y][3]:
                     p[x,y]=(0,0,0,0)
-    return base
+    return opaque_core(base)
 
 def draw_bat(item):
     img=Image.new("RGBA",(320,116),(0,0,0,0));d=ImageDraw.Draw(img,"RGBA")
@@ -302,6 +304,7 @@ def main():
     total=0
     for pose in POSES:
         src=Image.open(ROOT/"assets"/"batter"/(pose+".webp")).convert("RGBA")
+        src=opaque_core(repair_reference(src,pose))
         mask=legacy_bat_mask(src,pose)
         removed=sum(1 for v in mask.getdata() if v>0)
         if removed<130:
@@ -312,7 +315,8 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
-                save(bake_uniform(src,item,pose,nobat),path);total+=1
+                baked=bake_uniform(src,item,pose,nobat)
+                save(baked,path);verify_uniform(path,baked);total+=1
     for item in bats:
         save(draw_bat(item),OUT/"bats"/(item["id"]+".webp"));total+=1
     for item in balls:
@@ -323,7 +327,7 @@ def main():
     manifest={
         "version":1,"generator":"tools/build_cosmetics.py",
         "counts":{"outfits":len(outfits),"outfitFrames":len(outfits)*len(POSES)*2,
-                  "bats":len(bats),"balls":len(balls),"ballsValidated":len(balls),"total":total},
+                  "uniformAlphaValidated":len(outfits)*len(POSES)*2,"bats":len(bats),"balls":len(balls),"ballsValidated":len(balls),"total":total},
         "poses":list(POSES),
         "outfits":[i["id"] for i in outfits],
         "bats":[i["id"] for i in bats],
