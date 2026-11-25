@@ -1,47 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planGullEncounter,gullPosition,traceGullCollision,gullDeflection,ambientGulls,drawGulls,GULL_HIT_CHANCE,GULL_RANGE} from '../src/gulls.js';
-const shot={x:-4.5,y:2.5,z:-4.7,vx:0,vy:26,vz:58};
-test('1% per shot, never per frame; unobstructed simulated flight contacts the moving bird',()=>{
- let planned=0,contacts=0;
- for(let i=0;i<10000;i++){
-  let n=0;const bird=planGullEncounter(shot,5,()=>n++===0?(i+.5)/10000:.45);
-  if(!bird)continue;planned++;
-  const b={...shot};let t=5;
-  for(let j=0;j<200;j++){
-   const prev={...b},dt=.02;b.vy-=9.81*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
-   const hit=traceGullCollision(prev,b,bird,t,t+dt);t+=dt;
-   if(hit){contacts++;bird.struckAt=hit.at;assert.equal(traceGullCollision(prev,b,bird,t,t+dt),null);break}
-  }
- }
- assert.equal(GULL_HIT_CHANCE,.01);assert.equal(planned,100);assert.equal(contacts,100);
+import {readFileSync} from 'node:fs';
+import {GULL_ROUTES,GULL_RANGE,gullPosition,gullFrame,visibleGulls,traceAirTraffic,traceGullCollision,gullDeflection,RECOVERY_SECONDS,drawGulls} from '../src/gulls.js';
+import {initialSave,settleShot} from '../src/logic.js';
+test('air traffic exists before batting, crosses the stadium and harbor, and is independent of the shot',()=>{
+ assert.equal(GULL_RANGE,2000);assert.equal(GULL_ROUTES.length,27);
+ assert.equal(new Set(GULL_ROUTES.map(b=>b.id)).size,27);
+ assert.ok(visibleGulls(0,[0,8,-20]).some(b=>b.z<150&&Math.abs(b.x)<40));
+ assert.ok(visibleGulls(1,[0,25,1750]).some(b=>b.z>1500&&b.z<2000));
+ assert.equal(visibleGulls(1,[0,25,2400]).length,0);
+ const b=GULL_ROUTES[0],p=gullPosition(b,1),q=gullPosition(b,1.1);
+ assert.notEqual(p.x,q.x);assert.ok(Math.abs(p.x-q.x)<2);
 });
-test('real geometry: distant trajectories miss, high speed sweeps hit, gull flies away',()=>{
- const bird={x:0,y:20,z:80,centerTime:5,dir:1,speed:8.5,phase:0,struckAt:null};
- const hit=traceGullCollision({x:0,y:20,z:60},{x:0,y:20,z:100},bird,4.99,5.01);
- assert.ok(hit&&hit.t>0&&hit.t<1);
- assert.equal(traceGullCollision({x:0,y:32,z:60},{x:0,y:32,z:100},bird,4.99,5.01),null);
- const v=gullDeflection({vx:0,vy:0,vz:100},hit);assert.ok(v.vz<100&&Math.abs(v.vx)>0);
- bird.struckAt=5;assert.ok(gullPosition(bird,6).y>20);
+test('real moving collision, misses at a distance, recovery and unique reward',()=>{
+ const b=GULL_ROUTES[0],t=1,p=gullPosition(b,t),from={x:p.x,y:p.y,z:p.z-10},to={...from,z:p.z+10};
+ const hit=traceAirTraffic(from,to,t,t+.02);
+ assert.equal(hit.bird.id,b.id);assert.ok(hit.t>=0&&hit.t<=1);
+ assert.equal(traceAirTraffic({...from,y:p.y+70},{...to,y:p.y+70},t,t+.02),null);
+ const map=new Map([[b.id,hit.at]]),seen=new Set([b.id]);
+ assert.equal(traceAirTraffic(from,to,t,t+.02,1.45,map,seen),null);
+ const after=gullPosition({...b,struckAt:hit.at},hit.at+.5);
+ assert.ok(after.hit>0);assert.equal(gullFrame(hit.at+.5,after),5);
+ assert.equal(gullPosition({...b,struckAt:hit.at},hit.at+RECOVERY_SECONDS+.1).hit,0);
+ const v=gullDeflection({vx:0,vy:0,vz:100},hit);assert.ok(v.vz<100);
+ const save=initialSave(),r=settleShot(save,100,{gulls:2});assert.equal(r.eventCoins,2000);assert.equal(r.gullCount,2);
 });
-test('stadium, city and harbor flocks, limited geometry and animated wings',()=>{
- assert.ok(ambientGulls(1,[0,25,400]).every(p=>p.z<1000&&p.z>0));
- assert.equal(GULL_RANGE,2000);
- assert.ok(ambientGulls(1,[0,25,1750]).length>0);
- assert.ok(ambientGulls(1,[0,25,1750]).every(p=>p.z>=1500&&p.z<2000));
- assert.equal(ambientGulls(1,[0,25,2400]).length,0);
- const calls=[],r={add(...a){calls.push(a)}};
- const n=drawGulls(r,[0,25,400],{clock:1});assert.ok(n>0&&n<=10);assert.equal(calls.length,n*8);
- const before=JSON.stringify(calls);calls.length=0;drawGulls(r,[0,25,400],{clock:1.2});assert.notEqual(JSON.stringify(calls),before);
+test('atlas is real WebP and uses all nine frames',()=>{
+ const bytes=readFileSync(new URL('../assets/environment/gull-flight.webp',import.meta.url));assert.equal(bytes.toString('ascii',8,12),'WEBP');assert.ok(bytes.length>30000);
+ const frames=[0,.2,.4,.8,1.1,1.5].map(age=>gullFrame(0,{age}));assert.deepEqual(frames,[3,4,5,6,7,8]);
+ assert.deepEqual([0,1/5.8,2/5.8,3/5.8].map(t=>gullFrame(t,{age:Infinity,phase:0})),[0,1,2,1]);
+ const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(sw,/gull-flight\.webp\?v=0\.77\.28/);
 });
-
- test('long flight can generate a harbor encounter, without increasing chance',()=>{
- const long={x:0,y:2.5,z:-4.7,vx:0,vy:90,vz:90};let n=0;
- const bird=planGullEncounter(long,0,()=>n++===0?0:.95);
- // This arc lands near 1650 m; a valid low-altitude crossing is in the port.
- assert.ok(bird&&bird.z>=1500&&bird.z<=2000);
- assert.equal(planGullEncounter(long,0,()=>.02),null);
- const p={x:0,y:20,z:1850,centerTime:5,dir:1,speed:8.5,phase:0,struckAt:null};
- assert.ok(traceGullCollision({x:0,y:20,z:1830},{x:0,y:20,z:1870},p,4.99,5.01));
- p.z=2010;assert.equal(traceGullCollision({x:0,y:20,z:2005},{x:0,y:20,z:2020},p,4.99,5.01),null);
- });
+test('procedural fallback remains available if atlas cannot load',()=>{
+ const calls=[],r={add(...a){calls.push(a)}};const n=drawGulls(r,[0,25,400],{clock:1});assert.ok(n>0);assert.equal(calls.length,n*8);
+});

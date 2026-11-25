@@ -1,8 +1,9 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.27';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.77.27';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.27';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.27';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.27';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.28';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.28';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.28';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.28';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.28';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.28';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -15,7 +16,8 @@ export const BATTER_ASSETS=Object.freeze({
  follow:'./assets/batter/follow.webp',
  ball:'./assets/baseball.webp',
  trail:'./assets/swing-trail.webp',
- spark:'./assets/hit-spark.webp'
+ spark:'./assets/hit-spark.webp',
+ gull:GULL_ATLAS
 });
 
 export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null}={}){
@@ -308,6 +310,22 @@ export class BatterSprites{
   if(!ctx||!dimensions)return;
   const {width,height}=dimensions;
   const camera=game.fxCamera||game.camera,target=game.target;
+  if(this.images.gull&&game.state!=='menu'&&camera&&target){
+   const t=game.clock||0,atlas=this.images.gull;
+   for(const bird of visibleGulls(t,camera,game.gullHits)){
+    const p=projectToScreen(camera,target,[bird.x,bird.y,bird.z],width,height,zoom);
+    if(!p||p.x< -40||p.x>width+40||p.y< -40||p.y>height+40)continue;
+    const edge=projectToScreen(camera,target,[bird.x+2.8,bird.y,bird.z],width,height,zoom);
+    const size=Math.max(10,Math.min(150,edge?Math.abs(edge.x-p.x)*2:14));
+    const from={x:camera[0],y:camera[1],z:camera[2]},to={x:bird.x,y:bird.y,z:bird.z};
+    const blocked=traceBuildingCollision(from,to,.05,game.brokenWindows);
+    if(blocked&&blocked.t<.98)continue;
+    const frame=gullFrame(t,bird),flip=edge&&((edge.x-p.x)*bird.dir<0);
+    ctx.save();ctx.translate(p.x,p.y);if(flip)ctx.scale(-1,1);
+    ctx.drawImage(atlas,(frame%3)*GULL_CELL,Math.floor(frame/3)*GULL_CELL,GULL_CELL,GULL_CELL,-size/2,-size/2,size,size);
+    ctx.restore();
+   }
+  }
   const pose=selectBatterPose({...game,swingElapsed:game.visualSwingElapsed??game.swingElapsed});
   const sprite=this.getStyledPose(pose,game.save);
   if(this.ready&&sprite){

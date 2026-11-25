@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.27';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.27';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.27';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.27';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.27';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.27';
-import {GameAudio} from './audio.js?v=0.77.27';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.27';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.27';
-import {BatterSprites} from './sprites.js?v=0.77.27';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.27';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.27';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.27';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.27';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.27';
-import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.27';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.28';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.28';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.28';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.28';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.28';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.28';
+import {GameAudio} from './audio.js?v=0.77.28';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.28';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.28';
+import {BatterSprites} from './sprites.js?v=0.77.28';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.28';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.28';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.28';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.28';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.28';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.28';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -395,7 +395,7 @@ export class BaseballGame{
  onAction(time){if(!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false,time);}
 
  startPitch(){
-  this.brokenWindows=new Set();this.gullEncounter=null;
+  this.brokenWindows=new Set();this.gullHits??=new Map();
   this.clearTransientToast();
   this.audio?.prepareGameEffects?.();
   this.audio?.prepareStrike?.();
@@ -495,7 +495,7 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullEncounter=planGullEncounter(b,this.clock||0);this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  emitCollision(material,point,strength,normal={x:0,y:1,z:0}){
   if(!Number.isFinite(strength)||strength<1.2)return;
@@ -516,14 +516,15 @@ export class BaseballGame{
   const containerHit=traceStadiumContainerCollision(prev,next,radius);
   const fenceHit=traceStadiumFenceCollision(prev,next,radius);
   const carHit=traceTrafficCollision(prev,next,trafficStart,trafficEnd,radius,dt);
-  const gullHit=traceGullCollision(prev,next,this.gullEncounter,trafficStart,trafficEnd,radius);
+  const gullHit=traceAirTraffic(prev,next,trafficStart,trafficEnd,radius,this.gullHits,b.hitGulls);
   // Resolver el primer contacto real de la trayectoria, no un solapamiento
   // del siguiente fotograma: edificios, muros y contenedores compiten por t.
   const hit=[buildingHit,boundaryHit,containerHit,fenceHit,carHit,gullHit].filter(Boolean)
    .reduce((first,candidate)=>!first||candidate.t<first.t?candidate:first,null);
   let touching=false;
   if(hit?.kind==='gull'){
-   hit.bird.struckAt=hit.at;
+   (this.gullHits??=new Map()).set(hit.bird.id,hit.at);
+   (b.hitGulls??=new Set()).add(hit.bird.id);
    Object.assign(b,gullDeflection(b,hit));
    b.x=hit.point.x;b.y=hit.point.y;b.z=hit.point.z;
    b.lastCollision='¡GAVIOTA!';(b.encounters??={}).gull=true;
@@ -669,12 +670,12 @@ export class BaseballGame{
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }
- finishShot(){if(this.state!=='flight')return;this.clearTransientToast();const b=this.ball;freezeBallSpin(b);this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,cars:b.hitCars?.size||0});
+ finishShot(){if(this.state!=='flight')return;this.clearTransientToast();const b=this.ball;freezeBallSpin(b);this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
  const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
  this.persist();this.showDiscoveries(newly);this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);
- el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2)+(reward.eventCoins?' · GAVIOTA +'+formatInt(reward.eventCoins):'')+(reward.carCoins?' · COCHES +'+formatInt(reward.carCoins):'');el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('result-total-meters').textContent=formatInt(this.save.totalMeters||0)+' m';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.eventCoins?'🏅 ENCUENTRO CON GAVIOTA':reward.record?'🏆 NUEVO RÉCORD':reward.carCoins?'🚗 '+reward.carCount+' '+(reward.carCount===1?'COCHE':'COCHES')+' · +'+formatInt(reward.carCoins):'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
+ el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2)+(reward.eventCoins?' · GAVIOTA'+(reward.gullCount>1?'S':'')+' +'+formatInt(reward.eventCoins):'')+(reward.carCoins?' · COCHES +'+formatInt(reward.carCoins):'');el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('result-total-meters').textContent=formatInt(this.save.totalMeters||0)+' m';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.eventCoins?'🏅 ENCUENTRO CON GAVIOTA':reward.record?'🏆 NUEVO RÉCORD':reward.carCoins?'🚗 '+reward.carCount+' '+(reward.carCount===1?'COCHE':'COCHES')+' · +'+formatInt(reward.carCoins):'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
  resetAndPitch(){this.showDiscoveries([]);el('result').hidden=true;el('menu-return').hidden=true;this.impactFX?.clear();this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.startPitch()}
  update(dt){this.clock+=dt;
