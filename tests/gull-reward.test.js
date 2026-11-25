@@ -18,6 +18,6 @@ test('reward is tied to the winning physical collision and final shot settlement
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.match(game,/if\(hit\?\.kind==='gull'\)\{[\s\S]*?\.gull=true/);
  assert.match(game,/finishShot\(\)\{if\(this\.state!=='flight'\)return/);
- assert.match(game,/settleShot\(this\.save,forwardDistance\(b\),\{gull:b\.encounters\?\.gull===true\}\)/);
+ assert.match(game,/settleShot\(this\.save,forwardDistance\(b\),\{gull:b\.encounters\?\.gull===true,cars:b\.hitCars\?\.size\|\|0\}\)/);
  assert.match(game,/GAVIOTA \+/);
 });

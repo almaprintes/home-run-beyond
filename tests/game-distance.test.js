@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs';
 test('el contador vivo y la recompensa final no usan maxZ',()=>{
  const source=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.match(source,/this\.distance=forwardDistance\(this\.ball\)/);
- assert.match(source,/settleShot\(this\.save,forwardDistance\(b\)\)/);
+ assert.match(source,/settleShot\(this\.save,forwardDistance\(b\),\{/);
  assert.doesNotMatch(source,/this\.distance=this\.ball\?\.maxZ/);
 });
 

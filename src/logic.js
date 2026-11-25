@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.26';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.26';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.27';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.27';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -128,10 +128,13 @@ export function coinRewardBreakdown(meters,levels,ballBonus=0){
 }
 export function rewardForMeters(meters,levels){return coinRewardBreakdown(meters,levels).total}
 export const GULL_REWARD=1000;
+export const CAR_REWARD=50;
 export const GULL_ACHIEVEMENT='ENCUENTRO CON GAVIOTA';
-export function settleShot(save,distance,{gull=false}={}){
+export function settleShot(save,distance,{gull=false,cars=0}={}){
  const meters=Math.max(0,Math.floor(distance)),reward=coinRewardBreakdown(meters,save.levels,equipmentBonuses(save).coins);
- const eventCoins=gull===true?GULL_REWARD:0,total=reward.total+eventCoins;
+ const eventCoins=gull===true?GULL_REWARD:0;
+ const carCount=Number.isSafeInteger(cars)?Math.max(0,Math.min(54,cars)):0;
+ const carCoins=carCount*CAR_REWARD,total=reward.total+eventCoins+carCoins;
  if(eventCoins){
   save.achievements??=[];
   if(!save.achievements.includes(GULL_ACHIEVEMENT))save.achievements.push(GULL_ACHIEVEMENT);
@@ -140,7 +143,7 @@ export function settleShot(save,distance,{gull=false}={}){
  save.earnedCoins=Math.max(0,Math.floor(Number(save.earnedCoins)||0))+total;
  save.shots++;save.totalMeters+=meters;
  const record=meters>save.best;if(record)save.best=meters;
- return {meters,coins:total,baseCoins:reward.base,bonusCoins:reward.bonus,multiplier:reward.multiplier,record,...(eventCoins?{eventCoins}: {})};
+ return {meters,coins:total,baseCoins:reward.base,bonusCoins:reward.bonus,multiplier:reward.multiplier,record,...(eventCoins?{eventCoins}: {}),...(carCoins?{carCoins,carCount}:{})};
 }
 export const MILESTONES=[{at:100,label:'FUERA DEL ESTADIO'},{at:250,label:'PRIMER BARRIO'},{at:500,label:'SOBRE LA AUTOPISTA'},{at:1000,label:'UN KILÓMETRO'},{at:1650,label:'RÍO A LA VISTA'},{at:3000,label:'TRES KILÓMETROS'},{at:10000,label:'DIEZ KILÓMETROS'},{at:50000,label:'CINCUENTA KILÓMETROS'}];
 // Todos los cosméticos están en un catálogo versionado con diseño procedural.

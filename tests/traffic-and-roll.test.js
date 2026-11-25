@@ -164,6 +164,7 @@ test('integración: un coche real en su carril desvía la pelota y emite impacto
  assert.ok(game.ball.vx*car.dir>0);assert.ok(game.ball.lastCollision.includes('COCHE')||game.ball.lastCollision.includes('NEUMÁTICO'));
  assert.ok(sounds.includes('metal')||sounds.includes('rubber'));
  assert.ok(game.ball.encounters.road);
+ assert.equal(game.ball.hitCars.size,1);
 });
 
 test('ningún coche se solapa en el mismo carril durante 2 horas y en los nueve tramos',()=>{

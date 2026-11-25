@@ -188,3 +188,12 @@ export function drawProceduralTraffic(r,vehicles,cam=[0,15,0]){
  }
  return drawn;
 }
+
+// Distinguish physical vehicles by road and model ID, stable throughout a shot.
+export function registerTrafficHit(ball,hit){
+ const car=hit?.car;
+ if(!ball||!hit?.kind?.startsWith('traffic-')||!car?.id||!ROAD_CENTERS.includes(car.roadZ))return false;
+ const key=car.roadZ+':'+car.id;
+ const cars=ball.hitCars??=new Set();
+ const before=cars.size;cars.add(key);return cars.size>before;
+}
