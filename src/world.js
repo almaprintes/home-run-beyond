@@ -1,7 +1,7 @@
-import {lerp} from './engine.js?v=0.71.0';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.71.0';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.71.0';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.71.0';
+import {lerp} from './engine.js?v=0.72.0';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.72.0';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.72.0';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.72.0';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};

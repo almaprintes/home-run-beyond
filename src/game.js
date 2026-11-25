@@ -1,17 +1,17 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.71.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.71.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.71.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.71.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.71.0';
-import {GameAudio} from './audio.js?v=0.71.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.71.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.71.0';
-import {BatterSprites} from './sprites.js?v=0.71.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.71.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.71.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.71.0';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.71.0';
-import {pitcherReactionPlan} from './pitcher.js?v=0.71.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.72.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.72.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.72.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.72.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.72.0';
+import {GameAudio} from './audio.js?v=0.72.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.72.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.72.0';
+import {BatterSprites} from './sprites.js?v=0.72.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.72.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.72.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.72.0';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.72.0';
+import {pitcherReactionPlan} from './pitcher.js?v=0.72.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -293,10 +293,19 @@ export class BaseballGame{
   if(!newItems.length){this.closeDiscovery();return}
   panel.hidden=false;
   this.latestDiscoveryCategory=newItems[0].category;
-  el('discovery-caption').textContent=newItems.length===1?'✨ ¡NUEVO DESCUBRIMIENTO!':
-   '✨ ¡'+newItems.length+' NUEVOS DESCUBRIMIENTOS!';
-  const names=newItems.slice(0,3).map(({item})=>item.emoji+' '+item.name);
-  el('discovery-items').textContent=names.join(' · ')+(newItems.length>3?' · +'+(newItems.length-3)+' más':'');
+  el('discovery-caption').textContent=newItems.length===1?'¡NUEVO DESCUBRIMIENTO!':
+   '¡'+newItems.length+' NUEVOS DESCUBRIMIENTOS!';
+  const items=el('discovery-items');
+  items.replaceChildren();
+  for(const {category,item} of newItems){
+   const card=document.createElement('div');card.className='discovery-item';
+   const art=document.createElement('img');art.className='discovery-art';art.alt='';art.decoding='async';
+   const url=bakedAssetUrl(category,item.id);let retried=false;
+   art.onerror=()=>{if(!retried){retried=true;art.src=url.split('?')[0]}else art.hidden=true};
+   art.src=url;
+   const name=document.createElement('strong');name.textContent=item.name;
+   card.append(art,name);items.append(card);
+  }
   el('discovery-shop').textContent='VER EN TIENDA';
   el('discovery-close').focus?.();
  }

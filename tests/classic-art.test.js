@@ -17,3 +17,11 @@ test('bate dorado: se conserva el archivo aprobado con el mismo tamaño de lienz
  assert.deepEqual(baked,source);
  assert.equal(createHash('sha1').update('blob '+source.length+'\0').update(source).digest('hex'),'71a12aee45fbfcf6ebbbacff5f7ad77f7ff9ee6b');
 });
+
+test('rubí y oceánico conservan el asset aprobado byte por byte',()=>{
+ for(const [id,sha] of [['ruby','86e2bc75a07be3a080b8ff954d11bd89ced1d279'],['ocean','c0b8d1b695709499111c232f1e8c5c0ee451cb48']]){
+  const source=readFileSync(new URL('../assets/approved/bats/'+id+'.webp',import.meta.url));
+  const baked=readFileSync(new URL('../assets/baked/bats/'+id+'.webp',import.meta.url));
+  assert.deepEqual(baked,source);assert.equal(createHash('sha1').update('blob '+source.length+'\0').update(source).digest('hex'),sha);
+ }
+});

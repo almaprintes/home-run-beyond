@@ -137,7 +137,12 @@ test('interfaz: no se crean tarjetas ni imágenes de productos ocultos',()=>{
   assert.equal(els.get('shop-discovery-count').textContent,'BATES: 2/35 DESCUBIERTOS');
   game.showDiscoveries([{category:'bat',item:COLLECTIONS.bat[1]}]);
   assert.equal(els.get('discovery-banner').hidden,false);
-  assert.match(els.get('discovery-items').textContent,/Bate dorado/);
+  const card=els.get('discovery-items').children[0];
+  assert.equal(card.children[1].textContent,'Bate dorado');
+  assert.match(card.children[0].src,/assets\/baked\/bats\/gold\.webp/);
+  game.showDiscoveries([{category:'bat',item:COLLECTIONS.bat[1]},{category:'ball',item:COLLECTIONS.ball[1]}]);
+  assert.equal(els.get('discovery-items').children.length,2);
+  assert.match(els.get('discovery-items').children[1].children[0].src,/assets\/baked\/balls\//);
   game.showDiscoveries([]);
   assert.equal(els.get('discovery-banner').hidden,true);
  }finally{
@@ -167,7 +172,8 @@ test('el aviso es un modal superpuesto, independiente del resultado y cerrable',
  assert.match(gameJs,/click\('discovery-dismiss',\(\)=>this\.closeDiscovery\(\)\)/);
  const prev=globalThis.document;
  const panel={hidden:true};
- globalThis.document={getElementById(id){return id==='discovery-banner'?panel:{textContent:'',focus(){}}}};
+ const node=()=>({textContent:'',children:[],focus(){},append(...x){this.children.push(...x)},replaceChildren(){this.children=[]}});
+ globalThis.document={getElementById(id){return id==='discovery-banner'?panel:node()},createElement:node};
  try{
   const game=Object.create(BaseballGame.prototype);
   game.closeDiscovery();

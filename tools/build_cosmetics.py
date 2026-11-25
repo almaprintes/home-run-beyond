@@ -346,10 +346,10 @@ def main():
         if approved.is_file():
             art=Image.open(approved).convert("RGBA")
             if art.size!=classic.size:raise ValueError(f'{approved}: wrong bat dimensions')
-            if item["id"]=="gold":
+            if item["id"] in ("gold","ruby","ocean"):
                 from PIL import ImageChops
                 if ImageChops.difference(art.getchannel("A"),classic.getchannel("A")).getbbox():
-                    raise ValueError("Gold bat must match the classic silhouette pixel for pixel")
+                    raise ValueError(f"{approved}: must match the classic silhouette pixel for pixel")
             path.parent.mkdir(parents=True,exist_ok=True)
             path.write_bytes(approved.read_bytes())
         else:save(draw_bat(item),path)
