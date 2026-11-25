@@ -317,6 +317,30 @@ def apply_classic_bat(frame,reference,pose,bat):
     weapon=bat.transform(frame.size,Image.Transform.AFFINE,affine,resample=Image.Resampling.BICUBIC)
     return opaque_core(Image.alpha_composite(weapon,body))
 
+def betis_uniform(image,pose):
+    """Offline full-sprite fabric variant of the validated Athletic artwork."""
+    image=image.convert('RGBA');out=image.copy();px=out.load();w,h=image.size
+    bounds={'ready':(230,286),'watch':(230,286),'loaded':(235,295),'contact':(229,295),'follow':(230,292)}
+    low,high=bounds[pose]
+    clamp=lambda x:max(0,min(1,x))
+    for y in range(h):
+        for x in range(w):
+            r,g,b,a=px[x,y]
+            if not a:continue
+            t=clamp((r-max(g,b)-18)/30)*clamp((r/(g+1)-1.70)/.35)*clamp((b+20-g)/10) if y>=140 else 0
+            if t:
+                new=(.13*r+.52*g,.69*r+.37*g,.27*r+.50*b)
+                px[x,y]=tuple(round(v+(n-v)*t) for v,n in zip((r,g,b),new))+(a,)
+                continue
+            if low<=y<=high:
+                lum=(r+g+b)/3;spread=max(r,g,b)-min(r,g,b)
+                t=clamp((25-spread)/12)*clamp((115-lum)/25)
+                if t:
+                    white=min(250,130+lum*1.55)
+                    new=(white,white,white+min(3,255-white))
+                    px[x,y]=tuple(round(v+(n-v)*t) for v,n in zip((r,g,b),new))+(a,)
+    return out
+
 def main():
     outfits=catalog("outfit");bats=catalog("bat");balls=catalog("ball")
     if (len(outfits),len(bats),len(balls))!=(33,35,32):
@@ -337,12 +361,13 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
-                approved=ROOT/"assets"/"approved"/"outfits"/item["id"]
+                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"]=="futbol_verde" else item["id"])
                 if approved.is_dir():
                     # Approved complete character, never recolor or mask its body.
                     anchors=json.loads((approved/"anchors.json").read_text(encoding="utf-8"))
                     source=approved/(pose+"-nobat.webp")
                     baked=opaque_core(Image.open(source).convert("RGBA"))
+                    if item["id"]=="futbol_verde":baked=betis_uniform(baked,pose)
                     if not nobat:
                         anchor=anchors[pose];w,h=baked.size
                         gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h

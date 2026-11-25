@@ -107,3 +107,16 @@ test('Athletic uses the supplied full poses and its own grip coordinates',()=>{
   assert.notDeepEqual(a,b);
  }
 });
+
+test('Betis shares Athletic registration and has its own complete baked artwork',()=>{
+ for(const pose of ['ready','watch','loaded','contact','follow']){
+  assert.deepEqual(weaponPlacement(pose,10,20,300,365,'futbol_verde'),weaponPlacement(pose,10,20,300,365,'futbol_rojo'));
+  for(const suffix of ['','-nobat']){
+   const red=readFileSync(new URL('../assets/baked/outfits/futbol_rojo/'+pose+suffix+'.webp',import.meta.url));
+   const green=readFileSync(new URL('../assets/baked/outfits/futbol_verde/'+pose+suffix+'.webp',import.meta.url));
+   assert.equal(green.toString('ascii',8,12),'WEBP');
+   assert.notDeepEqual(red,green);
+  }
+ }
+ assert.match(bakedAssetUrl('outfit','futbol_verde'),/v=0\.77\.2$/);
+});
