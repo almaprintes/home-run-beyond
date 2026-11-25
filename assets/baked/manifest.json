@@ -4,6 +4,7 @@
   "counts": {
     "outfits": 33,
     "outfitFrames": 330,
+    "uniformAlphaValidated": 330,
     "bats": 35,
     "balls": 32,
     "ballsValidated": 32,
