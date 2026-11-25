@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
-import {BAKED_ASSET_COUNT,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
+import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
 import {BatterSprites} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
@@ -13,7 +13,7 @@ test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajena
  assert.equal(BAKED_ASSET_COUNT,397);
  for(const item of BALL_CATALOG){
   const paths=equippedAssetPaths('red','classic',item.id);
-  assert.deepEqual(paths,[bakedAssetUrl('ball',item.id)]);
+  assert.deepEqual(paths,[...OUTFIT_POSES.map(pose=>bakedAssetUrl('outfit','red',pose)),bakedAssetUrl('ball',item.id)]);
   assert.ok(!paths.some(path=>path.includes('ball-textures/')));
  }
 });
