@@ -206,3 +206,13 @@ test('approved beach ball artwork is preserved exactly',()=>{
  assert.match(bakedAssetUrl('ball','playa'),/v=0\.77\.11$/);
  assert.equal(BALL_CATALOG.find(x=>x.id==='playa').price,4100);
 });
+
+
+test('approved trout bat artwork survives the bake',()=>{
+ const approved=readFileSync(new URL('../assets/approved/bats/trucha.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/bats/trucha.webp',import.meta.url));
+ assert.equal(approved.toString('ascii',8,12),'WEBP');
+ assert.deepEqual(baked,approved);
+ assert.match(bakedAssetUrl('bat','trucha'),/v=0\.77\.12$/);
+ assert.equal(BAT_CATALOG.find(x=>x.id==='trucha').price,4200);
+});
