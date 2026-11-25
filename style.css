@@ -374,3 +374,8 @@
 .discovery-item:only-child .discovery-art{height:clamp(90px,23dvh,180px)}
 .discovery-item strong{overflow-wrap:anywhere}
 .discovery-actions{flex-shrink:0}
+
+/* Career distance: compact alongside the personal record, no extra panel. */
+.result-bottom{flex-wrap:wrap;align-items:center;gap:6px 10px}
+.result-total{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-end;gap:4px;color:#b3cbd9;font-size:9px;font-weight:800;letter-spacing:.25px;text-align:right;margin-left:auto}
+.result-total strong{color:#f5fbff;font-size:12px;font-weight:950;letter-spacing:0;white-space:nowrap;font-variant-numeric:tabular-nums}

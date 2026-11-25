@@ -1,18 +1,18 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.75.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.75.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.75.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.75.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.75.0';
-import {GameAudio} from './audio.js?v=0.75.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.75.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.75.0';
-import {BatterSprites} from './sprites.js?v=0.75.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.75.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.75.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.75.0';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.75.0';
-import {pitcherReactionPlan} from './pitcher.js?v=0.75.0';
-import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.75.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.76.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.76.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.76.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.76.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.76.0';
+import {GameAudio} from './audio.js?v=0.76.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.76.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.76.0';
+import {BatterSprites} from './sprites.js?v=0.76.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.76.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.76.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.76.0';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.76.0';
+import {pitcherReactionPlan} from './pitcher.js?v=0.76.0';
+import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.76.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -490,7 +490,7 @@ export class BaseballGame{
   el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
   el('record-badge').hidden=true;el('menu-return').hidden=false;el('result-quality').textContent='¡STRIKE!';
   el('result-meters').textContent='0';el('result-coins').textContent='+0';el('coin-breakdown').textContent='SIN CONTACTO · x0';
-  el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';
+  el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('result-total-meters').textContent=formatInt(this.save.totalMeters||0)+' m';
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
@@ -661,7 +661,7 @@ export class BaseballGame{
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
  this.persist();this.showDiscoveries(newly);this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);
- el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
+ el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('result-total-meters').textContent=formatInt(this.save.totalMeters||0)+' m';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.record?'🏆 NUEVO RÉCORD':'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
  resetAndPitch(){this.showDiscoveries([]);el('result').hidden=true;el('menu-return').hidden=true;this.impactFX?.clear();this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.startPitch()}
  update(dt){this.clock+=dt;

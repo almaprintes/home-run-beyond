@@ -18,8 +18,10 @@ export function roadTraffic(roadZ,elapsedSeconds){
  const t=Number.isFinite(elapsedSeconds)?Math.max(0,elapsedSeconds):0,cars=[];
  for(let i=0;i<6;i++){
   const lane=i%2,dir=lane===0?1:-1;
-  const speed=12+Math.floor(i/2)*4+(Math.floor(roadZ/200)%3)*1.5;
-  const offset=i*91+Math.floor(roadZ/200)*67;
+  // All cars in a lane share speed and fixed phase separation on the loop.
+  // This guarantees clearance at every time, including offscreen recycling.
+  const speed=14+lane*3+(Math.floor(roadZ/200)%3)*1.5;
+  const offset=Math.floor(i/2)*(TRAFFIC_HALF_SPAN*2/3)+lane*91+Math.floor(roadZ/200)*67;
   const x=wrap(offset+dir*t*speed,TRAFFIC_HALF_SPAN*2)-TRAFFIC_HALF_SPAN;
   const car=TRAFFIC_VEHICLES[(i+Math.floor(roadZ/200))%TRAFFIC_VEHICLES.length];
   cars.push({...car,x,z:roadZ+(lane===0?-5.5:5.5),dir,speed,lane,roadZ,

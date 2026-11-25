@@ -165,3 +165,16 @@ test('integración: un coche real en su carril desvía la pelota y emite impacto
  assert.ok(sounds.includes('metal')||sounds.includes('rubber'));
  assert.ok(game.ball.encounters.road);
 });
+
+test('ningún coche se solapa en el mismo carril durante 2 horas y en los nueve tramos',()=>{
+ const span=TRAFFIC_HALF_SPAN*2;
+ for(const z of ROAD_CENTERS)for(let t=0;t<=7200;t+=1.37){
+  const cars=roadTraffic(z,t);
+  for(let i=0;i<cars.length;i++)for(let j=i+1;j<cars.length;j++){
+   const a=cars[i],b=cars[j];
+   if(a.lane===b.lane){const dx=Math.abs(a.x-b.x);const gap=Math.min(dx,span-dx)-(a.length+b.length)*.5;
+    assert.ok(gap>=8,'distancia libre insuficiente a '+t+' s');
+   }else assert.ok(Math.abs(a.z-b.z)>(a.width+b.width)*.5+1);
+  }
+ }
+});

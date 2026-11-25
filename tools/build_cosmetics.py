@@ -346,7 +346,7 @@ def main():
         if approved.is_file():
             art=Image.open(approved).convert("RGBA")
             if art.size!=classic.size:raise ValueError(f'{approved}: wrong bat dimensions')
-            if item["id"] in ("gold","ruby","ocean","carbono"):
+            if item["id"] in ("gold","ruby","ocean","carbono","neon"):
                 from PIL import ImageChops
                 if ImageChops.difference(art.getchannel("A"),classic.getchannel("A")).getbbox():
                     raise ValueError(f"{approved}: must match the classic silhouette pixel for pixel")

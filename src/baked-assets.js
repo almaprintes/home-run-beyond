@@ -8,7 +8,7 @@ export function bakedAssetUrl(category,id,pose='ready',withoutBat=false){
  if(!/^[a-z0-9_]+$/.test(String(id)))throw Error('Invalid cosmetic id');
  // Versionar también los WEBP horneados: Safari/PWA no debe conservar
  // ni la pelota de tenis lisa ni poses con restos del bate anterior.
- const stamp='?v=0.75.0';
+ const stamp='?v=0.76.0';
  if(category==='outfit'){
   if(!OUTFIT_POSES.includes(pose))throw Error('Invalid pose');
   return './assets/baked/outfits/'+id+'/'+pose+(withoutBat?'-nobat':'')+'.webp'+stamp;
