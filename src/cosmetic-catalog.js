@@ -1,16 +1,23 @@
-// Catálogo de 101 cosméticos. NUNCA afecta a la física ni a la economía.
+// Catálogo de 101 cosméticos. Bonificaciones únicamente del equipo activo.
 // Cada entrada tiene un diseño visible y una identidad visual (no etiquetas vacías).
 // Campos: id|nombre|precio|diseño|color principal|acento|emblema
+export const RARITY_BONUSES=Object.freeze({
+ 'COMÚN':Object.freeze({bat:0,outfit:0,ball:0}),
+ 'POCO COMÚN':Object.freeze({bat:2,outfit:5,ball:5}),
+ 'RARO':Object.freeze({bat:4,outfit:10,ball:10}),
+ 'ÉPICO':Object.freeze({bat:7,outfit:15,ball:20}),
+ 'LEYENDA':Object.freeze({bat:10,outfit:25,ball:35})
+});
 function parse(rows,category){
  const entries=rows.trim().split('\n').filter(Boolean).map(row=>{
   const [id,name,price,design,color,accent,emoji]=row.split('|');
   if(!id||!name||!Number.isFinite(Number(price)))throw Error('Cosmético incorrecto: '+row);
   const p=Number(price);
-  return Object.freeze({id,name,price:p,design,color,accent,emoji,
-   rarity:p>=12000?'LEYENDA':p>=4200?'ÉPICO':p>=1500?'RARO':'COMÚN',
-   description:category==='bat'?'Bate cosmético · no cambia la potencia':
-    category==='outfit'?'Equipación cosmética · no modifica habilidades':
-    'Pelota cosmética · mantiene las físicas de béisbol'});
+  const rarity=p>=12000?'LEYENDA':p>=4200?'ÉPICO':p>=1500?'RARO':p>=500?'POCO COMÚN':'COMÚN';
+  const bonus=RARITY_BONUSES[rarity][category];
+  const label=category==='bat'?'velocidad de salida':category==='outfit'?'amplitud del punto dulce':'monedas por batazo';
+  return Object.freeze({id,name,price:p,design,color,accent,emoji,rarity,bonus,
+   description:bonus?'+'+bonus+'% '+label:'Sin bonificación · equipamiento básico'});
  });
  const ids=new Set(entries.map(x=>x.id));
  if(ids.size!==entries.length)throw Error('ID cosmético repetido en '+category);
@@ -128,4 +135,10 @@ if(ALL_COSMETIC_COUNT!==101)throw Error('Se esperaban 101 cosméticos, hay '+ALL
 export function cosmeticItem(category,id){
  const list=category==='bat'?BAT_CATALOG:category==='outfit'?OUTFIT_CATALOG:category==='ball'?BALL_CATALOG:null;
  return list?.find(x=>x.id===id)||null;
+}
+
+// Never grant bonuses for inventory alone, or for an unowned equipped ID.
+export function equipmentBonuses(save){
+ const active=(category,owned,id)=>Array.isArray(owned)&&owned.includes(id)?(cosmeticItem(category,id)?.bonus||0)/100:0;
+ return {power:active('bat',save?.owned,save?.equipped),precision:active('outfit',save?.ownedOutfits,save?.equippedOutfit),coins:active('ball',save?.ownedBalls,save?.equippedBall)};
 }

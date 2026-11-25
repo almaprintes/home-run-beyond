@@ -2,8 +2,36 @@
 // Comprar/equipar es otra acción: el precio orienta cuándo revelar cada objeto,
 // pero gastar en habilidades nunca hace retroceder los descubrimientos.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.24';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.25';
 
+import {BIOMES} from './biomes.js?v=0.77.25';
+
+// Theme first: unlock opportunities follow the actual map, independently of purchase price.
+const STAGES=[
+ ['stadium','bat:classic bat:gold bat:ocean bat:ruby ball:classic ball:sky ball:sun ball:mint ball:lilac ball:negra ball:rosa outfit:red outfit:blue outfit:green outfit:purple'],
+ ['residential','bat:baguette bat:escoba ball:dorada ball:tenis ball:naranja outfit:gold outfit:retro outfit:futbol_rojo outfit:futbol_verde outfit:chef'],
+ ['city','bat:carbono bat:neon bat:titanio bat:alambre bat:llave bat:microfono bat:guitarra bat:sarten ball:arcoiris ball:billar8 ball:disco ball:bolos ball:futbol outfit:futbol_azulgrana outfit:futbol_blanco outfit:futbol_amarillo outfit:basket_negro outfit:basket_rojo outfit:basket_lila outfit:atletismo outfit:portero'],
+ ['port','bat:trucha bat:remo bat:pezespada bat:pata_de_palo bat:paraguas ball:playa ball:sandia outfit:pescador outfit:pirata'],
+ ['hills','bat:pala bat:rastrillo bat:zanahoria bat:platano ball:calabaza outfit:rugby_verde outfit:ciclismo outfit:cricket outfit:tenis_blanco'],
+ ['valley','bat:piruleta ball:golf ball:donut ball:caramelo outfit:golfista outfit:boxeo'],
+ ['pines','bat:hueso ball:ojo outfit:ninja outfit:karate'],
+ ['mountain','bat:varita bat:hielo ball:nieve'],
+ ['volcano','bat:fuego bat:antorcha ball:bomba outfit:bombero'],
+ ['desert','bat:cactus outfit:vaquero'],
+ ['canyon','bat:maza bat:martillo bat:espuma ball:dado outfit:luchador'],
+ ['tundra','bat:hockey outfit:hockey_hielo'],
+ ['glacier','ball:cristal'],
+];
+const themed=new Map();
+for(const [id,keys] of STAGES){
+ const b=BIOMES.find(x=>x.id===id);if(!b)throw Error('Unknown biome '+id);
+ for(const key of keys.split(' ')){if(themed.has(key))throw Error('Duplicate theme '+key);themed.set(key,Object.freeze({id,at:b.start,label:b.name}));}
+}
+// The map has no space biome yet. These are long-distance challenges, not fictitious regions.
+for(const [key,at] of Object.entries({'bat:nova':20000,'bat:tentaculo':40000,'ball:sol':20000,'ball:luna':22000,'ball:tierra':24000,'ball:marte':26000,'ball:saturno':40000,'ball:meteorito':30000,'outfit:astronauta':20000,'outfit:robot':40000})){
+ themed.set(key,Object.freeze({id:'distance',at,label:'RETO DE '+at.toLocaleString('es-ES')+' M'}));
+}
+export function discoveryRegion(category,id){return themed.get(category+':'+id)||{id:'stadium',at:0,label:'ESTADIO'}}
 export const COLLECTIONS=Object.freeze({bat:BAT_CATALOG,outfit:OUTFIT_CATALOG,ball:BALL_CATALOG});
 export const STARTER_DISCOVERIES=Object.freeze(['bat:classic','outfit:red','ball:classic']);
 const SECRET_FLAGS=Object.freeze(['road','roof','river','water','district','harbor','forest','mountains','orbit','swamp']);
@@ -34,7 +62,7 @@ const GROUP_PATTERN=['play','record','play','skill','play','record','play','secr
  'play','record','play','skill'];
 // La antigua curva llegaba a 1536 batazos para cosméticos normales.
 // Ritmo nuevo: 8..~316, además de la puerta económica para cada artículo.
-const SHOT_TARGETS=Array.from({length:50},(_,n)=>8+n*2+Math.floor(n*n*.12));
+const SHOT_TARGETS=Array.from({length:50},(_,n)=>8+n*4+Math.floor(n*n*.18));
 const RECORD_TARGETS=[250,500,800,1000,1300,1650,1900,2300,2700,3400,4200,
  5200,6400,8000,9600,12000,14500,17500,22000,28000,35000,45000,60000,80000,110000];
 const SKILL_TARGETS=[
@@ -48,6 +76,7 @@ const ordered=[];
 for(const [category,items] of Object.entries(COLLECTIONS)){
  for(const item of items)ordered.push({category,item,key:category+':'+item.id});
 }
+if(themed.size!==ordered.length||ordered.some(x=>!themed.has(x.key)))throw Error('Incomplete biome assignment: '+ordered.filter(x=>!themed.has(x.key)).map(x=>x.key).join(','));
 if(ordered.length!==101)throw Error('El catálogo de descubrimientos debe tener 101 artículos');
 const reserved=Object.fromEntries(Object.keys(QUOTAS).map(g=>[g,0]));
 for(const value of Object.values(OVERRIDES))reserved[value.group]++;
@@ -85,8 +114,17 @@ if(Object.values(remaining).some(n=>n!==0))throw Error('Faltan reglas de descubr
  for(const [key,target] of [['ball:rosa',12],['ball:lilac',14],['ball:negra',18]]){
   generated.set(key,Object.freeze({group:'play',metric:'shots',target}));
  }
- export const DISCOVERY_RULES=Object.freeze(Object.fromEntries(ordered.filter(v=>!BASE_KEYS.has(v.key))
- .map(({key})=>[key,Object.freeze(EXTRA_RULES[key]||OVERRIDES[key]||generated.get(key))])));
+ const THEMED_SECRETS=Object.freeze({'outfit:futbol_azulgrana':'district','bat:platano':'region:hills','ball:golf':'region:valley','outfit:cricket':'region:hills','ball:luna':'orbit'});
+function alignRule(key,rule){
+ const region=themed.get(key);
+ if(rule.group==='secret'&&THEMED_SECRETS[key])return {...rule,metric:THEMED_SECRETS[key]};
+ if(rule.group!=='record'||rule.metric!=='best')return rule;
+ const biome=BIOMES.find(x=>x.id===region.id);
+ const end=biome&&Number.isFinite(biome.end)?biome.end-1:region.at+5000;
+ return {...rule,target:Math.max(region.at,Math.min(end,rule.target))};
+}
+export const DISCOVERY_RULES=Object.freeze(Object.fromEntries(ordered.filter(v=>!BASE_KEYS.has(v.key))
+ .map(({key})=>[key,Object.freeze(alignRule(key,EXTRA_RULES[key]||OVERRIDES[key]||generated.get(key)))])));
 if(Object.keys(DISCOVERY_RULES).length!==98)throw Error('98 desbloqueos esperados');
 export const DISCOVERY_GROUP_COUNTS=Object.freeze(Object.fromEntries(Object.keys(QUOTAS).map(g=>[
  g,Object.values(DISCOVERY_RULES).filter(rule=>rule.group===g).length
@@ -107,6 +145,8 @@ export function careerEarnings(save){
 
 export function sanitizeDiscovery(save,raw){
  const allowed=new Set(ordered.map(({key})=>key));
+ save.furthestZ=Math.max(Number(save.best)||0,safeCounter(raw?.furthestZ));
+ save.lastDiscoveryShot=Math.min(save.shots||0,safeCounter(raw?.lastDiscoveryShot));
  save.discoveryStats=Object.fromEntries(COUNTERS.map(k=>[k,safeCounter(raw?.discoveryStats?.[k])]));
  save.discoveryFlags=Array.isArray(raw?.discoveryFlags)?[...new Set(raw.discoveryFlags.filter(v=>SECRET_FLAGS.includes(v)))]:[];
  // Backfill only achievements provable from existing best distance.
@@ -130,24 +170,32 @@ export function sanitizeDiscovery(save,raw){
  return [];
 }
 function metricValue(save,rule){
- if(rule.group==='secret')return save.discoveryFlags?.includes(rule.metric)?1:0;
+ if(rule.group==='secret'){
+  if(rule.metric.startsWith('region:')){const biome=BIOMES.find(x=>x.id===rule.metric.slice(7));return biome&&reachedDistance(save)>=biome.start?1:0;}
+  return save.discoveryFlags?.includes(rule.metric)?1:0;
+ }
  if(rule.metric==='best'||rule.metric==='shots'||rule.metric==='totalMeters')return Math.max(0,Number(save[rule.metric])||0);
  return Math.max(0,Number(save.discoveryStats?.[rule.metric])||0);
 }
 export function isDiscovered(save,category,id){
  return BASE_KEYS.has(category+':'+id)||!!save?.discovered?.includes(category+':'+id);
 }
-export function unlockEligible(save,limit=Infinity){
+const MIN_GAP=Object.freeze({'COMÚN':2,'POCO COMÚN':5,'RARO':8,'ÉPICO':18,'LEYENDA':25});
+export function reachedDistance(save){return Math.max(Number(save.best)||0,Number(save.furthestZ)||0)}
+export function unlockEligible(save,limit=Infinity,{paced=false}={}){
  if(!Array.isArray(save.discovered))save.discovered=[...STARTER_DISCOVERIES];
  const have=new Set(save.discovered),newItems=[];
  // Price order: when several achievements arrive together, show one
  // affordable-tier discovery per shot instead of a wall of expensive prizes.
  const eligible=ordered.filter(({key,item})=>!have.has(key)&&!BASE_KEYS.has(key)&&
+   reachedDistance(save)>=themed.get(key).at&&
    metricValue(save,DISCOVERY_RULES[key])>=DISCOVERY_RULES[key].target&&
    careerEarnings(save)>=requiredCareerEarnings(item.price));
  eligible.sort((a,b)=>a.item.price-b.item.price||a.key.localeCompare(b.key));
- for(const {key,category,item} of eligible.slice(0,Math.max(0,limit))){
+ const ready=paced&&have.size>=6?eligible.filter(({item})=>(save.shots||0)-(save.lastDiscoveryShot||0)>=MIN_GAP[item.rarity]):eligible;
+ for(const {key,category,item} of ready.slice(0,Math.max(0,limit))){
   save.discovered.push(key);have.add(key);newItems.push({category,item});
+  if(paced)save.lastDiscoveryShot=save.shots||0;
  }
  return newItems;
 }
@@ -161,7 +209,8 @@ export function recordDiscoveryShot(save,{quality='',record=false,peakZ=0,road=f
   stats.bestGoodStreak=Math.max(stats.bestGoodStreak,stats.goodStreak);
  }else stats.goodStreak=0;
  if(record)stats.recordBreaks=safeCounter(stats.recordBreaks+1);
- const flags=new Set(save.discoveryFlags||[]),highest=Math.max(Number(save.best)||0,Number(peakZ)||0);
+ const flags=new Set(save.discoveryFlags||[]),highest=Math.max(reachedDistance(save),Number(peakZ)||0);
+ save.furthestZ=Math.floor(highest);
  for(const [flag,at] of [['district',500],['river',1650],['harbor',2200],
   ['forest',3600],['mountains',6200],['orbit',20000]]){
   if(highest>=at)flags.add(flag);
@@ -171,7 +220,7 @@ export function recordDiscoveryShot(save,{quality='',record=false,peakZ=0,road=f
  if(water)flags.add('water');
  if(swamp)flags.add('swamp');
  save.discoveryFlags=[...flags];
- return unlockEligible(save,1);
+ return unlockEligible(save,1,{paced:true});
 }
 export function discoveredCount(save,category){
  const items=COLLECTIONS[category]||[];
@@ -182,13 +231,14 @@ const LABELS={shots:'batazos',totalMeters:'m acumulados',best:'m de récord',
  bestGoodStreak:'buenos golpes seguidos',recordBreaks:'récords superados'};
 export function nextDiscoveryHint(save,category){
  const candidates=(COLLECTIONS[category]||[]).filter(item=>!isDiscovered(save,category,item.id))
-  .map(item=>({item,rule:DISCOVERY_RULES[category+':'+item.id]}))
+  .map(item=>({item,rule:DISCOVERY_RULES[category+':'+item.id],region:discoveryRegion(category,item.id)}))
   .filter(x=>x.rule&&x.rule.group!=='secret');
  const income=careerEarnings(save),priority={play:0,record:1,skill:2};
  // Show progress towards the closest *real* discovery, considering skill
  // achievement AND the number of coins already earned, without leaking
  // the hidden item's name, preview or price.
- const deficit=({item,rule})=>Math.max(
+ const deficit=({item,rule,region})=>Math.max(
+   Math.max(0,region.at-reachedDistance(save))/Math.max(1,region.at),
    Math.max(0,rule.target-metricValue(save,rule))/Math.max(1,rule.target),
    Math.max(0,requiredCareerEarnings(item.price)-income)/Math.max(1,requiredCareerEarnings(item.price))
  );
@@ -196,8 +246,10 @@ export function nextDiscoveryHint(save,category){
   a.item.price-b.item.price||priority[a.rule.group]-priority[b.rule.group]);
  const entry=candidates[0];
  if(!entry)return 'Sigue jugando: todavía quedan descubrimientos secretos';
- const {item,rule}=entry,remaining=Math.ceil(rule.target-metricValue(save,rule)),
+ const {item,rule,region}=entry,remaining=Math.ceil(rule.target-metricValue(save,rule)),
   needed=Math.max(0,Math.ceil(requiredCareerEarnings(item.price)-income));
+ if(reachedDistance(save)<region.at)return 'Próxima región: '+region.label+' · alcanza '+region.at.toLocaleString('es-ES')+' m';
+ if((save.discovered?.length||0)>=6&&(save.shots||0)-(save.lastDiscoveryShot||0)<MIN_GAP[item.rarity]&&remaining<=0&&needed<=0)return 'Próximo descubrimiento en '+(MIN_GAP[item.rarity]-((save.shots||0)-(save.lastDiscoveryShot||0)))+' batazos';
  if(remaining>0&&needed>0)return 'Próximo objetivo: '+remaining+' '+LABELS[rule.metric]+' · gana '+needed+' monedas más';
  if(remaining>0)return 'Próximo objetivo: '+remaining+' '+LABELS[rule.metric];
  return 'Próximo objetivo: gana '+needed+' monedas más (las mejoras cuentan)';

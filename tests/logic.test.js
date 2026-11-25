@@ -74,12 +74,12 @@ test('las regiones lejanas siguen alcanzables mediante Potencia elevada',()=>{
  assert.ok(r.ratedDistance>10000);
 });
 
-test('la nueva curva conserva exactamente los costes iniciales y suaviza niveles altos',()=>{
+test('la curva reducida conserva el coste de entrada y suaviza niveles altos',()=>{
  const bases={power:160,swing:180,multiplier:290};
  for(const [key,base] of Object.entries(bases)){
   for(const level of [1,2,17,49,50]){
    const n=level-1;
-   const original=Math.floor(base*(1+.30*n+.04*n*n)/5)*5;
+   const original=Math.floor(base*(1+.30*n+.02*n*n)/5)*5;
    assert.equal(upgradeCost(level,key),original,key+' nivel '+level);
   }
   if(key==='multiplier')continue;
@@ -90,10 +90,10 @@ test('la nueva curva conserva exactamente los costes iniciales y suaviza niveles
    prev=next;
   }
  }
- assert.equal(upgradeCost(49,'power'),17205);
- assert.equal(upgradeCost(50,'power'),17875);
- assert.equal(upgradeCost(51,'power'),18055);
- assert.equal(upgradeCost(1318,'power'),36595);
+ assert.equal(upgradeCost(49,'power'),9835);
+ assert.equal(upgradeCost(50,'power'),10195);
+ assert.equal(upgradeCost(51,'power'),10315);
+ assert.equal(upgradeCost(1318,'power'),22675);
  assert.ok(upgradeCost(1318,'power')<upgradeCost(130,'power')*2);
 });
 

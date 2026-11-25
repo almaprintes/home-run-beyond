@@ -8,17 +8,17 @@ export function aimBarPosition(elapsedSeconds,swingLevel=1){
 // El mayor alcance exige más precisión: Potencia estrecha la zona central.
 // Swing contrarresta la dificultad ampliándola y ralentizando el cursor.
 // El límite inferior evita que incluso con mucha potencia resulte imposible.
-export function aimSweetHalf(swingLevel=1,powerLevel=1){
+export function aimSweetHalf(swingLevel=1,powerLevel=1,precision=0){
  const help=.022*Math.log2(Math.max(1,swingLevel));
  const difficulty=.016*Math.log2(Math.max(1,powerLevel));
- return Math.max(.055,Math.min(.30,.13+help-difficulty));
+ return Math.max(.055,Math.min(.30,.13+help-difficulty))*(1+Math.max(0,Math.min(.25,precision)));
 }
 export function aimSweep(elapsedSeconds,swingLevel=1){
  return -SWEEP_MAX_RAD*aimBarPosition(elapsedSeconds,swingLevel);
 }
 // Continuous sweet-zone response. Identical input always produces the same shot.
-export function preciseAim(elapsed,swing=1,power=1,contactMs=0){
- const raw=-aimBarPosition(elapsed,swing),edge=aimSweetHalf(swing,power),a=Math.abs(raw);
+export function preciseAim(elapsed,swing=1,power=1,contactMs=0,precision=0){
+ const raw=-aimBarPosition(elapsed,swing),edge=aimSweetHalf(swing,power,precision),a=Math.abs(raw);
  const compressed=a<=edge?.30*a:.30*edge+(a-edge)*(1-.30*edge)/(1-edge);
  const timing=Math.max(-1,Math.min(1,(Number(contactMs)||0)/132));
  const heading=Math.sign(raw)*compressed*SWEEP_MAX_RAD+timing*(.6*Math.PI/180)*(1-a);

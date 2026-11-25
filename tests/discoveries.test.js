@@ -70,7 +70,7 @@ test('retroactividad: récord, batazos y compras antiguas siguen disponibles sin
  assert.deepEqual(sanitizeSave(JSON.parse(JSON.stringify(s))),s);
 });
 test('cinco contactos perfectos revelan baguette y se conserva el progreso tras guardar',()=>{
- let s=initialSave();s.earnedCoins=15000;
+ let s=initialSave();s.earnedCoins=15000;s.furthestZ=150;
  for(let i=0;i<4;i++)recordDiscoveryShot(s,{quality:'perfect'});
  assert.equal(s.discoveryStats.perfectHits,4);
  assert.equal(isDiscovered(s,'bat','baguette'),false);
@@ -90,11 +90,11 @@ test('sucesos especiales y récords se contabilizan por separado y solo una vez'
  let found=[];
  found.push(...recordDiscoveryShot(s,{quality:'weak',road:true,roof:true,water:true,swamp:true,peakZ:20500,record:true}));
  assert.equal(found.length,1,'un aviso como máximo por batazo');
- for(let i=0;i<16;i++)found.push(...recordDiscoveryShot(s,{quality:'weak'}));
+ for(let i=0;i<500;i++){s.shots++;found.push(...recordDiscoveryShot(s,{quality:'weak'}));}
  assert.ok(found.some(x=>x.item.id==='escoba'),'contacto con asfalto');
  assert.ok(found.some(x=>x.item.id==='chef'),'rebote sobre techo');
  assert.ok(found.some(x=>x.item.id==='pescador'),'paso por el río');
- assert.ok(found.some(x=>x.item.id==='astronauta'),'llegada a órbita');
+ assert.ok(found.some(x=>x.item.id==='astronauta'),'reto de 20 km');
  assert.equal(s.discoveryStats.recordBreaks,1);
  assert.equal(recordDiscoveryShot(s,{quality:'weak',road:true}).some(x=>x.item.id==='escoba'),false);
  assert.equal(s.discoveryFlags.filter(x=>x==='road').length,1);
@@ -195,4 +195,4 @@ test('rosa, lavanda y negra se descubren en los primeros 18 batazos y conservan 
  assert.equal(old.coins,519);assert.equal(old.equippedBall,'rosa');assert.ok(isDiscovered(old,'ball','dorada'));
 });
 
- test('new pirate peg leg has an independent discovery and does not reallocate existing challenges',()=>{const s=initialSave();s.earnedCoins=1e6;s.shots=119;unlockEligible(s);assert.equal(isDiscovered(s,'bat','pata_de_palo'),false);s.shots=120;unlockEligible(s);assert.equal(isDiscovered(s,'bat','pata_de_palo'),true);assert.deepEqual(DISCOVERY_RULES['bat:pata_de_palo'],{group:'play',metric:'shots',target:120});});
+ test('new pirate peg leg has an independent discovery and does not reallocate existing challenges',()=>{const s=initialSave();s.earnedCoins=1e6;s.furthestZ=1500;s.shots=119;unlockEligible(s);assert.equal(isDiscovered(s,'bat','pata_de_palo'),false);s.shots=120;unlockEligible(s);assert.equal(isDiscovered(s,'bat','pata_de_palo'),true);assert.deepEqual(DISCOVERY_RULES['bat:pata_de_palo'],{group:'play',metric:'shots',target:120});});

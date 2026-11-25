@@ -1,11 +1,11 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.24';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.24';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.25';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.25';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
 export function skillMaxLevel(key){return key==='multiplier'?MULTIPLIER_MAX_LEVEL:MAX_LEVEL}
 export const BONUS_EVERY=5;
-export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,earnedCoins:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
+export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,earnedCoins:0,furthestZ:0,lastDiscoveryShot:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
 export function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
 export function initialSave(){return JSON.parse(JSON.stringify(DEFAULT_SAVE))}
 export function sanitizeSave(raw){
@@ -62,7 +62,7 @@ export function forwardDistance(ball){
  const z=Number(ball?.z);
  return Number.isFinite(z)?Math.max(0,z):0;
 }
-// Coste original hasta nivel 50. A partir de 51 la subida deja de ser
+// Curva de mejoras reducida hasta nivel 50. A partir de 51 la subida deja de ser
 // cuadrática y sigue una potencia sublineal: dificultad sostenida, sin que
 // llegar a los biomas lejanos requiera decenas de miles de batazos.
 export function upgradeCost(level,key){
@@ -70,9 +70,9 @@ export function upgradeCost(level,key){
  if(!(key in bases))throw Error('Unknown skill');
  if(level>=skillMaxLevel(key))return Infinity;
  const base=bases[key],n=clamp(level,1,MAX_LEVEL)-1;
- if(level<=50)return Math.floor(base*(1+.30*n+.04*n*n)/5)*5;
- const priceAt50=base*(1+.30*49+.04*49*49);
- const extra=180*(base/160)*Math.pow(level-50,.65);
+ if(level<=50)return Math.floor(base*(1+.30*n+.02*n*n)/5)*5;
+ const priceAt50=base*(1+.30*49+.02*49*49);
+ const extra=120*(base/160)*Math.pow(level-50,.65);
  return Math.floor((priceAt50+extra)/5)*5;
 }
 export function upgrade(save,key){
@@ -87,8 +87,8 @@ export function claimBonus(save,key){
  if(!(key in save.levels)||save.levels[key]>=skillMaxLevel(key)||bonusCredits(save)<1)return false;
  save.levels[key]++;if(save.pendingLegacyBonuses>0)save.pendingLegacyBonuses--;else save.bonusClaims=(save.bonusClaims||0)+1;return true;
 }
-export function timingQuality(deltaMs){
- const ms=Math.abs(deltaMs),perfect=48,excellent=132,good=280;
+export function timingQuality(deltaMs,options={}){
+ const ms=Math.abs(deltaMs)/(1+Math.max(0,Math.min(.25,options?.precision||0))),perfect=48,excellent=132,good=280;
  if(ms<=perfect)return 'perfect';
  if(ms<=excellent)return 'excellent';
  if(ms<=good)return 'good';
@@ -100,17 +100,18 @@ export const qualityFactor={perfect:1.24,excellent:1.06,good:.87,weak:.61,miss:.
 export function batSpeedMs(){return 165}
 // El indicador y la calidad consultan exactamente el mismo reloj de contacto.
 export function pitchTimingDeltaMs(elapsed,duration){return (elapsed+batSpeedMs()/1000-.91*duration)*1000}
-export function pitchTimingGuide(elapsed,duration){
+export function pitchTimingGuide(elapsed,duration,precision=0){
  const deltaMs=pitchTimingDeltaMs(elapsed,duration),quality=timingQuality(deltaMs);
  const center=.91*duration-batSpeedMs()/1000;
- return {deltaMs,quality,phase:quality==='perfect'?'perfect':deltaMs>0?'late':quality==='excellent'?'ready':'wait',progress:clamp(elapsed/duration,0,1),start:clamp((center-.048)/duration,0,1),end:clamp((center+.048)/duration,0,1)};
+ return {deltaMs,quality,phase:quality==='perfect'?'perfect':deltaMs>0?'late':quality==='excellent'?'ready':'wait',progress:clamp(elapsed/duration,0,1),start:clamp((center-.048*(1+precision))/duration,0,1),end:clamp((center+.048*(1+precision))/duration,0,1)};
 }
 export function speedForSkills(levels){return 24+3.5*Math.pow(levels.power,.68)}
-export function calculateShot(levels,timingMs){
+export function calculateShot(levels,timingMs,bonuses={}){
  const ms=Number.isFinite(timingMs)?timingMs:999;
- const quality=timingQuality(ms),factor=qualityFactor[quality],base=speedForSkills(levels);
+ const precision=Math.max(0,Math.min(.25,bonuses.precision||0));
+ const quality=timingQuality(ms,{precision}),factor=qualityFactor[quality],base=speedForSkills(levels)*(1+Math.max(0,Math.min(.10,bonuses.power||0)));
  const bounds={perfect:[0,48],excellent:[48,132],good:[132,280],weak:[280,490],miss:[490,999]};
- const [lo,hi]=bounds[quality],error=clamp((Math.abs(ms)-lo)/(hi-lo),0,1);
+ const [lo,hi]=bounds[quality],error=clamp((Math.abs(ms)/(1+precision)-lo)/(hi-lo),0,1);
  const speed=base*factor*(1-.02*error*error);
  const angle=(34+(quality==='perfect'?5:quality==='excellent'?3:0)+1.8*clamp(ms/132,-1,1))*Math.PI/180;
  const slice=clamp(ms/850,-.3,.3);
@@ -119,15 +120,15 @@ export function calculateShot(levels,timingMs){
  return {quality,initialSpeed:speed,vx,vy,vz,angle,contactOffsetMm,ratedDistance:speed*speed*Math.sin(2*angle)/9.81};
 }
 export function coinMultiplier(level=1){return 1+.04*Math.min(50,Math.max(0,level-1))}
-export function coinRewardBreakdown(meters,levels){
+export function coinRewardBreakdown(meters,levels,ballBonus=0){
  const distance=Math.max(0,Math.floor(Number(meters)||0));
- const base=Math.floor(distance*.75),multiplier=coinMultiplier(levels.multiplier||1);
+ const base=Math.floor(distance*.75),multiplier=coinMultiplier(levels.multiplier||1)*(1+Math.max(0,Math.min(.35,ballBonus)));
  const total=Math.floor(base*multiplier);
  return {base,bonus:total-base,multiplier,total};
 }
 export function rewardForMeters(meters,levels){return coinRewardBreakdown(meters,levels).total}
 export function settleShot(save,distance){
- const meters=Math.max(0,Math.floor(distance)),reward=coinRewardBreakdown(meters,save.levels);
+ const meters=Math.max(0,Math.floor(distance)),reward=coinRewardBreakdown(meters,save.levels,equipmentBonuses(save).coins);
  save.coins+=reward.total;
  save.earnedCoins=Math.max(0,Math.floor(Number(save.earnedCoins)||0))+reward.total;
  save.shots++;save.totalMeters+=meters;

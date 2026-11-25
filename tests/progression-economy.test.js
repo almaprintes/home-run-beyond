@@ -95,10 +95,10 @@ test('migración conservadora de las ganancias de partidas previas y compras res
  assert.deepEqual(sanitizeSave(JSON.parse(JSON.stringify(save))),save);
 });
 
-test('progreso jugable: los 47 retos normales ya no piden más de 400 batazos',()=>{
+test('progreso jugable: los retos normales progresan sin exigir miles de batazos',()=>{
  const play=Object.values(DISCOVERY_RULES).filter(x=>x.group==='play'&&x.metric==='shots');
  assert.ok(play.length>30);
- assert.ok(Math.max(...play.map(x=>x.target))<=400);
+ assert.ok(Math.max(...play.map(x=>x.target))<=650);
  assert.ok(Math.min(...play.map(x=>x.target))>=3);
 });
 

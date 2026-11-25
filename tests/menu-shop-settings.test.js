@@ -1,3 +1,4 @@
+import {equipmentBonuses} from '../src/cosmetic-catalog.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -57,15 +58,17 @@ test('ropa, pelota y bate son tres catálogos con monedas compartidas',()=>{
  assert.deepEqual(sanitizeSave(save).ownedOutfits,['red','blue']);
  assert.deepEqual(sanitizeSave(save).ownedBalls,['classic','sky']);
 });
-test('equipar ropa, bate y pelota no cambia física, distancia ni economía',()=>{
+test('equipar ropa, bate y pelota activa solo sus bonificaciones propias',()=>{
  const save=initialSave();save.coins=10000;
  save.discovered.push('outfit:purple','ball:lilac','bat:nova');
  const shot=calculateShot(save.levels,0),reward=rewardForMeters(900,save.levels);
  for(const [kind,id] of [['outfit','purple'],['ball','lilac'],['bat','nova']]){
   assert.equal(equipCosmetic(save,kind,id),'purchased');
  }
- assert.deepEqual(calculateShot(save.levels,0),shot);
- assert.equal(rewardForMeters(900,save.levels),reward);
+ const b=equipmentBonuses(save);
+ assert.deepEqual(b,{power:.04,precision:.05,coins:.05});
+ assert.ok(calculateShot(save.levels,0,b).initialSpeed>shot.initialSpeed);
+ assert.equal(rewardForMeters(900,save.levels),reward,'las habilidades no cambian al equipar');
 });
 test('uniforme cambia tela roja, sin recolorear la piel naranja',()=>{
  const pixels=new Uint8ClampedArray([200,54,60,255, 220,160,120,255, 110,120,140,255, 0,0,0,0]);

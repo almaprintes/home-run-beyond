@@ -41,7 +41,7 @@ test('la migración de niveles comprados antiguos conserva progresión al pasar 
 });
 test('nuevo nivel alto requiere muchas monedas, y no se puede comprar sin ellas',()=>{
  const s=initialSave(),price=upgradeCost(48,'power');
- assert.ok(price>10000);
+ assert.ok(price>9000);
  s.coins=price-1;s.levels.power=48;
  assert.equal(upgrade(s,'power'),false);
 });

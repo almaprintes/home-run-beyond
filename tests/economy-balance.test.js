@@ -11,7 +11,7 @@ function priceTotal(key,endingLevel){
 test('el nuevo presupuesto permite financiar los tres niveles objetivo sin miles de millones',()=>{
  const power=priceTotal('power',1318),swing=priceTotal('swing',177),mult=priceTotal('multiplier',51);
  const sum=power+swing+mult;
- assert.ok(sum>30000000&&sum<50000000,'coste objetivo fuera de rango: '+sum);
+ assert.ok(sum>20000000&&sum<30000000,'coste objetivo fuera de rango: '+sum);
  const old=(base,n)=>Math.floor(base*(1+.3*(n-1)+.04*(n-1)**2)/5)*5;
  let oldSpent=0;
  for(let i=1;i<1318;i++)oldSpent+=old(160,i);
@@ -19,13 +19,13 @@ test('el nuevo presupuesto permite financiar los tres niveles objetivo sin miles
  for(let i=1;i<51;i++)oldSpent+=old(290,i);
  assert.ok(oldSpent>sum*100,'el descenso debe ser importante después del nivel 50');
 });
-test('precios suben gradualmente, nunca retroceden y son iguales hasta 50',()=>{
+test('precios suben gradualmente, nunca retroceden con una curva reducida hasta 50',()=>{
  for(const [key,base,max] of [['power',160,1400],['swing',180,400],['multiplier',290,51]]){
   let previous=0;
   for(let n=1;n<max;n++){
    const c=upgradeCost(n,key);
    assert.ok(Number.isFinite(c)&&c>previous,key+' coste descendente o no creciente en nivel '+n);
-   if(n<=50)assert.equal(c,Math.floor(base*(1+.3*(n-1)+.04*(n-1)**2)/5)*5);
+   if(n<=50)assert.equal(c,Math.floor(base*(1+.3*(n-1)+.02*(n-1)**2)/5)*5);
    previous=c;
   }
  }
