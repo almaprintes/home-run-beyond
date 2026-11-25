@@ -1,17 +1,18 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.73.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.73.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.73.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.73.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.73.0';
-import {GameAudio} from './audio.js?v=0.73.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.73.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.73.0';
-import {BatterSprites} from './sprites.js?v=0.73.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.73.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.73.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.73.0';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.73.0';
-import {pitcherReactionPlan} from './pitcher.js?v=0.73.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.74.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.74.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.74.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.74.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.74.0';
+import {GameAudio} from './audio.js?v=0.74.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.74.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.74.0';
+import {BatterSprites} from './sprites.js?v=0.74.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.74.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.74.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.74.0';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.74.0';
+import {pitcherReactionPlan} from './pitcher.js?v=0.74.0';
+import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.74.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -393,7 +394,7 @@ export class BaseballGame{
  onAction(time){if(!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false,time);}
 
  startPitch(){
-  this.brokenWindows=new Set();
+  this.brokenWindows=new Set();this.gullEncounter=null;
   this.clearTransientToast();
   this.audio?.prepareGameEffects?.();
   this.audio?.prepareStrike?.();
@@ -493,7 +494,7 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullEncounter=planGullEncounter(b,this.clock||0);this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  emitCollision(material,point,strength,normal={x:0,y:1,z:0}){
   if(!Number.isFinite(strength)||strength<1.2)return;
@@ -514,12 +515,20 @@ export class BaseballGame{
   const containerHit=traceStadiumContainerCollision(prev,next,radius);
   const fenceHit=traceStadiumFenceCollision(prev,next,radius);
   const carHit=traceTrafficCollision(prev,next,trafficStart,trafficEnd,radius,dt);
+  const gullHit=traceGullCollision(prev,next,this.gullEncounter,trafficStart,trafficEnd,radius);
   // Resolver el primer contacto real de la trayectoria, no un solapamiento
   // del siguiente fotograma: edificios, muros y contenedores compiten por t.
-  const hit=[buildingHit,boundaryHit,containerHit,fenceHit,carHit].filter(Boolean)
+  const hit=[buildingHit,boundaryHit,containerHit,fenceHit,carHit,gullHit].filter(Boolean)
    .reduce((first,candidate)=>!first||candidate.t<first.t?candidate:first,null);
   let touching=false;
-  if(hit?.kind==='glass'){
+  if(hit?.kind==='gull'){
+   hit.bird.struckAt=hit.at;
+   Object.assign(b,gullDeflection(b,hit));
+   b.x=hit.point.x;b.y=hit.point.y;b.z=hit.point.z;
+   b.lastCollision='¡GAVIOTA!';(b.encounters??={}).gull=true;
+   // Soft contact and a startled escape; no blood or falling bird.
+   onSpinImpact(b,hit.normal,'rubber');
+  }else if(hit?.kind==='glass'){
    // Break only the struck pane. Keep the direction; lose 8% speed.
    const n=hit.normal,inward=Math.max(0,-(b.vx*n.x+b.vy*n.y+b.vz*n.z));
    (this.brokenWindows??=new Set()).add(hit.windowId);

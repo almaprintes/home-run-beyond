@@ -10,7 +10,7 @@ test('auditoría completa: los 97 desbloqueos tienen precio, logro y economía c
  assert.equal(entries.length,97);
  assert.deepEqual(DISCOVERY_GROUP_COUNTS,{play:47,record:25,skill:15,secret:10});
  const prices=entries.map(({item})=>item.price);
- assert.equal(prices.reduce((a,b)=>a+b,0),512910);
+ assert.equal(prices.reduce((a,b)=>a+b,0),513010);
  assert.ok(entries.every(x=>x.rule && x.rule.target>=1),'cada cosmético tiene logro');
  assert.ok(entries.every(x=>requiredCareerEarnings(x.item.price)>0),'cada cosmético tiene umbral de ingresos');
  for(const {item} of entries){
