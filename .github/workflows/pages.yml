@@ -42,7 +42,7 @@ jobs:
       - run: python tools/build_impact_audio.py
       # Persist generated assets so even branch-based Pages publishes real art.
       # A token-created commit does not start another push workflow.
-      - name: Guardar los 397 assets reales en main
+      - name: Guardar los 398 assets reales en main
         if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"

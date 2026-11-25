@@ -105,7 +105,7 @@ test('no hay elementos irrecuperables y los nombres secretos no se revelan en pi
  s.discoveryStats={perfectHits:10000,preciseHits:10000,goodStreak:100,bestGoodStreak:100,recordBreaks:1000};
  s.discoveryFlags=['road','roof','river','water','district','harbor','forest','mountains','orbit','swamp'];
  const items=unlockEligible(s);
- assert.equal(items.length,97);
+ assert.equal(items.length,98);
  assert.deepEqual(Object.keys(COLLECTIONS).map(k=>discoveredCount(s,k).found),[36,33,32]);
  assert.equal(unlockEligible(s).length,0);
  const fresh=initialSave(),hint=nextDiscoveryHint(fresh,'ball');

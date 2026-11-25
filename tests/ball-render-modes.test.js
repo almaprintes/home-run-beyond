@@ -10,7 +10,7 @@ test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajena
  const themed=BALL_CATALOG.filter(item=>ballRenderMode(item)==='special');
  assert.equal(baseball.length,8);assert.equal(themed.length,24);
  assert.deepEqual(new Set(baseball.map(i=>i.id)),BASEBALL_SKIN_IDS);
- assert.equal(BAKED_ASSET_COUNT,397);
+ assert.equal(BAKED_ASSET_COUNT,398);
  for(const item of BALL_CATALOG){
   const paths=equippedAssetPaths('red','classic',item.id);
   assert.deepEqual(paths,[...OUTFIT_POSES.map(pose=>bakedAssetUrl('outfit','red',pose)),bakedAssetUrl('ball',item.id)]);

@@ -1,18 +1,18 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.21';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.21';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.21';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.21';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.77.21';
-import {GameAudio} from './audio.js?v=0.77.21';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.21';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.21';
-import {BatterSprites} from './sprites.js?v=0.77.21';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.21';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.21';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.21';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.77.21';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.21';
-import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.21';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.22';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.22';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.22';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.22';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.77.22';
+import {GameAudio} from './audio.js?v=0.77.22';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.22';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.22';
+import {BatterSprites} from './sprites.js?v=0.77.22';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.22';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.22';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.22';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.77.22';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.22';
+import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.22';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.

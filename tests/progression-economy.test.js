@@ -4,13 +4,13 @@ import {initialSave,sanitizeSave,upgrade,upgradeCost,coinRewardBreakdown,calcula
 import {COLLECTIONS,DISCOVERY_RULES,DISCOVERY_GROUP_COUNTS,requiredCareerEarnings,
  careerEarnings,isDiscovered,recordDiscoveryShot,unlockEligible,nextDiscoveryHint} from '../src/discoveries.js';
 
-test('auditoría completa: los 97 desbloqueos tienen precio, logro y economía coherentes',()=>{
+test('auditoría completa: los 98 desbloqueos tienen precio, logro y economía coherentes',()=>{
  const entries=Object.entries(COLLECTIONS).flatMap(([category,items])=>items
   .filter(item=>item.price>0).map(item=>({category,item,rule:DISCOVERY_RULES[category+':'+item.id]})));
- assert.equal(entries.length,97);
- assert.deepEqual(DISCOVERY_GROUP_COUNTS,{play:47,record:25,skill:15,secret:10});
+ assert.equal(entries.length,98);
+ assert.deepEqual(DISCOVERY_GROUP_COUNTS,{play:48,record:25,skill:15,secret:10});
  const prices=entries.map(({item})=>item.price);
- assert.equal(prices.reduce((a,b)=>a+b,0),513010);
+ assert.equal(prices.reduce((a,b)=>a+b,0),518910);
  assert.ok(entries.every(x=>x.rule && x.rule.target>=1),'cada cosmético tiene logro');
  assert.ok(entries.every(x=>requiredCareerEarnings(x.item.price)>0),'cada cosmético tiene umbral de ingresos');
  for(const {item} of entries){
