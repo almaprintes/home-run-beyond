@@ -120,3 +120,23 @@ test('Betis shares Athletic registration and has its own complete baked artwork'
  }
  assert.match(bakedAssetUrl('outfit','futbol_verde'),/v=0\.77\.2$/);
 });
+
+test('approved basketball, sprinter and Wimbledon each have five full sprites with exact bat registration',()=>{
+ for(const id of ['basket_negro','atletismo','tenis_blanco']){
+  const anchors=JSON.parse(readFileSync(new URL('../assets/approved/outfits/'+id+'/anchors.json',import.meta.url),'utf8'));
+  assert.deepEqual(Object.keys(anchors),['ready','watch','loaded','contact','follow']);
+  assert.match(bakedAssetUrl('outfit',id),/v=0\.77\.4$/);
+  for(const [pose,anchor] of Object.entries(anchors)){
+   const p=weaponPlacement(pose,10,20,300,365,id);
+   assert.ok(Math.abs(p.x-(10+anchor.grip[0]*300))<1e-6);
+   assert.ok(Math.abs(p.y-(20+anchor.grip[1]*365))<1e-6);
+   const read=path=>readFileSync(new URL('../assets/'+path,import.meta.url));
+   const source=read('approved/outfits/'+id+'/'+pose+'-nobat.webp');
+   const without=read('baked/outfits/'+id+'/'+pose+'-nobat.webp');
+   const withBat=read('baked/outfits/'+id+'/'+pose+'.webp');
+   for(const bytes of [source,without,withBat])assert.equal(bytes.toString('ascii',8,12),'WEBP');
+   assert.notDeepEqual(without,withBat);
+   assert.notDeepEqual(without,read('baked/outfits/futbol_rojo/'+pose+'-nobat.webp'));
+  }
+ }
+});

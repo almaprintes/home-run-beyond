@@ -445,14 +445,13 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
-                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"] in ("futbol_verde","tenis_blanco") else item["id"])
+                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"]=="futbol_verde" else item["id"])
                 if approved.is_dir():
                     # Approved complete character, never recolor or mask its body.
                     anchors=json.loads((approved/"anchors.json").read_text(encoding="utf-8"))
                     source=approved/(pose+"-nobat.webp")
                     baked=opaque_core(Image.open(source).convert("RGBA"))
                     if item["id"]=="futbol_verde":baked=betis_uniform(baked,pose)
-                    if item["id"]=="tenis_blanco":baked=wimbledon_uniform(baked,pose)
                     if not nobat:
                         anchor=anchors[pose];w,h=baked.size
                         gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h
