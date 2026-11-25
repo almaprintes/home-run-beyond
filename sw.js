@@ -1,4 +1,4 @@
-const CACHE='hrb-v77-20261125-approved-sports-4';
+const CACHE='hrb-v77-20261125-baguette-art-approved-sports-4-fix';
 const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/gulls.js','./src/pitcher.js','./src/engine.js','./src/world.js','./src/biomes.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js','./src/traffic.js','./src/discoveries.js','./src/cosmetic-render.js','./src/cosmetic-catalog.js','./src/cosmetic-art.js','./src/baked-assets.js','./assets/baked/manifest.json','./src/impact-fx.js','./src/ball-visuals.js','./src/ball-spin.js','./assets/materials-atlas-v2.png',
  './assets/strike.mp3','./assets/audio/bat-cgeffex.wav','./assets/baseball.webp',
  './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
