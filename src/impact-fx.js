@@ -1,4 +1,4 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.15';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.16';
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
 export const EFFECT_MATERIALS=Object.freeze({
@@ -11,6 +11,7 @@ export const EFFECT_MATERIALS=Object.freeze({
  grass:{color:'#9acc78',secondary:'#dce79e',count:9,life:.43,spread:9,gravity:13,kind:'grass'},
  dirt:{color:'#bd9468',secondary:'#e4cda3',count:11,life:.55,spread:12,gravity:23,kind:'dust'},
  road:{color:'#bec9d1',secondary:'#e4ebee',count:11,life:.32,spread:14,gravity:29,kind:'spark'},
+ paving:{color:'#bcb5a5',secondary:'#e6dfd2',count:9,life:.32,spread:12,gravity:29,kind:'dust'},
  asphalt:{color:'#bec9d1',secondary:'#e4ebee',count:11,life:.32,spread:14,gravity:29,kind:'spark'},
  water:{color:'#83e1f2',secondary:'#d6fcff',count:13,life:.65,spread:12,gravity:25,kind:'splash'},
  puddle:{color:'#91dfeb',secondary:'#e2fdff',count:11,life:.53,spread:9,gravity:23,kind:'splash'},

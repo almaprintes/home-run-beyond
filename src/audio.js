@@ -333,7 +333,7 @@ export class GameAudio{
   // Evitar el traqueteo de rebotes rápidos sobre el mismo suelo.
   if((material!=='glass'&&now-this.lastImpactAt<.115)||strength<2.25)return;
   this.lastImpactAt=now;
-  const kind=material==='road'?'asphalt':material==='puddle'?'puddle':soundProfile(material)===PROFILE.concrete?'concrete':material;
+  const kind=material==='road'||material==='paving'?'asphalt':material==='puddle'?'puddle':soundProfile(material)===PROFILE.concrete?'concrete':material;
   // El segundo y tercer rebote deben sonar más discretos. El volumen
   // depende de la velocidad normal de impacto, no del total de impactos.
   const normalized=Math.min(1,Math.log1p(Math.max(0,strength))/Math.log(90));

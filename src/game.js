@@ -1,23 +1,23 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.15';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.15';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.15';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.15';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.77.15';
-import {GameAudio} from './audio.js?v=0.77.15';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.15';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.15';
-import {BatterSprites} from './sprites.js?v=0.77.15';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.15';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.15';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.15';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.77.15';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.15';
-import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.15';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.16';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.16';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.16';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.16';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.77.16';
+import {GameAudio} from './audio.js?v=0.77.16';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.16';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.16';
+import {BatterSprites} from './sprites.js?v=0.77.16';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.16';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.16';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.16';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.77.16';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.16';
+import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.16';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
 export function groundRollRetention(type,dt){
- const friction=type==='road'?1.05:2.05;
+ const friction=type==='road'?1.05:type==='paving'?1.25:2.05;
  return Math.exp(-friction*Math.max(0,Number(dt)||0));
 }
 export class BaseballGame{
@@ -625,8 +625,9 @@ export class BaseballGame{
     const normalImpact=Math.abs(Math.min(0,b.vy));
     if(normalImpact>.9){
      if(type==='road')(b.encounters??={}).road=true;
-     b.vy=normalImpact*(type==='road'?.78:.39);
-     b.vz*=type==='road'?.92:.70;b.vx*=type==='road'?.92:.70;
+     b.vy=normalImpact*(type==='road'?.78:type==='paving'?.74:.39);
+     const retention=type==='road'?.92:type==='paving'?.89:.70;
+      b.vz*=retention;b.vx*=retention;
      b.impactAge=0;b.impactMaterial=type;
      b.bounces++;
      // Compresión visual breve, independiente de la física acelerada.
@@ -639,7 +640,7 @@ export class BaseballGame{
      b.vz*=drag;b.vx*=drag;
      touching=true;
     }
-    if(hit?.kind!=='glass'&&!hit?.kind?.startsWith('traffic-'))b.lastCollision=type==='road'?'ASFALTO':'CÉSPED';
+    if(hit?.kind!=='glass'&&!hit?.kind?.startsWith('traffic-'))b.lastCollision=type==='road'?'ASFALTO':type==='paving'?'ADOQUINES':'CÉSPED';
    }
   }
   b.spinContact=touching;

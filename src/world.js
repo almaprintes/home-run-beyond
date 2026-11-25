@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.15';
-import {drawGulls} from './gulls.js?v=0.77.15';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.15';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.15';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.15';
+import {lerp} from './engine.js?v=0.77.16';
+import {drawGulls} from './gulls.js?v=0.77.16';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.16';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.16';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.16';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -40,7 +40,7 @@ export function groundAt(x,z){
  const wet=wetAreaAt(x,z);
  if(wet)return {y:worldHeight(x,z),type:wet};
  if(roadAt(z))return {y:0,type:'road'};
- return {y:worldHeight(x,z),type:biomeAt(z).ground};
+ return {y:worldHeight(x,z),type:pavedGroundAt(x,z)?'paving':biomeAt(z).ground};
 }
 function buildingData(i,j){
  const n=i*89+j*791,h=10+rand(n+1)*39,w=18+rand(n+2)*15,d=17+rand(n+3)*23;
@@ -350,6 +350,47 @@ export function terrainPatchMaterial(chunk,index){
  if(chunk>=1&&chunk<=7)return n<3?'paving':n<5?'dirt':'grass';
  return n<2?'dirt':'grass';
 }
+// Shared geometry for visible urban paving and the physical surface query.
+// Cache the seven fixed urban chunks, never camera-dependent.
+const urbanParcels=new Map();
+export function terrainParcels(chunk){
+ if(urbanParcels.has(chunk))return urbanParcels.get(chunk);
+ const mid=chunk*200+100,parcels=[];
+ for(let i=-2;i<=2;i++){
+  const seed=chunk*61+i*131,originalMat=terrainPatchMaterial(chunk,i);
+  const material=mid>5500?groundVisualMaterial(mid):originalMat;
+  const color=mid>5500?mixColors(terrainBaseColor(mid),rand(seed,9)<.5?'#dde2d6':'#53554e',.13):
+   originalMat==='paving'?'#afa894':originalMat==='dirt'?'#ab926d':rand(seed,9)<.5?'#5e9a60':'#82b079';
+  const xx=WORLD_CENTER_X+i*114+rand(seed,2)*25-12,z=mid+rand(seed,3)*95-47.5;
+  const w=95+rand(seed,4)*50,d=46+rand(seed,5)*64;
+  const x=Math.max(WORLD_CENTER_X-WORLD_HALF_WIDTH+w/2,Math.min(WORLD_CENTER_X+WORLD_HALF_WIDTH-w/2,xx));
+  parcels.push({x,z,w,d,color,material,offset:-.065});
+ }
+ if(chunk>0&&chunk<8)for(const side of [-1,1]){
+  parcels.push({x:WORLD_CENTER_X+side*235,z:mid,w:110,d:130,color:'#aba99b',material:'paving',offset:-.038});
+  parcels.push({x:WORLD_CENTER_X+side*258,z:mid+38,w:60,d:46,color:'#a78765',material:'dirt',offset:-.032});
+ }
+ if(chunk>0&&chunk<8)urbanParcels.set(chunk,parcels);
+ return parcels;
+}
+function pavedGroundAt(x,z){
+ if(z<180||z>1799)return false;
+ // Small paving slabs next to urban building/tree cells.
+ const i=Math.round((x-24)/60),j=Math.round((z-295)/60);
+ if(i>=-4&&i<=4&&j>=0&&j<=24&&!roadAt(270+j*60)&&!riverAt(270+j*60)&&
+    Math.abs(x-(i*60+24))<=4&&Math.abs(z-(295+j*60))<=4)return true;
+ let top=null;
+ const chunk=Math.floor(z/200);
+ // Adjacent parcels can overlap across chunk boundaries.
+ for(let c=Math.max(0,chunk-1);c<=Math.min(8,chunk+1);c++){
+  if(riverAt(c*200+100))continue;
+  for(const p of terrainParcels(c)){
+   if(Math.abs(x-p.x)>p.w/2||Math.abs(z-p.z)>p.d/2)continue;
+   if(!top||p.offset>=top.offset)top=p;
+  }
+ }
+ return top?.material==='paving';
+}
 export function terrainBaseColor(z){return biomeColorAt(z)}
 export function groundVisualMaterial(z){
  const blend=biomeTransitionAt(z);
@@ -441,29 +482,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
     // Cerca de la cámara, el césped alterna tierra seca y solares pavimentados.
     // Pocas parcelas grandes: más legibles que cientos de puntitos con shimmer.
     if(Math.abs(mid-viewZ)<coverage.detail+320 && !riverAt(mid)){
-     const xOrigin=WORLD_CENTER_X;
-     for(let i=-2;i<=2;i++){
-      const seed=chunk*61+i*131;
-      const originalMat=terrainPatchMaterial(chunk,i);
-      const mat=mid>5500?groundVisualMaterial(mid):originalMat;
-      const col=mid>5500
-        ?mixColors(terrainBaseColor(mid),rand(seed,9)<.5?'#dde2d6':'#53554e',.13)
-        :originalMat==='paving'?'#afa894':originalMat==='dirt'?'#ab926d':
-         rand(seed,9)<.5?'#5e9a60':'#82b079';
-      const xx=xOrigin+i*114+rand(seed,2)*25-12;
-      const zz=mid+rand(seed,3)*95-47.5;
-      const ww=95+rand(seed,4)*50,dd=46+rand(seed,5)*64;
-      const safeX=Math.max(WORLD_CENTER_X-WORLD_HALF_WIDTH+ww/2,
-       Math.min(WORLD_CENTER_X+WORLD_HALF_WIDTH-ww/2,xx));
-      r.field(safeX,h-.065,zz,ww,dd,col,0,mat);
-     }
-     if(chunk>0&&chunk<8){
-      // Parcelas y aceras urbanas a ambos lados de la calzada.
-      for(const side of [-1,1]){
-       r.field(WORLD_CENTER_X+side*235,h-.038,mid,110,130,'#aba99b',0,'paving');
-       r.field(WORLD_CENTER_X+side*258,h-.032,mid+38,60,46,'#a78765',0,'dirt');
-      }
-     }
+     for(const p of terrainParcels(chunk))r.field(p.x,h+p.offset,p.z,p.w,p.d,p.color,0,p.material);
     }
    }
    // El cauce ocupa 490 m dentro del corredor de 600 m.

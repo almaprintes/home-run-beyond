@@ -1,7 +1,7 @@
 // Dibujo 2D procedural, 100% local/offline. Una mini luna tiene cráteres,
 // una escoba tiene cerdas, una trucha tiene aletas; nunca se simulan con un tinte.
 // Los sprites originales del jugador son la base para preservar sus poses.
-import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.77.15';
+import {makeCosmeticCanvas} from './cosmetic-render.js?v=0.77.16';
 
 export const ILLUSTRATED_BALLS=new Set([
  'rainbow','sun','moon','earth','mars','saturn','billiard','tennis','golf',
