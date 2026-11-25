@@ -161,3 +161,22 @@ test('approved ice hockey and Baskonia have ten complete frames per outfit and i
   }
  }
 });
+
+
+test('Baloncesto LA has all five approved poses and distinct bat variants',()=>{
+ const id='basket_lila';
+ const read=p=>readFileSync(new URL('../assets/'+p,import.meta.url));
+ const anchors=JSON.parse(read('approved/outfits/'+id+'/anchors.json').toString());
+ assert.deepEqual(Object.keys(anchors),['ready','watch','loaded','contact','follow']);
+ for(const [pose,a] of Object.entries(anchors)){
+  const p=weaponPlacement(pose,10,20,300,365,id);
+  assert.ok(Math.abs(p.x-(10+a.grip[0]*300))<1e-6);
+  assert.ok(Math.abs(p.y-(20+a.grip[1]*365))<1e-6);
+  const src=read('approved/outfits/'+id+'/'+pose+'-nobat.webp');
+  const no=read('baked/outfits/'+id+'/'+pose+'-nobat.webp');
+  const bat=read('baked/outfits/'+id+'/'+pose+'.webp');
+  for(const b of [src,no,bat]){assert.equal(b.toString('ascii',8,12),'WEBP');assert.ok(b.length>2500);}
+  assert.notDeepEqual(no,bat);
+  assert.match(bakedAssetUrl('outfit',id,pose),/v=0\.77\.9$/);
+ }
+});
