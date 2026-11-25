@@ -159,3 +159,18 @@ test('el uniforme original también usa el fotograma reparado cuando está dispo
  sprites.images.ready=original;sprites.bakedImages.set(bakedAssetUrl('outfit','red','ready'),repaired);
  assert.equal(sprites.getStyledPose('ready',initialSave()),repaired);
 });
+
+
+test('escoba and Canary banana use the exact approved full artwork',()=>{
+ for(const id of ['escoba','platano']){
+  const source=readFileSync(new URL('../assets/approved/bats/'+id+'.webp',import.meta.url));
+  const baked=readFileSync(new URL('../assets/baked/bats/'+id+'.webp',import.meta.url));
+  assert.equal(source.toString('ascii',8,12),'WEBP');
+  assert.ok(source.length>9000);
+  assert.deepEqual(baked,source);
+  assert.match(bakedAssetUrl('bat',id),/v=0\.77\.5$/);
+ }
+ assert.equal(BAT_CATALOG.find(x=>x.id==='platano').name,'Plátano de Canarias');
+ assert.equal(BAT_CATALOG.find(x=>x.id==='platano').price,3100);
+ assert.equal(BAT_CATALOG.find(x=>x.id==='escoba').price,2600);
+});

@@ -31,7 +31,7 @@ escoba|Escoba de barrendero|2600|broom|#c4985e|#ffd366|🧹
 trucha|Trucha gigante|4200|trout|#62a6b8|#d3f3e2|🐟
 alambre|Bate con alambre|4600|wire|#ab8759|#c6c7c9|🪢
 baguette|Baguette crujiente|2900|bread|#e9b76e|#fff1bb|🥖
-platano|Plátano gigante|3100|banana|#f9d84a|#fff09a|🍌
+platano|Plátano de Canarias|3100|banana|#f9d84a|#fff09a|🍌
 remo|Remo de regata|3300|paddle|#bb8555|#e7ce9a|🚣
 guitarra|Guitarra rockera|5900|guitar|#d6647e|#ffe0ac|🎸
 llave|Llave inglesa|5400|wrench|#a9bdc9|#e3f0f5|🔧
