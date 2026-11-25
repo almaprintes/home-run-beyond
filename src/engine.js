@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.69.0';
+import {pitcherPose} from './pitcher.js?v=0.70.0';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -239,7 +239,7 @@ export class Renderer{
    }
   };
   atlas.onerror=()=>{this.textureReady=false;console.warn('Atlas de materiales no disponible; se conservan los colores base')};
-  atlas.src='./assets/materials-atlas-v2.png?v=0.69.0';
+  atlas.src='./assets/materials-atlas-v2.png?v=0.70.0';
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}
@@ -339,10 +339,10 @@ export class CanvasRenderer{
  this.poly([[xx,by-bh],[xx+bw*.2,by-bh-11],[xx+bw*1.2,by-bh-11],[xx+bw,by-bh]],'#db886d')}
  if(b.z<95&&b.z>=-10)this.person(w*.5,h*.61+Math.max(0,b.z-21)*1.4,.39,false,0,pitcherPose(g));
  const y=h*.65;this.poly([[0,y],[w,y-h*.16],[w,y-h*.08],[0,y+h*.12]],'#405e63');
- c.save();c.translate(w*.52,h*.48);c.shadowColor='#f9b06a';c.shadowBlur=26;c.strokeStyle='#ffdb8b';c.lineWidth=9;c.lineCap='round';c.beginPath();c.moveTo(-80,50);c.lineTo(-8,6);c.stroke();c.shadowBlur=0;
+ c.save();c.translate(w*.52,h*.48);
  if(!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){
   c.fillStyle=g.ballStyleColor||'#fff8ed';c.beginPath();c.arc(0,0,21,0,Math.PI*2);c.fill();
-  c.strokeStyle='#d75d51';c.lineWidth=2.7;c.beginPath();c.arc(-2,1,13,-.8,1.6);c.moveTo(3,-14);c.arc(3,0,13,1.8,4.6);c.stroke();
+  c.rotate(b.spin?.angle||0);c.strokeStyle='#d75d51';c.lineWidth=2.7;c.beginPath();c.arc(-2,1,13,-.8,1.6);c.moveTo(3,-14);c.arc(3,0,13,1.8,4.6);c.stroke();
  }
  c.restore();
  }

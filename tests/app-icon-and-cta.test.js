@@ -23,18 +23,18 @@ test('PWA, Safari e iPhone usan los iconos nuevos con caché renovada',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../manifest.webmanifest',import.meta.url),'utf8'));
- assert.match(html,/rel="apple-touch-icon" sizes="180x180" href="\.\/icons\/icon-180\.png\?v=0\.69\.0"/);
- assert.match(html,/rel="icon" type="image\/png" sizes="32x32" href="\.\/icons\/icon-32\.png\?v=0\.69\.0"/);
- assert.match(html,/rel="manifest" href="\.\/manifest\.webmanifest\?v=0\.69\.0"/);
+ assert.match(html,/rel="apple-touch-icon" sizes="180x180" href="\.\/icons\/icon-180\.png\?v=0\.70\.0"/);
+ assert.match(html,/rel="icon" type="image\/png" sizes="32x32" href="\.\/icons\/icon-32\.png\?v=0\.70\.0"/);
+ assert.match(html,/rel="manifest" href="\.\/manifest\.webmanifest\?v=0\.70\.0"/);
  assert.deepEqual(manifest.icons.map(icon=>icon.src),[
-  './icons/icon-192.png?v=0.69.0','./icons/icon-512.png?v=0.69.0'
+  './icons/icon-192.png?v=0.70.0','./icons/icon-512.png?v=0.70.0'
  ]);
- assert.match(sw,/hrb-v69-20261125-classic-names/);
+ assert.match(sw,/hrb-v70-20261125-ball-rest/);
  for(const size of [32,180,192,512]){
-  assert.ok(sw.includes(`./icons/icon-${size}.png?v=0.69.0`),
+  assert.ok(sw.includes(`./icons/icon-${size}.png?v=0.70.0`),
    'pre-caché del icono '+size);
  }
- assert.match(sw,/\.\/manifest\.webmanifest\?v=0\.69\.0/);
+ assert.match(sw,/\.\/manifest\.webmanifest\?v=0\.70\.0/);
 });
 test('botón VOLVER A BATEAR es CTA principal, no un botón secundario gris',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');

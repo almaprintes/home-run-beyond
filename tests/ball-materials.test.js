@@ -40,8 +40,8 @@ test('el sprite dibuja sombra, estela tenue y anillo de contacto sin alterar fí
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.match(code,/const size=ballSpriteDiameter\(radiusPx,width\)/);
  assert.match(code,/const surface=surfaceBelowBall\(b\)/);
- assert.match(code,/const impact=ballImpactOpacity\(b\.impactAge\)/);
- assert.match(code,/createLinearGradient/);
+ assert.doesNotMatch(code,/const impact=ballImpactOpacity\(b\.impactAge\)/);
+ assert.doesNotMatch(code,/createLinearGradient/);
  assert.match(game,/b\.impactAge=0/);
  assert.doesNotMatch(code,/Math\.min\(118/);
 });

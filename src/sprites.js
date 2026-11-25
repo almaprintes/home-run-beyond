@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.69.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.69.0';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from './ball-visuals.js?v=0.69.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.69.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.69.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.70.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.70.0';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.70.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.70.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.70.0';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -235,12 +235,12 @@ export class BatterSprites{
   // La misma pelota aprobada se proyecta como esfera desde el golpe:
   // backspin en vuelo y topspin tras el primer bote, sin girar como moneda.
   // Su copia UV se rellena internamente, SIN alterar el dibujo original.
-  const planar=Math.hypot(game.ball?.vx||0,game.ball?.vz||0);
-  if(item.design==='baseball'&&spin?.orientation&&planar>1.3&&camera&&target){
+  // Keep the same spherical projection even at zero speed: no texture snap.
+  if(item.design==='baseball'&&spin?.orientation&&camera&&target){
    drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
    return;
   }
-  // En reposo o durante el lanzamiento se conserva la imagen original.
+  // Only the pre-hit pitch has no accumulated spin.
   // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
   if(item.design!=='baseball')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
@@ -324,7 +324,7 @@ export class BatterSprites{
     ctx.restore();
    }
   }
-  if(this.ballLoaded&&game.ball&&(game.state==='flight'||game.state==='landing')){
+  if(this.ballLoaded&&game.ball&&['flight','landing','rest'].includes(game.state)){
    const b=game.ball;
    const p=projectToScreen(camera,target,[b.x,b.y,b.z],width,height,zoom);
    if(p&&p.x>-160&&p.x<width+160&&p.y>-160&&p.y<height+160){
@@ -343,32 +343,12 @@ export class BatterSprites{
      ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,size*.66,size*.23,0,0,Math.PI*2);ctx.fill();
      ctx.restore();
     }
-    const speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
-    if(speed>15&&typeof ctx.createLinearGradient==='function'){
-     const tail=projectToScreen(camera,target,
-      [b.x-(b.vx||0)*.047,b.y-(b.vy||0)*.047,b.z-(b.vz||0)*.047],
-      width,height,zoom);
-     if(tail&&Math.hypot(p.x-tail.x,p.y-tail.y)>3){
-      ctx.save();const grad=ctx.createLinearGradient(tail.x,tail.y,p.x,p.y);
-      grad.addColorStop(0,'rgba(255,250,225,0)');
-      grad.addColorStop(1,'rgba(255,247,217,.46)');
-      ctx.strokeStyle=grad;ctx.lineWidth=Math.min(6,size*.14);
-      ctx.lineCap='round';ctx.beginPath();ctx.moveTo(tail.x,tail.y);ctx.lineTo(p.x,p.y);ctx.stroke();
-      ctx.restore();
-     }
-    }
     ctx.save();ctx.translate(p.x,p.y);
-    const bounce=Math.max(0,Math.min(1,b.bounceVisual||0));
+    const bounce=game.state==='rest'?0:Math.max(0,Math.min(1,b.bounceVisual||0));
     if(bounce)ctx.scale(1+.08*bounce,1-.11*bounce);
     this.drawEquippedBall(ctx,game,size,b.spin,camera,target);
     ctx.restore();
-    const impact=ballImpactOpacity(b.impactAge);
-    if(impact>0&&typeof ctx.stroke==='function'){
-     ctx.save();ctx.globalAlpha=impact;
-     ctx.strokeStyle=b.impactMaterial==='water'?'#a5f0fc':'#ffe1ae';
-     ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(p.x,p.y,size*(.63+(1-impact)*.65),0,Math.PI*2);ctx.stroke();
-     ctx.restore();
-    }
+
    }
   }
  }

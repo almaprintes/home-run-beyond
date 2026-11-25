@@ -92,6 +92,7 @@ export function advanceBallSpin(ball,dt,contact=false){
 export function integratePhysicalSpin(ball,previous,dt,contact=false,material='grass'){
  if(!ball)return null;
  const spin=ball.spin||initBallSpin(ball);
+ if(spin.frozen)return spin;
  if(!contact)return advanceBallSpin(ball,dt,false);
  spin.groundEngaged=true;
  spin.groundMaterial=material;
@@ -125,9 +126,17 @@ export function integratePhysicalSpin(ball,previous,dt,contact=false,material='g
 // appears to reverse direction while the real angular momentum is correct.
 // Contact friction gradually reverses the backspin into forward topspin;
 // after the FIRST ground bounce this mode persists through tiny airborne hops.
+export function freezeBallSpin(ball){
+ if(!ball)return null;
+ const spin=ball.spin||initBallSpin(ball);
+ spin.frozen=true;spin.rate=0;spin.visualRate=0;
+ ball.bounceVisual=0;
+ return spin;
+}
 export function advanceVisualSpin(ball,frameDt){
  if(!ball)return null;
  const spin=ball.spin||initBallSpin(ball);
+ if(spin.frozen)return spin;
  const dt=Math.max(0,Math.min(.05,Number(frameDt)||0));
  const vx=Number(ball.vx)||0,vz=Number(ball.vz)||0;
  const speed=Math.hypot(vx,vz);
