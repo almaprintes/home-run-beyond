@@ -1,4 +1,4 @@
-const CACHE='hrb-v66-20261125-uniform-alpha';
+const CACHE='hrb-v67-20261125-classic-art';
 const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/pitcher.js','./src/engine.js','./src/world.js','./src/biomes.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js','./src/traffic.js','./src/discoveries.js','./src/cosmetic-render.js','./src/cosmetic-catalog.js','./src/cosmetic-art.js','./src/baked-assets.js','./assets/baked/manifest.json','./src/impact-fx.js','./src/ball-visuals.js','./src/ball-spin.js','./assets/materials-atlas-v2.png',
  './assets/strike.mp3','./assets/audio/bat-cgeffex.wav','./assets/baseball.webp',
  './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
@@ -6,15 +6,15 @@ const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/
  
  './assets/batter/contact.webp','./assets/batter/follow.webp',
  './icons/icon-32.png','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png',
- './icons/icon-32.png?v=0.66.0','./icons/icon-180.png?v=0.66.0','./icons/icon-192.png?v=0.66.0','./icons/icon-512.png?v=0.66.0',
- './manifest.webmanifest?v=0.66.0','./style.css?v=0.66.0','./src/main.js?v=0.66.0','./src/game.js?v=0.66.0',
- './src/pitcher.js?v=0.66.0','./src/world.js?v=0.66.0','./src/biomes.js?v=0.66.0','./src/engine.js?v=0.66.0','./src/logic.js?v=0.66.0',
- './src/audio.js?v=0.66.0','./src/rewarded.js?v=0.66.0','./src/aiming.js?v=0.66.0',
- './src/sprites.js?v=0.66.0','./src/traffic.js?v=0.66.0','./src/discoveries.js?v=0.66.0','./src/cosmetic-render.js?v=0.66.0','./src/cosmetic-catalog.js?v=0.66.0','./src/cosmetic-art.js?v=0.66.0','./src/baked-assets.js?v=0.66.0','./src/impact-fx.js?v=0.66.0','./src/ball-visuals.js?v=0.66.0','./src/ball-spin.js?v=0.66.0','./assets/materials-atlas-v2.png?v=0.66.0','./assets/strike.mp3?v=0.66.0','./assets/audio/bat-cgeffex.wav?v=0.66.0'];
+ './icons/icon-32.png?v=0.67.0','./icons/icon-180.png?v=0.67.0','./icons/icon-192.png?v=0.67.0','./icons/icon-512.png?v=0.67.0',
+ './manifest.webmanifest?v=0.67.0','./style.css?v=0.67.0','./src/main.js?v=0.67.0','./src/game.js?v=0.67.0',
+ './src/pitcher.js?v=0.67.0','./src/world.js?v=0.67.0','./src/biomes.js?v=0.67.0','./src/engine.js?v=0.67.0','./src/logic.js?v=0.67.0',
+ './src/audio.js?v=0.67.0','./src/rewarded.js?v=0.67.0','./src/aiming.js?v=0.67.0',
+ './src/sprites.js?v=0.67.0','./src/traffic.js?v=0.67.0','./src/discoveries.js?v=0.67.0','./src/cosmetic-render.js?v=0.67.0','./src/cosmetic-catalog.js?v=0.67.0','./src/cosmetic-art.js?v=0.67.0','./src/baked-assets.js?v=0.67.0','./src/impact-fx.js?v=0.67.0','./src/ball-visuals.js?v=0.67.0','./src/ball-spin.js?v=0.67.0','./assets/materials-atlas-v2.png?v=0.67.0','./assets/strike.mp3?v=0.67.0','./assets/audio/bat-cgeffex.wav?v=0.67.0'];
 const OPTIONAL_AUDIO=[
- './assets/audio/bat-cgeffex.mp3?v=0.66.0',
- './assets/audio/asphalt-ball.mp3?v=0.66.0',
- './assets/audio/wall-ball.mp3?v=0.66.0'
+ './assets/audio/bat-cgeffex.mp3?v=0.67.0',
+ './assets/audio/asphalt-ball.mp3?v=0.67.0',
+ './assets/audio/wall-ball.mp3?v=0.67.0'
 ];
 // Las grabaciones CC0 no deben impedir la instalación si Freesound
 // falla durante la compilación; los originales de PCM sí son obligatorios.
@@ -31,7 +31,7 @@ self.addEventListener('install',e=>e.waitUntil(
    ...manifest.balls.map(id=>'./assets/baked/balls/'+id+'.webp')
   ];
   if(previews.length!==100)throw Error('Catálogo incompleto');
-  for(let i=0;i<previews.length;i+=12)await cache.addAll(previews.slice(i,i+12).map(p=>p+'?v=0.66.0'));
+  for(let i=0;i<previews.length;i+=12)await cache.addAll(previews.slice(i,i+12).map(p=>p+'?v=0.67.0'));
  }).then(()=>self.skipWaiting())
 ));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

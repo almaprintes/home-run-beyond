@@ -297,11 +297,33 @@ def save(img,path,lossless=False):
     else:
         img.save(path,"WEBP",quality=87,method=4,exact=True)
 
+# Same grip and tip coordinates as WEAPON_POSES. No engine changes.
+CLASSIC_ANCHORS={
+ "ready":((194,347),(50,153),(26,4)),
+ "watch":((177,347),(50,153),(27,4)),
+ "loaded":((207,355),(35,129),(86,3)),
+ "contact":((359,286),(202,145),(319,126)),
+ "follow":((289,306),(108,83),(3,80)),
+}
+APPROVED_CLASSIC=ROOT/"assets"/"approved"/"bats"/"classic.webp"
+def apply_classic_bat(frame,reference,pose,bat):
+    from PIL import ImageChops
+    body=frame.copy()
+    body.putalpha(ImageChops.multiply(body.getchannel("A"),ImageChops.invert(legacy_bat_mask(reference,pose))))
+    (rw,rh),(gx,gy),(tx,ty)=CLASSIC_ANCHORS[pose]
+    w,h=frame.size;gx*=w/rw;gy*=h/rh;tx*=w/rw;ty*=h/rh
+    c=(tx-gx)/292;s=(ty-gy)/292;den=c*c+s*s
+    affine=(c/den,s/den,18-(c*gx+s*gy)/den,-s/den,c/den,58-(-s*gx+c*gy)/den)
+    weapon=bat.transform(frame.size,Image.Transform.AFFINE,affine,resample=Image.Resampling.BICUBIC)
+    return opaque_core(Image.alpha_composite(weapon,body))
+
 def main():
     outfits=catalog("outfit");bats=catalog("bat");balls=catalog("ball")
     if (len(outfits),len(bats),len(balls))!=(33,35,32):
         raise ValueError("Unexpected cosmetic catalogue size")
     total=0
+    classic=Image.open(APPROVED_CLASSIC).convert('RGBA')
+    if classic.size!=(320,116):raise ValueError('Invalid approved classic bat dimensions')
     for pose in POSES:
         src=Image.open(ROOT/"assets"/"batter"/(pose+".webp")).convert("RGBA")
         src=opaque_core(repair_reference(src,pose))
@@ -316,9 +338,15 @@ def main():
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
                 baked=bake_uniform(src,item,pose,nobat)
+                if not nobat:baked=apply_classic_bat(baked,src,pose,classic)
                 save(baked,path);verify_uniform(path,baked);total+=1
     for item in bats:
-        save(draw_bat(item),OUT/"bats"/(item["id"]+".webp"));total+=1
+        path=OUT/"bats"/(item["id"]+".webp")
+        if item["id"]=="classic":
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_bytes(APPROVED_CLASSIC.read_bytes())
+        else:save(draw_bat(item),path)
+        total+=1
     for item in balls:
         path=OUT/"balls"/(item["id"]+".webp")
         save(draw_ball(item),path,lossless=True)
