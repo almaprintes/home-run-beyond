@@ -25,3 +25,9 @@ test('rubí y oceánico conservan el asset aprobado byte por byte',()=>{
   assert.deepEqual(baked,source);assert.equal(createHash('sha1').update('blob '+source.length+'\0').update(source).digest('hex'),sha);
  }
 });
+
+test('fibra de carbono: el archivo aprobado se conserva byte por byte',()=>{
+ const source=readFileSync(new URL('../assets/approved/bats/carbono.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/bats/carbono.webp',import.meta.url));
+ assert.deepEqual(baked,source);assert.equal(createHash('sha1').update('blob '+source.length+'\0').update(source).digest('hex'),'74a270f213b371e38ecdcaaa26b1cfda5204a563');
+});

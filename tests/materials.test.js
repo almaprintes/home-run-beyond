@@ -81,7 +81,7 @@ test('mipmaps por capa, anisotropía y filtrado de distancia evitan shimmering',
  assert.match(code,/EXT_texture_filter_anisotropic/);
  assert.match(code,/gl\.texParameterf\(gl\.TEXTURE_2D_ARRAY/);
  assert.match(code,/1\.-\.68\*smoothstep\(185\.,650\.,vFog\)/);
- assert.match(code,/atlas\.src='\.\/assets\/materials-atlas-v2\.png\?v=0\.74\.0'/);
+ assert.match(code,/atlas\.src='\.\/assets\/materials-atlas-v2\.png\?v=0\.75\.0'/);
 });
 
 test('carga GPU sube 12 capas y genera los mipmaps una sola vez',()=>{
