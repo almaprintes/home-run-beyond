@@ -28,7 +28,7 @@ test('tenis es feltro con dos surcos claros dibujados en la mitad frontal de la 
  assert.match(pattern,/251,252,235,255/,'el canal claro debe contrastar con el fieltro');
  assert.match(ballCode,/tennis felt grooves missing or too faint/,'el arte horneado se comprueba píxel a píxel en CI');
  const path=bakedAssetUrl('ball','tenis');
- assert.ok(path.includes('tenis.webp?v=0.72.0'),'la versión debe invalidar el asset antiguo del iPhone');
+ assert.ok(path.includes('tenis.webp?v=0.73.0'),'la versión debe invalidar el asset antiguo del iPhone');
 });
 test('pelota amarilla no es Mini Sol y ambos artículos permanecen disponibles',()=>{
  const yellow=BALL_CATALOG.find(i=>i.id==='sun');
@@ -79,4 +79,10 @@ test('dorada es oro pulido con costuras metálicas, no otra pelota amarilla',()=
  const py=readFileSync(new URL('../tools/ball_art.py',import.meta.url),'utf8');
  assert.match(py,/return polished_gold_baseball\(original\)/);
  assert.match(py,/gold ball must contain bright reflections and dark metallic contrast/);
+});
+
+test('pelota negra sin halo blanco: precio 720 y validación de silueta y costuras',()=>{
+ assert.equal(BALL_CATALOG.find(x=>x.id==='negra').price,720);
+ const py=readFileSync(new URL('../tools/ball_art.py',import.meta.url),'utf8');
+ assert.match(py,/return black_baseball\(original, color\)/);assert.match(py,/white fringe on black baseball/);
 });

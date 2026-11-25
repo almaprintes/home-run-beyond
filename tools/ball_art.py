@@ -130,6 +130,32 @@ def polished_gold_baseball(original):
     return result
 
 
+def black_baseball(original, color):
+    """Re-composite red thread edge pixels onto dark leather, not white leather."""
+    result = original.copy()
+    src, dst = original.load(), result.load()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            r,g,b,a = src[x,y]
+            if not a:
+                continue
+            light = max(.13,min(1.12,(r*.25+g*.65+b*.10)/246))
+            shade = .22+.79*light
+            leather = tuple(min(255,round(c*shade+max(0,light-.91)*48)) for c in color)
+            # The red excess is a soft estimate of original thread coverage.
+            # Pale antialiased edges contained WHITE leather in the source.
+            chroma = r-max(g,b)
+            coverage = max(0.,min(1.,(chroma-13)/78))
+            coverage = coverage*coverage*(3-2*coverage)
+            if r>82 and r>g*1.21 and r>b*1.16 and max(g,b)<=100:
+                coverage=1.
+                thread=(r,g,b)
+            else:
+                thread=(min(240,r),min(90,g),min(90,b))
+            dst[x,y]=(*(round(c+(t-c)*coverage) for c,t in zip(leather,thread)),a)
+    return result
+
+
 def restored_baseball(item):
     """Keep original 3D stitches and leather shading; tint ONLY leather pixels."""
     original = Image.open(APPROVED_BASEBALL).convert("RGBA")
@@ -140,6 +166,8 @@ def restored_baseball(item):
         return polished_gold_baseball(original)
 
     color = rgb(item["color"])
+    if item["id"] == "negra":
+        return black_baseball(original, color)
     result = original.copy()
     source_px = original.load()
     target_px = result.load()
@@ -403,6 +431,10 @@ def verify_ball(path, design):
                         # Same silhouette/relief, but metallic bronze instead of red.
                         if pa!=aa or not (pr>=pg>=pb) or pg<pr*.38:
                             altered_stitches+=1
+                    elif path.stem=='negra':
+                        pr,pg,pb,pa=px[sx,sy]
+                        if pa!=aa or (max(gg,bb)<=100 and px[sx,sy]!=original[sx,sy]):
+                            altered_stitches+=1
                     elif px[sx,sy]!=original[sx,sy]:
                         altered_stitches+=1
         if seam_pixels<70:
@@ -415,6 +447,11 @@ def verify_ball(path, design):
             values=[px[x,y] for y in range(30,130) for x in range(30,130) if (x-80)**2+(y-80)**2<48**2]
             if not any(r>=245 and g>=225 and b>=130 for r,g,b,a in values) or not any(r<145 and g<95 for r,g,b,a in values):
                 raise ValueError('gold ball must contain bright reflections and dark metallic contrast')
+        if path.stem=="negra":
+            if img.getchannel("A").tobytes()!=reference.getchannel("A").tobytes():
+                raise ValueError("black ball silhouette changed")
+            if any(a>0 and (g>105 or b>105) for r,g,b,a in img.getdata()):
+                raise ValueError("white fringe on black baseball")
         if path.stem=="classic":
             differences=sum(px[x,y]!=original[x,y]
                             for y in range(25,135) for x in range(25,135)

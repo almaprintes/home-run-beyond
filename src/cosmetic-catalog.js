@@ -94,7 +94,7 @@ sky|Pelota azul|280|baseball|#9cdafa|#e35b52|⚾
 sun|Pelota amarilla|620|baseball|#ffd26c|#d65b4d|⚾
 mint|Pelota verde menta|620|baseball|#a1f0c4|#d95659|⚾
 lilac|Pelota lavanda|620|baseball|#ccb0fc|#d85b6a|⚾
-negra|Pelota negra|620|baseball|#343744|#e8a259|⚾
+negra|Pelota negra|720|baseball|#343744|#e8a259|⚾
 dorada|Pelota dorada|2300|baseball|#d9a52e|#8b5010|⚾
 rosa|Pelota rosa|620|baseball|#f5a6cc|#ffffff|⚾
 arcoiris|Pelota arcoíris|3500|rainbow|#f7d973|#76dcea|🌈
