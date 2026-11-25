@@ -2,7 +2,7 @@
 // Comprar/equipar es otra acción: el precio orienta cuándo revelar cada objeto,
 // pero gastar en habilidades nunca hace retroceder los descubrimientos.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.0';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.7';
 
 export const COLLECTIONS=Object.freeze({bat:BAT_CATALOG,outfit:OUTFIT_CATALOG,ball:BALL_CATALOG});
 export const STARTER_DISCOVERIES=Object.freeze(['bat:classic','outfit:red','ball:classic']);
