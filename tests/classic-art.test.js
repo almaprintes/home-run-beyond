@@ -37,3 +37,9 @@ test('neón eléctrico: el archivo aprobado se conserva byte por byte',()=>{
  const baked=readFileSync(new URL('../assets/baked/bats/neon.webp',import.meta.url));
  assert.deepEqual(baked,source);assert.equal(createHash('sha1').update('blob '+source.length+'\0').update(source).digest('hex'),'f60ef1693681a44d94a44a92a6ca1add4814b75c');
 });
+
+test('baguette crujiente: se publica el asset aprobado sin cambios de bytes',()=>{
+ const source=readFileSync(new URL('../assets/approved/bats/baguette.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/bats/baguette.webp',import.meta.url));
+ assert.deepEqual(baked,source);assert.equal(createHash('sha1').update('blob '+source.length+'\0').update(source).digest('hex'),'2cba0b5066b5e3781839645ff8453a7e54af924e');
+});
