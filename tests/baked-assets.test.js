@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from '../src/cosmetic-catalog.js';
-import {BAKED_ASSET_COUNT,OUTFIT_POSES,bakedAssetUrl,ballRenderMode,equippedAssetPaths,WEAPON_POSES} from '../src/baked-assets.js';
+import {BAKED_ASSET_COUNT,OUTFIT_POSES,bakedAssetUrl,ballRenderMode,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from '../src/baked-assets.js';
 import {BatterSprites} from '../src/sprites.js';
 import {initialSave,calculateShot,coinRewardBreakdown,sanitizeSave,equipCosmetic} from '../src/logic.js';
 
@@ -258,3 +258,15 @@ test('approved rake artwork survives the bake byte for byte',()=>{
 });
 
  test('approved pirate peg leg artwork is preserved exactly',()=>{const approved=readFileSync(new URL('../assets/approved/bats/pata_de_palo.webp',import.meta.url));const baked=readFileSync(new URL('../assets/baked/bats/pata_de_palo.webp',import.meta.url));assert.deepEqual(baked,approved);assert.equal(approved.toString('ascii',8,12),'WEBP');assert.match(bakedAssetUrl('bat','pata_de_palo'),/v=0\.77\.21$/);assert.equal(BAT_CATALOG.find(x=>x.id==='pata_de_palo').price,5900);});
+
+ test('Blaugrana usa cinco poses completas de futbolista, con y sin bate, y conserva sus anclas',()=>{
+ const item=OUTFIT_CATALOG.find(x=>x.id==='futbol_azulgrana');
+ assert.equal(item.name,'Fútbol Blaugrana');assert.equal(item.price,2700);
+ assert.deepEqual(OUTFIT_WEAPON_POSES.futbol_azulgrana,OUTFIT_WEAPON_POSES.futbol_rojo);
+ for(const pose of OUTFIT_POSES)for(const noBat of [false,true]){
+  const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.29$/);
+  assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
+ }
+ const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
+ assert.match(generator,/blaugrana_uniform\(baked,pose\)/);
+ });

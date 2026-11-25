@@ -402,6 +402,32 @@ def betis_uniform(image,pose):
                     px[x,y]=tuple(round(v+(n-v)*t) for v,n in zip((r,g,b),new))+(a,)
     return out
 
+def blaugrana_uniform(image,pose):
+    """Full football character variant, preserving the approved pose and alpha."""
+    out=image.convert("RGBA");px=out.load();w,h=out.size
+    low,high={'ready':(230,286),'watch':(230,286),'loaded':(235,295),'contact':(229,295),'follow':(230,292)}[pose]
+    clamp=lambda x:max(0,min(1,x))
+    for y in range(140,h):
+        for x in range(w):
+            r,g,b,a=px[x,y]
+            if not a:continue
+            red=clamp((r-max(g,b)-18)/30)*clamp((r/(g+1)-1.70)/.35)*clamp((b+20-g)/10)
+            if red:
+                col=(min(255,.66*r+.20*g),min(255,.20*r+.24*g),min(255,.33*r+.42*b))
+                px[x,y]=tuple(round(v+(n-v)*red) for v,n in zip((r,g,b),col))+(a,)
+                continue
+            lum=(r+g+b)/3;spread=max(r,g,b)-min(r,g,b)
+            white=clamp((32-spread)/18)*clamp((lum-95)/65) if y<329 else 0
+            if white:
+                col=(.20*lum,.35*lum,min(255,.76*lum+18))
+                px[x,y]=tuple(round(v+(n-v)*white) for v,n in zip((r,g,b),col))+(a,)
+                continue
+            dark=clamp((25-spread)/12)*clamp((115-lum)/25) if low<=y<=high else 0
+            if dark:
+                col=(.60*lum,.75*lum,min(255,1.22*lum+8))
+                px[x,y]=tuple(round(v+(n-v)*dark) for v,n in zip((r,g,b),col))+(a,)
+    return out
+
 def wimbledon_uniform(image,pose):
     """White tennis whites on the validated complete character, no helmet."""
     out=image.convert("RGBA");px=out.load();w,h=out.size
@@ -445,13 +471,14 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
-                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"]=="futbol_verde" else item["id"])
+                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"] in ("futbol_verde","futbol_azulgrana") else item["id"])
                 if approved.is_dir():
                     # Approved complete character, never recolor or mask its body.
                     anchors=json.loads((approved/"anchors.json").read_text(encoding="utf-8"))
                     source=approved/(pose+"-nobat.webp")
                     baked=opaque_core(Image.open(source).convert("RGBA"))
                     if item["id"]=="futbol_verde":baked=betis_uniform(baked,pose)
+                    if item["id"]=="futbol_azulgrana":baked=blaugrana_uniform(baked,pose)
                     if not nobat:
                         anchor=anchors[pose];w,h=baked.size
                         gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h
