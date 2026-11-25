@@ -1,18 +1,18 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.18';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.18';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.18';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.18';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.77.18';
-import {GameAudio} from './audio.js?v=0.77.18';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.18';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.18';
-import {BatterSprites} from './sprites.js?v=0.77.18';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.18';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.18';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.18';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.77.18';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.18';
-import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.18';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.19';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.19';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.19';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.19';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.77.19';
+import {GameAudio} from './audio.js?v=0.77.19';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.19';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.19';
+import {BatterSprites} from './sprites.js?v=0.77.19';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.19';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.19';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.19';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.77.19';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.19';
+import {planGullEncounter,traceGullCollision,gullDeflection} from './gulls.js?v=0.77.19';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -600,7 +600,17 @@ export class BaseballGame{
     WORLD_CENTER_X+WORLD_HALF_WIDTH-radius);
    b.maxZ=Math.max(b.maxZ,b.z);
   this.simElapsed+=dt;
-  const ground=groundAt(b.x,b.z);
+  let ground=groundAt(b.x,b.z);
+  // A fast ball may cross a narrow slab during a single physics substep.
+  // Classify the first touchdown, not the point after crossing its edge.
+  if(!hit&&b.y<=ground.y+radius&&prev.y>ground.y+radius&&b.vy<0){
+   const t=clamp((prev.y-ground.y-radius)/(prev.y-b.y),0,1);
+   const x=prev.x+(b.x-prev.x)*t,z=prev.z+(b.z-prev.z)*t;
+   const contact=groundAt(x,z);
+   if(contact.type!==ground.type&&(contact.type==='paving'||ground.type==='paving')&&Math.abs(contact.y-ground.y)<1e-6){
+    b.x=x;b.z=z;ground=contact;
+   }
+  }
   if(b.y<=ground.y+radius){
    b.y=ground.y+radius;
    const type=ground.type;

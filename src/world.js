@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.18';
-import {drawGulls} from './gulls.js?v=0.77.18';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.18';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.18';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.18';
+import {lerp} from './engine.js?v=0.77.19';
+import {drawGulls} from './gulls.js?v=0.77.19';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.19';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.19';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.19';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -373,23 +373,71 @@ export function terrainParcels(chunk){
  if(chunk>0&&chunk<8)urbanParcels.set(chunk,parcels);
  return parcels;
 }
-function pavedGroundAt(x,z){
- if(z<180||z>1799)return false;
- // Small paving slabs next to urban building/tree cells.
- const i=Math.round((x-24)/60),j=Math.round((z-295)/60);
- if(i>=-4&&i<=4&&j>=0&&j<=24&&!roadAt(270+j*60)&&!riverAt(270+j*60)&&
-    Math.abs(x-(i*60+24))<=4&&Math.abs(z-(295+j*60))<=4)return true;
- let top=null;
- const chunk=Math.floor(z/200);
- // Adjacent parcels can overlap across chunk boundaries.
- for(let c=Math.max(0,chunk-1);c<=Math.min(8,chunk+1);c++){
+// Resolve urban ground once, in world space, into non-overlapping rectangles.
+// Rendering and physics consume the same tiles, independent of camera/LOD.
+const URBAN_FIRST=3,URBAN_LAST=32,urbanTileCache=new Map();
+const bounds=p=>({x0:p.x-p.w/2,x1:p.x+p.w/2,z0:p.z-p.d/2,z1:p.z+p.d/2});
+function intersection(a,b){
+ const r={x0:Math.max(a.x0,b.x0),x1:Math.min(a.x1,b.x1),z0:Math.max(a.z0,b.z0),z1:Math.min(a.z1,b.z1)};
+ return r.x1-r.x0>1e-7&&r.z1-r.z0>1e-7?r:null;
+}
+function subtractRect(a,b){
+ const cut=intersection(a,b);if(!cut)return [a];
+ return [
+  {x0:a.x0,x1:cut.x0,z0:a.z0,z1:a.z1},
+  {x0:cut.x1,x1:a.x1,z0:a.z0,z1:a.z1},
+  {x0:cut.x0,x1:cut.x1,z0:a.z0,z1:cut.z0},
+  {x0:cut.x0,x1:cut.x1,z0:cut.z1,z1:a.z1}
+ ].filter(r=>r.x1-r.x0>1e-7&&r.z1-r.z0>1e-7);
+}
+export function urbanGroundTiles(band){
+ if(!Number.isInteger(band)||band<URBAN_FIRST||band>URBAN_LAST)return [];
+ if(urbanTileCache.has(band))return urbanTileCache.get(band);
+ const z0=band*50,z1=z0+50,mid=z0+25;
+ const area={x0:WORLD_CENTER_X-WORLD_HALF_WIDTH,x1:WORLD_CENTER_X+WORLD_HALF_WIDTH,z0,z1};
+ const candidates=[];
+ // Roads and river banks keep their established physical priority.
+ for(let c=Math.max(0,Math.floor(z0/200)-1);c<=Math.min(8,Math.floor(z1/200)+1);c++){
   if(riverAt(c*200+100))continue;
   for(const p of terrainParcels(c)){
-   if(Math.abs(x-p.x)>p.w/2||Math.abs(z-p.z)>p.d/2)continue;
-   if(!top||p.offset>=top.offset)top=p;
+   const priority=p.offset>-.035?40:p.material==='paving'?30:p.material==='dirt'?20:10;
+   candidates.push({...p,priority});
   }
  }
- return top?.material==='paving';
+ // The small square slabs used to be separate decorative boxes.
+ for(let j=0;j<=24;j++){
+  const z=270+j*60;if(roadAt(z)||riverAt(z))continue;
+  if(z+29<=z0||z+21>=z1)continue;
+  for(let i=-4;i<=4;i++)candidates.push({x:i*60+24,z:z+25,w:8,d:8,material:'paving',color:'#b9b8ad',priority:50});
+ }
+ candidates.sort((a,b)=>b.priority-a.priority);
+ const protectedRects=[];
+ for(let c=1;c<=9;c++){
+  const z=200*c+65;
+  if(z+14>z0&&z-14<z1)protectedRects.push({...area,z0:z-14,z1:z+14});
+ }
+ // Do not draw paving through the existing river/bank overlay.
+ protectedRects.push({...area,z0:1620,z1:1740});
+ const tiles=[],covered=[];
+ const emit=(rect,p)=>tiles.push({...rect,x:(rect.x0+rect.x1)/2,z:(rect.z0+rect.z1)/2,
+  w:rect.x1-rect.x0,d:rect.z1-rect.z0,material:p.material,color:p.color});
+ for(const p of candidates){
+  const rect=intersection(bounds(p),area);if(!rect)continue;
+  let pieces=[rect];
+  for(const cut of [...protectedRects,...covered])pieces=pieces.flatMap(r=>subtractRect(r,cut));
+  for(const piece of pieces){emit(piece,p);covered.push(piece);}
+ }
+ // Fill every remaining part of the band with base ground, never underneath
+ // another tile at the same depth. All tiles have exactly one material.
+ let empty=[area];for(const cut of covered)empty=empty.flatMap(r=>subtractRect(r,cut));
+ for(const rect of empty)emit(rect,{material:groundVisualMaterial(mid),color:terrainBaseColor(mid)});
+ urbanTileCache.set(band,tiles);
+ return tiles;
+}
+function pavedGroundAt(x,z){
+ if(z<URBAN_FIRST*50||z>=(URBAN_LAST+1)*50)return false;
+ const tiles=urbanGroundTiles(Math.floor(z/50));
+ return tiles.some(p=>p.material==='paving'&&x>=p.x0&&x<p.x1&&z>=p.z0&&z<p.z1);
 }
 export function terrainBaseColor(z){return biomeColorAt(z)}
 export function groundVisualMaterial(z){
@@ -476,13 +524,20 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
     const h=worldHeight(WORLD_CENTER_X,mid);
     for(let band=0;band<4;band++){
      const zz=chunk*200+band*50+25;
-     r.field(WORLD_CENTER_X,worldHeight(WORLD_CENTER_X,zz)-.18,zz,WORLD_WIDTH,50.3,
+     const urbanBand=chunk*4+band;
+     if(urbanBand>=URBAN_FIRST&&urbanBand<=URBAN_LAST){
+      for(const p of urbanGroundTiles(urbanBand))r.field(p.x,-.18,p.z,p.w,p.d,p.color,0,p.material);
+     }else r.field(WORLD_CENTER_X,worldHeight(WORLD_CENTER_X,zz)-.18,zz,WORLD_WIDTH,50.3,
       terrainBaseColor(zz),0,groundVisualMaterial(zz));
     }
     // Cerca de la cámara, el césped alterna tierra seca y solares pavimentados.
     // Pocas parcelas grandes: más legibles que cientos de puntitos con shimmer.
     if(Math.abs(mid-viewZ)<coverage.detail+320 && !riverAt(mid)){
-     for(const p of terrainParcels(chunk))r.field(p.x,h+p.offset,p.z,p.w,p.d,p.color,0,p.material);
+     if(chunk>=9)for(const p of terrainParcels(chunk))r.field(p.x,h+p.offset,p.z,p.w,p.d,p.color,0,p.material);
+     else if(chunk===0)for(const p of terrainParcels(chunk)){
+      const clipped=intersection(bounds(p),{x0:WORLD_CENTER_X-WORLD_HALF_WIDTH,x1:WORLD_CENTER_X+WORLD_HALF_WIDTH,z0:0,z1:150});
+      if(clipped)r.field((clipped.x0+clipped.x1)/2,h+p.offset,(clipped.z0+clipped.z1)/2,clipped.x1-clipped.x0,clipped.z1-clipped.z0,p.color,0,p.material);
+     }
     }
    }
    // El cauce ocupa 490 m dentro del corredor de 600 m.
@@ -499,7 +554,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
  }
  if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-4;i<=4;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
  if(!b){drawTree(x,z,8+rand(n+5)*6,n);drawTree(x+15,z+12,5+rand(n+7)*6,n+32)}
- else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall);r.box(x+24,.13,z+25,8,.20,8,'#b9b8ad',0,0,0,'paving')}}}
+ else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall);}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
  for(const patch of WET_PATCHES){
   if(Math.abs(patch.z-viewZ)>700)continue;
