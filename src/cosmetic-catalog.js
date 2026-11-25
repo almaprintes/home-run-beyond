@@ -68,7 +68,7 @@ basket_negro|Baloncesto Canarias|3600|basket|#27303e|#f4c357|🏀
 basket_rojo|Baloncesto rojo|3800|basket|#d75c54|#f6f3e9|🏀
 basket_lila|Baloncesto violeta|3900|basket|#9369d3|#ffe39d|🏀
 hockey_hielo|Hockey sobre hielo|4400|hockey|#7cc9eb|#1b3455|🏒
-tenis_blanco|Tenista blanco|3100|polo|#f7f8ed|#56ba83|🎾
+tenis_blanco|Tenista Wimbledon|3100|polo|#f7f8ed|#56ba83|🎾
 rugby_verde|Rugby verde|4700|hoops|#327a4e|#e9bc74|🏉
 ciclismo|Maillot ciclista|4800|cycling|#35bfc2|#f8dd57|🚴
 atletismo|Velocista neón|4000|running|#f67f4a|#6cead6|🏃

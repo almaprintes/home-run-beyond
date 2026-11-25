@@ -243,11 +243,20 @@ def draw_ball(item):
     d=Painter(details)
 
     if mode=="rainbow":
-        colors=[(226,86,91,255),(249,167,76,255),(245,226,106,255),
-                (101,198,111,255),(82,169,218,255),(156,115,204,255)]
-        for i,c in enumerate(colors):
-            d.pieslice(BODY,i*60,(i+1)*60,c)
-        d.ellipse((74,74,86,86),(245,245,235,255))
+        # Curved bands mapped onto a sphere, rather than a flat pie chart.
+        palette=[(235,55,88),(255,144,43),(251,224,73),(60,196,108),(53,160,235),(133,78,230),(219,71,184)]
+        p=body.load()
+        for yy in range(19*SCALE,141*SCALE+1):
+            for xx in range(19*SCALE,141*SCALE+1):
+                u=(xx/SCALE-80)/61;v=(yy/SCALE-80)/61
+                rr=u*u+v*v
+                if rr>1:continue
+                z=math.sqrt(1-rr)
+                q=max(0,min(6.999,((.38*u+.83*v+.40*z)+1)*3.5))
+                col=palette[int(q)]
+                edge=min(q%1,1-q%1)
+                seam=1-.10*math.exp(-(edge/.035)**2)
+                p[xx,yy]=tuple(round(c*seam) for c in col)+(255,)
     elif mode=="sun":
         d.ellipse((28,28,132,132),(255,199,64,255))
         d.ellipse((47,42,96,88),(255,236,130,120))
@@ -291,28 +300,20 @@ def draw_ball(item):
         d.ellipse((50,47,110,110),(255,255,249,255))
         d.text((80,79),"8",(19,21,28,255),38)
     elif mode=="tennis":
-        # Tennis is FELT with recessed WHITE CURVED GROOVES, not a smooth
-        # green baseball. The previous arcs sat along the outer silhouette
-        # and vanished when downsampled to the 20-36px moving ball.
-        # Broad spherical shading keeps the ball readable on light grass.
-        d.ellipse((30,39,148,150),(47,81,18,39))
-        d.ellipse((26,23,116,96),(248,255,173,53))
-        rnd=random.Random("tennis-felt-v44")
-        for i in range(980):
-            x=rnd.uniform(21,139);y=rnd.uniform(21,139)
-            if (x-80)**2+(y-80)**2>59**2:continue
-            size=rnd.choice((.45,.65,.9,1.2))
-            tone=(240,255,164,25) if i%3 else (81,118,34,26)
-            d.ellipse((x-size,y-size,x+size,y+size),tone)
-        # Two continuous S-curves across the frontal hemisphere.
-        left=(bezier(((65,27),(32,37),(29,65),(58,78)))+
-              bezier(((58,78),(80,94),(75,115),(65,133))))
+        # Felt and two opposing C-shaped continuous seams. Endpoints lie
+        # BEYOND the silhouette, so no disconnected decorative white ends.
+        rnd=random.Random("tennis-felt-v78")
+        for i in range(3200):
+            x=rnd.uniform(19,141);y=rnd.uniform(19,141)
+            if (x-80)**2+(y-80)**2>61**2:continue
+            size=rnd.choice((.20,.35,.50,.70))
+            tone=(240,255,164,70) if i%3 else (72,102,19,55)
+            d.line([(x,y),(x+size*.8,y-size)],tone,size)
+        left=bezier(((21,8),(82,47),(82,113),(21,152)),steps=100)
         right=[(160-x,y) for x,y in left]
         for seam in (left,right):
-            # Dark recessed channel, cream felt seam and one fine glint.
-            d.line(seam,(105,138,36,220),11)
-            d.line(seam,(251,252,235,255),7)
-            d.line([(x-1,y-1) for x,y in seam],(255,255,249,128),2)
+            d.line(seam,(107,135,37,255),6.5)
+            d.line(seam,(251,252,235,255),4.5)
     elif mode=="beach":
         colors=[(246,84,93,255),(246,213,81,255),(78,181,222,255),
                 (95,206,133,255),(245,245,240,255),(154,102,205,255)]
@@ -379,6 +380,20 @@ def draw_ball(item):
     # an opaque ball. Deliberate outer silhouettes (Sun/Saturn) stay behind.
     details.putalpha(ImageChops.multiply(details.getchannel("A"),mask))
     body.alpha_composite(details)
+    if mode in ("rainbow","tennis"):
+        # Directional lighting follows spherical normals, not a flat ellipse.
+        p=body.load()
+        for yy in range(19*SCALE,141*SCALE+1):
+            for xx in range(19*SCALE,141*SCALE+1):
+                u=(xx/SCALE-80)/61;v=(yy/SCALE-80)/61
+                rr=u*u+v*v
+                if rr>1:continue
+                z=math.sqrt(1-rr)
+                r,g,b,a=p[xx,yy]
+                lit=max(0,-.38*u-.43*v+.82*z)
+                shade=.66+.37*lit+.10*z
+                gloss=(65 if mode=="rainbow" else 13)*max(0,-.32*u-.40*v+.86*z)**24
+                p[xx,yy]=tuple(max(0,min(255,round(c*shade+gloss))) for c in (r,g,b))+(a,)
     body.putalpha(mask)
     outer.alpha_composite(body)
     return outer.resize((SIZE,SIZE),Image.Resampling.LANCZOS)

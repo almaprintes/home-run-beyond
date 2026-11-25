@@ -193,7 +193,68 @@ def bake_uniform(original,item,pose,remove_bat=False):
                     p[x,y]=(0,0,0,0)
     return opaque_core(base)
 
+def nova_bat():
+    """Metallic violet barrel with cyan inlays on the exact approved bat alpha."""
+    src=Image.open(APPROVED_CLASSIC).convert("RGBA")
+    out=src.copy();p=out.load();w,h=out.size
+    alpha=src.getchannel("A");a=alpha.load()
+    for x in range(w):
+        ys=[y for y in range(h) if a[x,y]>120]
+        if not ys:continue
+        mid=(ys[0]+ys[-1])/2;radius=max(1,(ys[-1]-ys[0])/2)
+        for y in range(h):
+            r,g,b,aa=p[x,y]
+            if not aa:continue
+            v=(y-mid)/radius
+            curve=math.sqrt(max(0,1-v*v))
+            stripe=math.exp(-((v+.43)/.19)**2)
+            light=.35+.42*curve+.42*stripe
+            if x<76:
+                weave=.09 if (x//3+y//2)%2 else 0
+                c=(22+65*light+weave*100,25+67*light,35+80*light)
+            else:
+                hue=.5+.5*math.sin(x*.025)
+                c=((105+70*hue)*light,(65+30*hue)*light,(190+52*hue)*light)
+                # Narrow recessed diagonal inlays, each with a cyan core.
+                groove=(x+v*12)%37
+                if x>109 and x<285 and abs(v)<.77:
+                    if groove<5:c=tuple(q*.44 for q in c)
+                    if 1<groove<3:c=(90+58*curve,205+42*curve,250)
+                if stripe>.75:c=tuple(q+27*stripe for q in c)
+            p[x,y]=tuple(max(0,min(255,round(q))) for q in c)+(aa,)
+    out.putalpha(alpha)
+    return out
+
+def closed_umbrella():
+    """Folded fabric canopy, metal ferrule, strap and curved handle."""
+    scale=3;img=Image.new("RGBA",(320*scale,116*scale));d=ImageDraw.Draw(img)
+    def line(points,color,width):
+        d.line([(round(x*scale),round(y*scale)) for x,y in points],fill=color,width=round(width*scale),joint="curve")
+    def poly(points,color):
+        d.polygon([(round(x*scale),round(y*scale)) for x,y in points],fill=color)
+    def ellipse(box,color):
+        d.ellipse(tuple(round(v*scale) for v in box),fill=color)
+    # Dark rubber J handle, chrome shaft, long tapered folded canopy.
+    curve=[(75,57),(31,57),(18,61),(13,73),(17,84),(27,88),(37,83)]
+    line(curve,(24,31,41,255),14);line(curve,(61,71,85,255),7)
+    line([(65,57),(310,57)],(123,143,165,255),8)
+    line([(70,54),(310,54)],(224,231,238,255),2)
+    poly([(76,56),(106,31),(177,30),(239,42),(291,55),(240,70),(167,83),(110,78)],(24,53,100,255))
+    poly([(76,56),(107,33),(177,30),(239,42),(291,55),(171,48),(110,47)],(72,134,205,255))
+    poly([(76,56),(110,47),(171,48),(291,55),(167,64),(106,66)],(45,92,158,255))
+    poly([(76,56),(106,66),(167,64),(291,55),(240,70),(167,83),(110,78)],(19,43,84,255))
+    line([(107,35),(169,37),(232,48),(288,55)],(133,180,230,255),2)
+    line([(110,75),(167,77),(234,65),(286,57)],(44,80,132,255),2)
+    poly([(136,32),(151,32),(151,80),(136,80)],(25,41,68,255))
+    line([(139,34),(139,77)],(75,102,143,255),2)
+    ellipse((140,49,147,56),(177,191,207,255))
+    line([(288,57),(310,57)],(158,179,200,255),5)
+    ellipse((305,53,315,61),(91,108,126,255))
+    return img.resize((320,116),Image.Resampling.LANCZOS)
+
 def draw_bat(item):
+    if item["id"]=="nova":return nova_bat()
+    if item["id"]=="paraguas":return closed_umbrella()
     img=Image.new("RGBA",(320,116),(0,0,0,0));d=ImageDraw.Draw(img,"RGBA")
     mode=item["design"];c=rgb(item["color"]);a=rgb(item["accent"])
     d.line([(18,57),(73,57)],fill=(40,46,54),width=18)
@@ -341,6 +402,29 @@ def betis_uniform(image,pose):
                     px[x,y]=tuple(round(v+(n-v)*t) for v,n in zip((r,g,b),new))+(a,)
     return out
 
+def wimbledon_uniform(image,pose):
+    """White tennis whites on the validated complete character, no helmet."""
+    out=image.convert("RGBA");px=out.load();w,h=out.size
+    low,high={'ready':(230,286),'watch':(230,286),'loaded':(235,295),'contact':(229,295),'follow':(230,292)}[pose]
+    clamp=lambda x:max(0,min(1,x))
+    for y in range(h):
+        for x in range(w):
+            r,g,b,a=px[x,y]
+            if not a:continue
+            red=clamp((r-max(g,b)-18)/30)*clamp((r/(g+1)-1.70)/.35)*clamp((b+20-g)/10) if y>=140 else 0
+            if red:
+                white=min(249,125+.62*r+.14*g)
+                col=(white,white,min(252,white+2))
+                px[x,y]=tuple(round(v+(n-v)*red) for v,n in zip((r,g,b),col))+(a,)
+                continue
+            if low<=y<=high or y>=329:
+                lum=(r+g+b)/3;spread=max(r,g,b)-min(r,g,b)
+                t=clamp((25-spread)/12)*clamp((115-lum)/25)
+                if t:
+                    white=min(245,125+lum*1.55)
+                    px[x,y]=tuple(round(v+(white-v)*t) for v in (r,g,b))+(a,)
+    return out
+
 def main():
     outfits=catalog("outfit");bats=catalog("bat");balls=catalog("ball")
     if (len(outfits),len(bats),len(balls))!=(33,35,32):
@@ -361,13 +445,14 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
-                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"]=="futbol_verde" else item["id"])
+                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"] in ("futbol_verde","tenis_blanco") else item["id"])
                 if approved.is_dir():
                     # Approved complete character, never recolor or mask its body.
                     anchors=json.loads((approved/"anchors.json").read_text(encoding="utf-8"))
                     source=approved/(pose+"-nobat.webp")
                     baked=opaque_core(Image.open(source).convert("RGBA"))
                     if item["id"]=="futbol_verde":baked=betis_uniform(baked,pose)
+                    if item["id"]=="tenis_blanco":baked=wimbledon_uniform(baked,pose)
                     if not nobat:
                         anchor=anchors[pose];w,h=baked.size
                         gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h

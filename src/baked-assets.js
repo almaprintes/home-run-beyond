@@ -8,7 +8,7 @@ export function bakedAssetUrl(category,id,pose='ready',withoutBat=false){
  if(!/^[a-z0-9_]+$/.test(String(id)))throw Error('Invalid cosmetic id');
  // Versionar también los WEBP horneados: Safari/PWA no debe conservar
  // ni la pelota de tenis lisa ni poses con restos del bate anterior.
- const stamp=category==='outfit'&&id==='futbol_verde'?'?v=0.77.2':id==='futbol_rojo'&&category==='outfit'?'?v=0.77.1':'?v=0.77.0';
+ const stamp=(category==='ball'&&['tenis','arcoiris'].includes(id)||category==='bat'&&['nova','paraguas'].includes(id)||category==='outfit'&&id==='tenis_blanco')?'?v=0.77.3':category==='outfit'&&id==='futbol_verde'?'?v=0.77.2':id==='futbol_rojo'&&category==='outfit'?'?v=0.77.1':'?v=0.77.0';
  if(category==='outfit'){
   if(!OUTFIT_POSES.includes(pose))throw Error('Invalid pose');
   return './assets/baked/outfits/'+id+'/'+pose+(withoutBat?'-nobat':'')+'.webp'+stamp;
@@ -45,4 +45,4 @@ export const WEAPON_POSES=Object.freeze({
 
 // Full approved football artwork has its own hand and foot registration.
 const FOOTBALL_POSES=Object.freeze({"ready":{"grip":[0.305024,0.456548],"tip":[0.166445,0.102575],"foot":0.5},"watch":{"grip":[0.291675,0.456548],"tip":[0.15177,0.102575],"foot":0.5},"loaded":{"grip":[0.202846,0.376986],"tip":[0.419326,0.041644],"foot":0.5},"contact":{"grip":[0.637114,0.445041],"tip":[0.938209,0.398466],"foot":0.34},"follow":{"grip":[0.39743,0.419068],"tip":[0.068827,0.381808],"foot":0.66}});
-export const OUTFIT_WEAPON_POSES=Object.freeze({futbol_rojo:FOOTBALL_POSES,futbol_verde:FOOTBALL_POSES});
+export const OUTFIT_WEAPON_POSES=Object.freeze({futbol_rojo:FOOTBALL_POSES,futbol_verde:FOOTBALL_POSES,tenis_blanco:FOOTBALL_POSES});
