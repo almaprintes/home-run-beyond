@@ -344,3 +344,24 @@
 #shop .shop-preview-art .shop-preview-status{font-size:10px;color:#b5d4e5;text-align:center;padding:4px;line-height:1.2}
 #shop .shop-preview-status[role=button]{cursor:pointer;text-decoration:underline;pointer-events:auto}
 #shop .shop-preview-art img{padding:3px;content-visibility:visible}
+
+/* A read-only magnified view. Keep the shop underneath, including scroll. */
+.shop-preview-art{padding:0;cursor:zoom-in}
+.shop-item{cursor:pointer}
+.shop-buy{cursor:pointer}
+.shop-buy:disabled{cursor:default;pointer-events:none}
+.shop-zoom-icon{position:absolute;right:3px;bottom:3px;width:21px;height:21px;border-radius:50%;display:grid;place-items:center;font-size:21px;line-height:1;background:#071a2be8;color:#fff;border:1px solid #6e95a9;pointer-events:none}
+#item-preview{z-index:24;background:rgba(2,12,24,.82);padding:calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom))}
+.item-preview-modal{max-width:520px;display:flex;flex-direction:column;gap:14px;padding:18px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.item-preview-modal .modal-head{gap:12px}
+.item-preview-modal .x{flex:0 0 44px;width:44px;height:44px}
+.item-preview-stage{position:relative;display:grid;place-items:center;min-height:120px;height:clamp(160px,44dvh,420px);flex-shrink:0;border:1px solid #496b80;border-radius:18px;background:radial-gradient(ellipse at 50% 35%,#41657e,#142e43 65%,#091a2a);overflow:hidden;padding:12px}
+.item-preview-stage[data-category="bat"]{height:clamp(135px,30dvh,280px)}
+.item-preview-stage img{display:block;width:100%;height:100%;min-height:0;object-fit:contain;filter:drop-shadow(0 6px 10px #0006)}
+#item-preview-loading{font-size:13px;color:#c7dce7;text-align:center}
+#item-preview-retry{padding:10px;border-radius:9px;border:1px solid #52788d;background:#25495f;font-size:12px}
+#item-preview-description{font-size:14px;line-height:1.5;color:#d2e2ed;margin:0}
+.item-preview-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:900;letter-spacing:.5px;color:#bdd6e3}
+.item-preview-meta strong{font-size:18px;color:#ffce7c;white-space:nowrap}
+.item-preview-back{background:#25495f;border:1px solid #52788d;border-radius:12px;min-height:46px;flex-shrink:0;font-size:12px;font-weight:900;letter-spacing:.6px}
+@media(max-height:580px){.item-preview-modal{gap:8px;padding:12px}.item-preview-stage{height:32dvh}.item-preview-stage[data-category="bat"]{height:25dvh}}

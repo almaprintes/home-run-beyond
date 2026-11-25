@@ -1,17 +1,17 @@
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.64.0';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.64.0';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.64.0';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.64.0';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.64.0';
-import {GameAudio} from './audio.js?v=0.64.0';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.64.0';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.64.0';
-import {BatterSprites} from './sprites.js?v=0.64.0';
-import {bakedAssetUrl} from './baked-assets.js?v=0.64.0';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.64.0';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.64.0';
-import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.64.0';
-import {pitcherReactionPlan} from './pitcher.js?v=0.64.0';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.65.0';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.65.0';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.65.0';
+import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.65.0';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered} from './discoveries.js?v=0.65.0';
+import {GameAudio} from './audio.js?v=0.65.0';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.65.0';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.65.0';
+import {BatterSprites} from './sprites.js?v=0.65.0';
+import {bakedAssetUrl} from './baked-assets.js?v=0.65.0';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.65.0';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin} from './ball-spin.js?v=0.65.0';
+import {traceTrafficCollision,trafficDeflection} from './traffic.js?v=0.65.0';
+import {pitcherReactionPlan} from './pitcher.js?v=0.65.0';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -82,9 +82,21 @@ export class BaseballGame{
   this.save.graphics=['auto','high','low'].includes(event.target.value)?event.target.value:'auto';
   this.persist();this.applySettings();this.renderSettings();
  });
- click('shop-open',()=>this.openShop());click('shop-close',()=>this.closeShop());click('sound',()=>this.toggleSetting('sound'));
+ click('shop-open',()=>this.openShop());click('shop-close',()=>this.closeShop());
+ click('item-preview-close',()=>this.closeItemPreview());click('item-preview-back',()=>this.closeItemPreview());
+ click('item-preview-retry',()=>{if(this.itemPreview)this.loadItemPreview(this.itemPreview)});
+ el('item-preview').addEventListener('click',e=>{if(e.target===el('item-preview'))this.closeItemPreview()});click('sound',()=>this.toggleSetting('sound'));
  for(const key of ['power','swing','multiplier'])click('up-'+key,()=>this.buyUpgrade(key));
  document.addEventListener('keydown',e=>{
+  if(this.itemPreview&&!el('item-preview').hidden){
+   if(e.key==='Escape'){e.preventDefault();this.closeItemPreview();return}
+   if(e.key==='Tab'){
+    const buttons=['item-preview-close','item-preview-retry','item-preview-back'].map(el).filter(b=>b&&!b.hidden&&!b.disabled);
+    const i=buttons.indexOf(document.activeElement),next=e.shiftKey?(i<=0?buttons.length-1:i-1):(i+1)%buttons.length;
+    e.preventDefault();buttons[next]?.focus?.();
+   }
+   return;
+  }
   if(e.key==='Escape'){
    if(!el('discovery-banner').hidden){this.closeDiscovery();return}
    if(!el('welcome').hidden){el('welcome').hidden=true;this.showMenu();return}
@@ -167,7 +179,50 @@ export class BaseballGame{
   this.persist();this.applySettings();this.renderSettings();this.drawUI();
   this.toast('PARTIDA LOCAL REINICIADA');
  }
- closeShop(){el('shop').hidden=true;this.drawUI()}
+ // Viewing is deliberately read-only: no equipCosmetic, no persist.
+ openItemPreview(kind,id,trigger=null){
+  const category=SHOP_SECTIONS[kind],item=category?.items.find(x=>x.id===id);
+  if(!item||el('shop').hidden||!isDiscovered(this.save,kind,id))return false;
+  const owned=this.save[category.owned].includes(id),equipped=this.save[category.equipped]===id;
+  this.itemPreview={kind,id,trigger,scroll:el('shop-scroll').scrollTop||0};
+  el('item-preview-title').textContent=item.name;
+  el('item-preview-rarity').textContent=item.rarity;
+  el('item-preview-description').textContent=item.description;
+  el('item-preview-ownership').textContent=equipped?'EQUIPADO':owned?'EN TU COLECCIÓN':'NO ADQUIRIDO';
+  el('item-preview-price').textContent=owned?'':'✦ '+formatInt(item.price);
+  el('item-preview-stage').setAttribute('data-category',kind);
+  el('item-preview').hidden=false;el('shop').inert=true;
+  this.loadItemPreview(this.itemPreview);el('item-preview-close').focus?.();
+  return true;
+ }
+ loadItemPreview(preview){
+  const img=el('item-preview-image'),status=el('item-preview-loading'),retry=el('item-preview-retry');
+  const item=SHOP_SECTIONS[preview.kind].items.find(x=>x.id===preview.id);
+  const url=bakedAssetUrl(preview.kind,preview.id);
+  const token={};this.itemPreviewLoad=token;
+  let fallback=false;
+  img.hidden=true;status.hidden=false;status.textContent='Cargando imagen…';retry.hidden=true;
+  img.alt=item.name;
+  img.onload=()=>{if(this.itemPreviewLoad!==token)return;img.hidden=false;status.hidden=true;retry.hidden=true};
+  img.onerror=()=>{
+   if(this.itemPreviewLoad!==token)return;
+   if(!fallback){fallback=true;img.src=url.split('?')[0];return}
+   img.hidden=true;status.hidden=false;status.textContent='Imagen no disponible';retry.hidden=false;
+  };
+  img.src=url;
+ }
+ closeItemPreview(restore=true){
+  if(!this.itemPreview)return;
+  const previous=this.itemPreview;this.itemPreview=null;this.itemPreviewLoad=null;
+  el('item-preview').hidden=true;el('shop').inert=false;
+  const img=el('item-preview-image');img.onload=null;img.onerror=null;img.removeAttribute?.('src');
+  if(restore){
+   el('shop-scroll').scrollTop=previous.scroll;
+   if(previous.trigger?.isConnected)previous.trigger.focus?.({preventScroll:true});
+   else el('shop-scroll').focus?.({preventScroll:true});
+  }
+ }
+ closeShop(){this.closeItemPreview(false);el('shop').hidden=true;this.drawUI()}
  openShop(){
   if(!['menu','ready','rest'].includes(this.state))return;
   this.closeDiscovery();
@@ -191,7 +246,8 @@ export class BaseballGame{
    const owned=this.save[category.owned].includes(item.id);
    const equipped=this.save[category.equipped]===item.id;
    const row=document.createElement('div');row.className='shop-item'+(equipped?' selected':'');
-   const preview=document.createElement('div');preview.className='shop-preview shop-preview-art';
+   const preview=document.createElement('button');preview.type='button';preview.className='shop-preview shop-preview-art';
+   preview.setAttribute('aria-label','Ampliar '+item.name);preview.setAttribute('aria-haspopup','dialog');
    const img=document.createElement('img');
    img.loading='eager';img.decoding='async';
    img.alt='Aspecto real de '+item.name;
@@ -203,10 +259,10 @@ export class BaseballGame{
    img.onerror=()=>{
     if(!retry){retry=true;img.src=url.split('?')[0];return}
     console.warn('Vista previa no disponible',url);
-    img.hidden=true;status.hidden=false;status.textContent='Reintentar';status.setAttribute('role','button');
-    status.onclick=()=>{retry=false;status.textContent='Cargando…';img.src=url};
+    img.hidden=true;status.hidden=false;status.textContent='Ver detalle';
    };
-   preview.append(img,status);
+   const zoom=document.createElement('span');zoom.className='shop-zoom-icon';zoom.setAttribute('aria-hidden','true');zoom.textContent='⌕';
+   preview.append(img,status,zoom);
    img.src=bakedAssetUrl(this.shopSection,item.id);
    const detail=document.createElement('div');detail.className='shop-detail';
    const strong=document.createElement('strong');strong.textContent=item.name;
@@ -217,7 +273,10 @@ export class BaseballGame{
    btn.textContent=equipped?'EQUIPADO':owned?'EQUIPAR':'✦ '+formatInt(item.price);
    btn.disabled=equipped||(!owned&&this.save.coins<item.price);
    btn.setAttribute('aria-label',(equipped?'Equipado ':owned?'Equipar ':'Comprar ')+item.name);
-   btn.addEventListener('click',()=>{
+   const kind=this.shopSection;
+   row.addEventListener('click',()=>this.openItemPreview(kind,item.id,preview));
+   btn.addEventListener('click',e=>{
+    e.stopPropagation();
     const status=equipCosmetic(this.save,this.shopSection,item.id);
     if(status==='invalid'||status==='insufficient'||status==='locked')return;
     if(status==='purchased')this.audio.cash();
