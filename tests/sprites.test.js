@@ -140,3 +140,24 @@ test('approved basketball, sprinter and Wimbledon each have five full sprites wi
   }
  }
 });
+
+
+test('approved ice hockey and Baskonia have ten complete frames per outfit and independent grip anchors',()=>{
+ for(const id of ['hockey_hielo','basket_rojo']){
+  const anchors=JSON.parse(readFileSync(new URL('../assets/approved/outfits/'+id+'/anchors.json',import.meta.url),'utf8'));
+  assert.deepEqual(Object.keys(anchors),['ready','watch','loaded','contact','follow']);
+  for(const [pose,a] of Object.entries(anchors)){
+   const p=weaponPlacement(pose,10,20,300,365,id);
+   assert.ok(Math.abs(p.x-(10+a.grip[0]*300))<1e-6);
+   assert.ok(Math.abs(p.y-(20+a.grip[1]*365))<1e-6);
+   const read=path=>readFileSync(new URL('../assets/'+path,import.meta.url));
+   const source=read('approved/outfits/'+id+'/'+pose+'-nobat.webp');
+   const without=read('baked/outfits/'+id+'/'+pose+'-nobat.webp');
+   const withBat=read('baked/outfits/'+id+'/'+pose+'.webp');
+   for(const b of [source,without,withBat]){assert.equal(b.toString('ascii',8,12),'WEBP');assert.ok(b.length>2500);}
+   assert.notDeepEqual(without,withBat);
+   assert.notDeepEqual(without,read('baked/outfits/futbol_rojo/'+pose+'-nobat.webp'));
+   assert.match(bakedAssetUrl('outfit',id,pose),/v=0\.77\.6$/);
+  }
+ }
+});

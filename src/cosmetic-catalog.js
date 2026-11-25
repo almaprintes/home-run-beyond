@@ -65,7 +65,7 @@ futbol_rojo|Fútbol Athletic|2900|stripes|#e15550|#f7f4e9|⚽
 futbol_amarillo|Fútbol amarillo|3000|hoops|#f6c83f|#233b5a|⚽
 futbol_verde|Fútbol Betis|3100|stripes|#168346|#f5f5f5|⚽
 basket_negro|Baloncesto Canarias|3600|basket|#27303e|#f4c357|🏀
-basket_rojo|Baloncesto rojo|3800|basket|#d75c54|#f6f3e9|🏀
+basket_rojo|Baloncesto Baskonia|3800|basket|#d75c54|#f6f3e9|🏀
 basket_lila|Baloncesto violeta|3900|basket|#9369d3|#ffe39d|🏀
 hockey_hielo|Hockey sobre hielo|4400|hockey|#7cc9eb|#1b3455|🏒
 tenis_blanco|Tenista Wimbledon|3100|polo|#f7f8ed|#56ba83|🎾
