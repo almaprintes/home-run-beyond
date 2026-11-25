@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.19';
-import {drawGulls} from './gulls.js?v=0.77.19';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.19';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.19';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.19';
+import {lerp} from './engine.js?v=0.77.20';
+import {drawGulls} from './gulls.js?v=0.77.20';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.20';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.20';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.20';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -525,7 +525,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
     for(let band=0;band<4;band++){
      const zz=chunk*200+band*50+25;
      const urbanBand=chunk*4+band;
-     if(urbanBand>=URBAN_FIRST&&urbanBand<=URBAN_LAST){
+     if(urbanBand>=URBAN_FIRST&&urbanBand<=URBAN_LAST&&(Math.abs(zz-viewZ)<=coverage.detail+25||(focusBall&&Math.abs(zz-focusBall.z)<=coverage.detail+25))){
       for(const p of urbanGroundTiles(urbanBand))r.field(p.x,-.18,p.z,p.w,p.d,p.color,0,p.material);
      }else r.field(WORLD_CENTER_X,worldHeight(WORLD_CENTER_X,zz)-.18,zz,WORLD_WIDTH,50.3,
       terrainBaseColor(zz),0,groundVisualMaterial(zz));

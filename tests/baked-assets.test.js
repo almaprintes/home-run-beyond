@@ -246,3 +246,13 @@ test('approved hockey stick artwork survives the bake byte for byte',()=>{
  assert.match(bakedAssetUrl('bat','hockey'),/v=0\.77\.18$/);
  assert.equal(BAT_CATALOG.find(x=>x.id==='hockey').price,4400);
 });
+
+
+test('approved rake artwork survives the bake byte for byte',()=>{
+ const approved=readFileSync(new URL('../assets/approved/bats/rastrillo.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/bats/rastrillo.webp',import.meta.url));
+ assert.equal(approved.toString('ascii',8,12),'WEBP');
+ assert.deepEqual(baked,approved);
+ assert.match(bakedAssetUrl('bat','rastrillo'),/v=0\.77\.20$/);
+ assert.equal(BAT_CATALOG.find(x=>x.id==='rastrillo').price,4800);
+});
