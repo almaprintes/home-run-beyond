@@ -342,9 +342,16 @@ def main():
                 save(baked,path);verify_uniform(path,baked);total+=1
     for item in bats:
         path=OUT/"bats"/(item["id"]+".webp")
-        if item["id"]=="classic":
+        approved=APPROVED_CLASSIC.parent/(item["id"]+".webp")
+        if approved.is_file():
+            art=Image.open(approved).convert("RGBA")
+            if art.size!=classic.size:raise ValueError(f'{approved}: wrong bat dimensions')
+            if item["id"]=="gold":
+                from PIL import ImageChops
+                if ImageChops.difference(art.getchannel("A"),classic.getchannel("A")).getbbox():
+                    raise ValueError("Gold bat must match the classic silhouette pixel for pixel")
             path.parent.mkdir(parents=True,exist_ok=True)
-            path.write_bytes(APPROVED_CLASSIC.read_bytes())
+            path.write_bytes(approved.read_bytes())
         else:save(draw_bat(item),path)
         total+=1
     for item in balls:
