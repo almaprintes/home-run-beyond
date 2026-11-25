@@ -212,7 +212,7 @@ export class GameAudio{
   const job=(async()=>{
    for(const file of files){
     try{
-     const response=await fetch('./assets/audio/'+file+'?v=0.70.0');
+     const response=await fetch('./assets/audio/'+file+'?v=0.71.0');
      if(!response.ok)continue;
      const decoded=await this.ctx.decodeAudioData(await response.arrayBuffer());
      if(kind==='bat'&&file.endsWith('.mp3')&&decoded.duration<5.22)continue;
@@ -262,7 +262,7 @@ export class GameAudio{
   if(this.playRecorded('bat',gain))return;
   // Solo el WAV real si WebAudio no está listo. Nunca la síntesis del bate.
   if(typeof Audio!=='undefined'){
-   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.70.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
+   try{const clip=new Audio('./assets/audio/bat-cgeffex.wav?v=0.71.0');clip.volume=Math.min(1,gain);clip.play()?.catch?.(()=>{});}catch{}
   }
   void this.prepareRecorded('bat');
  }
@@ -284,7 +284,7 @@ export class GameAudio{
   const ctx=this.ctx;
   if(!ctx||typeof fetch!=='function'||typeof ctx.decodeAudioData!=='function')
    return Promise.resolve(false);
-  this.strikeLoad=fetch('./assets/strike.mp3?v=0.70.0')
+  this.strikeLoad=fetch('./assets/strike.mp3?v=0.71.0')
    .then(response=>{
     if(!response.ok)throw Error('Audio de strike: HTTP '+response.status);
     return response.arrayBuffer();

@@ -1,4 +1,4 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.70.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.71.0';
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
 export const EFFECT_MATERIALS=Object.freeze({

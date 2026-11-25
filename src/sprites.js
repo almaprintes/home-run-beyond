@@ -1,8 +1,8 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.70.0';
-import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.70.0';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.70.0';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.70.0';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.70.0';
+import {lookAt,perspective,mul4} from './engine.js?v=0.71.0';
+import {surfaceBelowBall,pitcherBallPosition} from './world.js?v=0.71.0';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.71.0';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.71.0';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES} from './baked-assets.js?v=0.71.0';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -69,7 +69,47 @@ export function opaqueBaseballPixels(data,w,h){
  return filled;
 }
 
-export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE){
+// Remove the soft studio lighting from the leather ONCE when the sprite loads.
+// Use nearby non-thread pixels to estimate the low-frequency light field.
+// Thread geometry and local texture remain untouched by the smoothing pass.
+export function neutralizeBaseballLighting(data,w,h,color='#ffffff'){
+ const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));
+ const luminance=(r,g,b)=>.25*r+.65*g+.10*b;
+ const expected=luminance(...rgb)||1;
+ const redRatio=(rgb[0]+12)/(rgb[1]+12),blueRatio=(rgb[0]+12)/(rgb[2]+12);
+ const n=12,grid=new Float32Array(n*n),weights=new Float32Array(n*n),samples=[];
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const i=(y*w+x)*4,r=data[i],g=data[i+1],b=data[i+2];
+  if(data[i+3]<245||((r+12)/(g+12)>Math.max(1.28,redRatio*1.17)&&(r+12)/(b+12)>Math.max(1.20,blueRatio*1.13)))continue;
+  const light=luminance(r,g,b),ix=Math.min(n-1,Math.floor(x*n/w)),iy=Math.min(n-1,Math.floor(y*n/h)),k=iy*n+ix;
+  grid[k]+=light;weights[k]++;samples.push(light);
+ }
+ if(!samples.length)return opaqueBaseballPixels(data,w,h);
+ samples.sort((a,b)=>a-b);
+ const target=Math.min(250,Math.max(expected*.85,samples[Math.floor((samples.length-1)*.88)]));
+ const field=new Float32Array(n*n);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+  let sum=0,count=0;
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+   const k=j*n+i,d=(i-x)**2+(j-y)**2;
+   if(d>12||!weights[k])continue;
+   const weight=Math.exp(-d/2.2)*Math.min(20,weights[k]);
+   sum+=grid[k]/weights[k]*weight;count+=weight;
+  }
+  field[y*n+x]=count?sum/count:target;
+ }
+ const out=new Uint8ClampedArray(data);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const k=(y*w+x)*4;if(!data[k+3])continue;
+  const u=Math.max(0,Math.min(n-1,x*n/w-.5)),v=Math.max(0,Math.min(n-1,y*n/h-.5));
+  const i=Math.floor(u),j=Math.floor(v),a=u-i,b=v-j,i1=Math.min(n-1,i+1),j1=Math.min(n-1,j+1);
+  const light=(field[j*n+i]*(1-a)+field[j*n+i1]*a)*(1-b)+(field[j1*n+i]*(1-a)+field[j1*n+i1]*a)*b;
+  const gain=Math.max(.8,Math.min(2.0,target/Math.max(12,light)));
+  for(let ch=0;ch<3;ch++)out[k+ch]=Math.min(255,Math.round(data[k+ch]*gain));
+ }
+ return opaqueBaseballPixels(out,w,h);
+}
+export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE,fixedLight=false){
  const view=lookAt(camera,target),qu=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
  const qx=-qu[0],qy=-qu[1],qz=-qu[2],qw=qu[3];
  const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
@@ -98,8 +138,10 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
    const ix=Math.max(0,Math.min(w-1,Math.round(u*(w-1))));
    const iy=Math.max(0,Math.min(h-1,Math.round(v*(h-1))));
    const src=(iy*w+ix)*4;
-   output[dest]=source[src];output[dest+1]=source[src+1];
-   output[dest+2]=source[src+2];
+   // World-up illumination does not rotate with the texture or the seams.
+   const light=fixedLight?.91+.09*Math.max(0,Math.min(1,.70*wy+.72*screenZ)):1;
+   output[dest]=source[src]*light;output[dest+1]=source[src+1]*light;
+   output[dest+2]=source[src+2]*light;
    output[dest+3]=source[src+3]*Math.min(1,(1-rr)*45);
   }
  }
@@ -122,12 +164,12 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     cache.image=image;
     const sourceImage=srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
     cache.source={width:sourceImage.width,height:sourceImage.height,
-     data:opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
+     data:cache.leatherColor?neutralizeBaseballLighting(sourceImage.data,sourceImage.width,sourceImage.height,cache.leatherColor):opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
     cache.canvas=outCanvas;cache.context=outCtx;
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
    shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
-    spin,camera,target,cache.frame.data);
+    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor);
    cache.context.putImageData(cache.frame,0,0);
    ctx.drawImage(cache.canvas,-radius,-radius,size,size);
    return;
@@ -237,6 +279,8 @@ export class BatterSprites{
   // Su copia UV se rellena internamente, SIN alterar el dibujo original.
   // Keep the same spherical projection even at zero speed: no texture snap.
   if(item.design==='baseball'&&spin?.orientation&&camera&&target){
+   // Metallic gold has deliberate reflections; ordinary leather is de-lit.
+   this.ballSurfaceCache.leatherColor=item.id==='dorada'?null:item.color;
    drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
    return;
   }
