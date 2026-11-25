@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.29';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.29';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.29';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.29';
-import {SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.29';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.29';
-import {GameAudio} from './audio.js?v=0.77.29';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.29';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.29';
-import {BatterSprites} from './sprites.js?v=0.77.29';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.29';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.29';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.29';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.29';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.29';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.29';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.30';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.30';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.30';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.30';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.30';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.30';
+import {GameAudio} from './audio.js?v=0.77.30';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.30';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.30';
+import {BatterSprites} from './sprites.js?v=0.77.30';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.30';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.30';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.30';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.30';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.30';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.30';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -118,7 +118,7 @@ export class BaseballGame{
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
-  this.closeDiscovery();this.clearTransientToast();
+  this.closeDiscovery();this.clearTransientToast();this.clearEncounterReward?.();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
   el('main-menu').hidden=false;el('hud').hidden=true;el('controls').hidden=true;
@@ -396,6 +396,7 @@ export class BaseballGame{
 
  startPitch(){
   this.brokenWindows=new Set();this.gullHits??=new Map();
+  this.clearEncounterReward?.();this.renderEncounterRewards?.({});
   this.clearTransientToast();
   this.audio?.prepareGameEffects?.();
   this.audio?.prepareStrike?.();
@@ -497,6 +498,33 @@ export class BaseballGame{
  }
  launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
+ showEncounterReward(kind,count){
+  if(typeof document==='undefined')return;
+  const pop=el('encounter-pop');if(!pop)return;
+  const gull=kind==='gull',amount=(gull?GULL_REWARD:CAR_REWARD)*count;
+  const icon=el('encounter-icon'),title=el('encounter-title'),value=el('encounter-amount');
+  icon.textContent=gull?'🪽':'🚗';
+  title.textContent=gull?(count===1?'¡GAVIOTA GOLPEADA!':count+' GAVIOTAS GOLPEADAS'):(count===1?'¡COCHE GOLPEADO!':count+' COCHES GOLPEADOS');
+  value.textContent='+'+formatInt(amount)+' MONEDAS';
+  pop.classList.toggle('is-gull',gull);pop.classList.toggle('reduced',!!this.save?.reducedEffects);
+  pop.hidden=false;pop.classList.remove('reward-pop-in');void pop.offsetWidth;pop.classList.add('reward-pop-in');
+  this.encounterTimer=gull?2.5:1.65;
+  this.audio?.cash?.();
+  if(this.save?.vibration!==false&&typeof navigator!=='undefined')navigator.vibrate?.(gull?[45,55,60]:35);
+ }
+ clearEncounterReward(){
+  this.encounterTimer=0;
+  if(typeof document!=='undefined'){const pop=el('encounter-pop');if(pop)pop.hidden=true}
+ }
+ renderEncounterRewards(reward){
+  if(typeof document==='undefined')return;
+  const box=el('encounter-rewards');if(!box)return;
+  const cars=reward.carCount||0,gulls=reward.gullCount||0;
+  box.hidden=!cars&&!gulls;el('result')?.classList.toggle('has-encounter',!box.hidden);
+  el('car-reward').hidden=!cars;el('gull-reward').hidden=!gulls;
+  if(cars){el('car-reward-title').textContent=cars===1?'¡COCHE GOLPEADO!':cars+' COCHES GOLPEADOS';el('car-reward-amount').textContent='+'+formatInt(reward.carCoins)}
+  if(gulls){el('gull-reward-title').textContent=gulls===1?'¡GAVIOTA GOLPEADA!':gulls+' GAVIOTAS GOLPEADAS';el('gull-reward-amount').textContent='+'+formatInt(reward.eventCoins)}
+ }
  emitCollision(material,point,strength,normal={x:0,y:1,z:0}){
   if(!Number.isFinite(strength)||strength<1.2)return;
   if(!this.save?.reducedEffects)this.impactFX?.spawn({x:point.x,y:point.y,z:point.z,material,strength,normal});
@@ -524,7 +552,8 @@ export class BaseballGame{
   let touching=false;
   if(hit?.kind==='gull'){
    (this.gullHits??=new Map()).set(hit.bird.id,hit.at);
-   (b.hitGulls??=new Set()).add(hit.bird.id);
+   const gulls=b.hitGulls??=new Set(),newGull=!gulls.has(hit.bird.id);gulls.add(hit.bird.id);
+   if(newGull)this.showEncounterReward?.('gull',gulls.size);
    Object.assign(b,gullDeflection(b,hit));
    b.x=hit.point.x;b.y=hit.point.y;b.z=hit.point.z;
    b.lastCollision='¡GAVIOTA!';(b.encounters??={}).gull=true;
@@ -542,7 +571,7 @@ export class BaseballGame{
   }else if(hit?.kind?.startsWith('traffic-')){
    const n=hit.normal,mat=hit.material,response=trafficDeflection(b,hit);
    if(response){
-    registerTrafficHit(b,hit);
+    if(registerTrafficHit(b,hit))this.showEncounterReward?.('car',b.hitCars.size);
     const remaining=Math.max(0,1-hit.t)*dt;
     Object.assign(b,{vx:response.vx,vy:response.vy,vz:response.vz});
     // Move outside the car at its contact position; advance the remaining
@@ -670,12 +699,13 @@ export class BaseballGame{
   }
   if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
  }
- finishShot(){if(this.state!=='flight')return;this.clearTransientToast();const b=this.ball;freezeBallSpin(b);this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
+ finishShot(){if(this.state!=='flight')return;this.clearTransientToast();this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
+ this.renderEncounterRewards?.(reward);
  const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
  this.persist();this.showDiscoveries(newly);this.audio.cash();if(reward.record)this.audio.record();el('result-quality').textContent=qualityNames[this.pendingShot.quality];el('result-meters').textContent=formatInt(reward.meters);el('result-coins').textContent='+'+formatInt(reward.coins);
- el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2)+(reward.eventCoins?' · GAVIOTA'+(reward.gullCount>1?'S':'')+' +'+formatInt(reward.eventCoins):'')+(reward.carCoins?' · COCHES +'+formatInt(reward.carCoins):'');el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('result-total-meters').textContent=formatInt(this.save.totalMeters||0)+' m';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.eventCoins?'🏅 ENCUENTRO CON GAVIOTA':reward.record?'🏆 NUEVO RÉCORD':reward.carCoins?'🚗 '+reward.carCount+' '+(reward.carCount===1?'COCHE':'COCHES')+' · +'+formatInt(reward.carCoins):'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
+ el('coin-breakdown').textContent='BASE '+formatInt(reward.baseCoins)+' · BONO +'+formatInt(reward.bonusCoins)+' · x'+reward.multiplier.toFixed(2);el('best-label').textContent='MEJOR MARCA: '+formatInt(this.save.best)+' M';el('result-total-meters').textContent=formatInt(this.save.totalMeters||0)+' m';el('record-badge').hidden=!reward.record;el('reward-note').textContent=reward.eventCoins?'🏅 ENCUENTRO CON GAVIOTA':reward.record?'🏆 NUEVO RÉCORD':reward.carCoins?'🚗 '+reward.carCount+' '+(reward.carCount===1?'COCHE':'COCHES')+' · +'+formatInt(reward.carCoins):'RECOMPENSA GANADA';el('result').hidden=false;el('upgrades').hidden=false;el('menu-return').hidden=false;el('controls').hidden=true;el('run-info').hidden=true;el('region').hidden=true;el('aim').hidden=true;
  this.drawUI();const milestone=MILESTONES.filter(m=>reward.meters>=m.at&&!this.save.achievements.includes(m.label));if(milestone.length){for(const m of milestone)this.save.achievements.push(m.label);this.persist();this.toast('🏅 '+milestone[milestone.length-1].at+' M · '+milestone[milestone.length-1].label)} }
  resetAndPitch(){this.showDiscoveries([]);el('result').hidden=true;el('menu-return').hidden=true;this.impactFX?.clear();this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];this.startPitch()}
  update(dt){this.clock+=dt;
@@ -683,6 +713,7 @@ export class BaseballGame{
    this.musicClock=(this.musicClock||0)-dt;
    if(this.musicClock<=0){this.audio?.menuMusic?.();this.musicClock=6.2}
   }
+  if(this.encounterTimer>0){this.encounterTimer-=dt;if(this.encounterTimer<=0)this.clearEncounterReward?.()}
   if(!this.save?.reducedEffects)this.impactFX?.update(dt);if(this.toastTimer>0){this.toastTimer-=dt;if(this.toastTimer<=0)this.clearTransientToast()}
  if(this.state==='pitching'||this.state==='whiff')this.advancePitch(dt);
  if(this.state==='pitching'){

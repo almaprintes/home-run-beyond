@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.29';
+import {pitcherPose} from './pitcher.js?v=0.77.30';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;

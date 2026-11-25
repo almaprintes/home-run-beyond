@@ -6,7 +6,7 @@ import {pitcherBallPosition} from '../src/world.js';
 import {bakedAssetUrl} from '../src/baked-assets.js';
 import {initialSave} from '../src/logic.js';
 
-test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
+test('las cinco poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'ready'}),'ready');
  assert.equal(selectBatterPose({state:'pitching',pitch:.3}),'watch');
  assert.equal(selectBatterPose({state:'pitching',pitch:.88}),'loaded');
@@ -20,9 +20,9 @@ test('las ocho poses aprobadas se seleccionan a lo largo de la acción',()=>{
  assert.equal(selectBatterPose({state:'rest',ball:null}),'ready','tras un strike el bateador permanece visible');
 });
 test('todos los recortes originales son WebP locales y legibles',()=>{
- assert.equal(Object.keys(BATTER_ASSETS).length,8);
+ assert.equal(Object.keys(BATTER_ASSETS).length,9);
  for(const [key,path] of Object.entries(BATTER_ASSETS)){
-  const name=new URL('../'+path.slice(2),import.meta.url);
+  const name=new URL('../'+path.split('?')[0].slice(2),import.meta.url);
   assert.ok(existsSync(name),'Falta el sprite '+key);
   const bytes=readFileSync(name);
   assert.ok(bytes.length>2500,'Imagen inválida '+key);

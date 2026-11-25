@@ -8,12 +8,12 @@ test('v0.50 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
  assert.match(html,/style\.css\?v=0\.77\.0/);
- assert.match(html,/src\/main\.js\?v=0\.77\.29/);
- assert.match(main,/game\.js\?v=0\.77\.29/);
+ assert.match(html,/src\/main\.js\?v=0\.77\.30/);
+ assert.match(main,/game\.js\?v=0\.77\.30/);
  for(const src of ['main.js','logic.js','engine.js','game.js','world.js','sprites.js','traffic.js','discoveries.js','cosmetic-render.js','cosmetic-catalog.js','cosmetic-art.js','baked-assets.js','impact-fx.js']){
   const code=readFileSync(new URL('../src/'+src,import.meta.url),'utf8');
   for(const [,path] of code.matchAll(/from '(\.\/[^']+\.js(?:\?[^']+)?)'/g)){
-   assert.ok(path.endsWith('?v=0.77.29'),src+' importa módulo sin versión: '+path);
+   assert.ok(path.endsWith('?v=0.77.30'),src+' importa módulo sin versión: '+path);
   }
  }
  assert.match(sw,/hrb-v77-20261125-baguette-art/);
@@ -21,14 +21,14 @@ test('v0.50 evita mezclar versiones de CSS, JS, WebAudio y PWA en caché',()=>{
  assert.match(sw,/caches\.match\(request\)/);
  assert.match(sw,/clients\.claim/);
  assert.match(sw,/\.\/assets\/strike\.mp3/);
- assert.match(sw,/\.\/src\/biomes\.js\?v=0\.77\.29/);
- assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.77\.29/);
- assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.77\.29/);
- assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.77\.29/);
- assert.match(sw,/\.\/src\/baked-assets\.js\?v=0\.77\.29/);
+ assert.match(sw,/\.\/src\/biomes\.js\?v=0\.77\.30/);
+ assert.match(sw,/\.\/src\/cosmetic-render\.js\?v=0\.77\.30/);
+ assert.match(sw,/\.\/src\/cosmetic-catalog\.js\?v=0\.77\.30/);
+ assert.match(sw,/\.\/src\/cosmetic-art\.js\?v=0\.77\.30/);
+ assert.match(sw,/\.\/src\/baked-assets\.js\?v=0\.77\.30/);
  assert.match(sw,/\.\/assets\/baked\/manifest\.json/);
- assert.match(sw,/\.\/src\/traffic\.js\?v=0\.77\.29/);
- assert.match(sw,/\.\/src\/discoveries\.js\?v=0\.77\.29/);
+ assert.match(sw,/\.\/src\/traffic\.js\?v=0\.77\.30/);
+ assert.match(sw,/\.\/src\/discoveries\.js\?v=0\.77\.30/);
  assert.doesNotMatch(sw,/assets\/traffic\//);
 });
 
@@ -55,7 +55,7 @@ test('sprites aprobados persisten durante apuntado, sin dibujar la flecha antigu
  const previousImage=globalThis.Image,previousWindow=globalThis.window;
  const calls=[];
  const ctx={setTransform(){},clearRect(){},save(){},restore(){},beginPath(){},ellipse(){},fill(){},
-  translate(){},rotate(){},drawImage(...args){calls.push(args)},imageSmoothingEnabled:true,imageSmoothingQuality:'high'};
+  translate(){},rotate(){},scale(){},drawImage(...args){calls.push(args)},imageSmoothingEnabled:true,imageSmoothingQuality:'high'};
  const canvas={clientWidth:430,clientHeight:930,width:0,height:0,getContext:()=>ctx};
  class FakeImage{
   constructor(){this.naturalWidth=194;this.naturalHeight=347}
@@ -82,7 +82,7 @@ test('sprites aprobados persisten durante apuntado, sin dibujar la flecha antigu
 });
 
  test('Baskonia name is identical in the versioned catalog and discovery',async()=>{
- const {OUTFIT_CATALOG}=await import('../src/cosmetic-catalog.js?v=0.77.29');
+ const {OUTFIT_CATALOG}=await import('../src/cosmetic-catalog.js?v=0.77.30');
  const item=OUTFIT_CATALOG.find(x=>x.id==='basket_rojo');
  assert.equal(item.name,'Baloncesto Baskonia');
  assert.equal(item.price,3800);

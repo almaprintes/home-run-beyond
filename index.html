@@ -42,7 +42,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.77.29</small>
+        <small class="menu-version">VERSIÓN 0.77.30</small>
       </div>
     </div>
   </section>
@@ -51,6 +51,7 @@
     <div id="record-badge" class="record-badge" hidden>✦ NUEVO RÉCORD</div>
     <div class="impact" id="impact"></div>
   </div>
+  <div class="layer encounter-pop" id="encounter-pop" hidden role="status" aria-live="polite"><span id="encounter-icon" class="encounter-icon"></span><div><span id="encounter-title" class="encounter-title"></span><strong id="encounter-amount" class="encounter-amount"></strong></div></div>
   <div class="layer toast" id="toast" role="status" aria-live="polite"></div>
   <div class="layer region" id="region">ESTADIO · 0 KM</div>
   <section class="layer controls" id="controls">
@@ -79,6 +80,7 @@
         <div class="result-shot"><div id="result-quality" class="result-quality">¡EXCELENTE!</div><div class="result-distance"><span id="result-meters">0</span><small>m</small></div></div>
         <div class="result-reward"><span class="coin">✦</span> <strong id="result-coins">0</strong><small>MONEDAS</small><small id="coin-breakdown" class="coin-breakdown">BASE 0 · BONO 0 · x1.00</small></div>
       </div>
+      <div class="encounter-rewards" id="encounter-rewards" hidden aria-label="Premios especiales"><div class="encounter-reward" id="car-reward" hidden><span class="encounter-reward-icon">🚗</span><span><strong id="car-reward-title">¡COCHE GOLPEADO!</strong><small>PREMIO EXTRA</small></span><b id="car-reward-amount"></b></div><div class="encounter-reward gull-reward" id="gull-reward" hidden><span class="encounter-reward-icon">🪽</span><span><strong id="gull-reward-title">¡GAVIOTA GOLPEADA!</strong><small>PREMIO ESPECIAL</small></span><b id="gull-reward-amount"></b></div></div>
       <div class="result-bottom"><span id="best-label" class="best-label">RÉCORD: 0 M</span><span class="result-total">DISTANCIA ACUMULADA <strong id="result-total-meters">0 m</strong></span></div>
 
     </div>
@@ -185,7 +187,7 @@
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.77.29</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.77.30</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -201,6 +203,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.77.29"></script>
+<script type="module" src="./src/main.js?v=0.77.30"></script>
 </body>
 </html>

@@ -25,3 +25,14 @@ test('car reward is fixed, independent of equipment multiplier and compatible wi
  assert.equal(s.coins,before+hit.coins);assert.equal(s.earnedCoins,earned+hit.coins);
  assert.equal(settleShot(s,100,{cars:-5}).coins,normal.coins);
 });
+
+import {readFileSync} from 'node:fs';
+test('unique car and gull encounters announce rewards immediately and keep special rows in the final result',()=>{
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(game,/if\(registerTrafficHit\(b,hit\)\)this\.showEncounterReward\?\.\('car',b\.hitCars\.size\)/);
+ assert.match(game,/if\(newGull\)this\.showEncounterReward\?\.\('gull',gulls\.size\)/);
+ assert.match(game,/this\.renderEncounterRewards\?\.\(reward\)/);
+ assert.match(game,/this\.encounterTimer=gull\?2\.5:1\.65/);
+ for(const id of ['encounter-pop','car-reward','gull-reward','car-reward-amount','gull-reward-amount'])assert.ok(html.includes('id="'+id+'"'));
+});
