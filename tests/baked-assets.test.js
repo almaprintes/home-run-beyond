@@ -196,3 +196,13 @@ test('approved thunder hammer artwork is preserved exactly',()=>{
  assert.match(bakedAssetUrl('bat','martillo'),/v=0\.77\.10$/);
  assert.equal(BAT_CATALOG.find(x=>x.id==='martillo').price,6500);
 });
+
+
+test('approved beach ball artwork is preserved exactly',()=>{
+ const approved=readFileSync(new URL('../assets/approved/balls/playa.webp',import.meta.url));
+ const baked=readFileSync(new URL('../assets/baked/balls/playa.webp',import.meta.url));
+ assert.equal(approved.toString('ascii',8,12),'WEBP');
+ assert.deepEqual(baked,approved);
+ assert.match(bakedAssetUrl('ball','playa'),/v=0\.77\.11$/);
+ assert.equal(BALL_CATALOG.find(x=>x.id==='playa').price,4100);
+});
