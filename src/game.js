@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.37';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.37';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.37';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.37';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.37';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.37';
-import {GameAudio} from './audio.js?v=0.77.37';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.37';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.37';
-import {BatterSprites} from './sprites.js?v=0.77.37';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.37';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.37';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.37';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.37';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.37';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.37';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.38';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.38';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.38';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.38';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.38';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.38';
+import {GameAudio} from './audio.js?v=0.77.38';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.38';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.38';
+import {BatterSprites} from './sprites.js?v=0.77.38';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.38';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.38';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.38';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.38';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.38';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.38';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -689,17 +689,27 @@ export class BaseballGame{
   }
   b.spinContact=touching;
   integratePhysicalSpin(b,prev,dt,touching,hit?.material||groundAt(b.x,b.z).type);
-  const speed=Math.hypot(b.vx,b.vy,b.vz);
-  if(touching&&speed<.85)b.restTime=(b.restTime||0)+dt;
-  else b.restTime=0;
-  const moved=Math.hypot(b.x-prev.x,b.y-prev.y,b.z-prev.z);
-  if(moved<.014&&speed<2)b.stillTime=(b.stillTime||0)+dt;
-  else b.stillTime=0;
-  // Terminación basada en reposo real, no en el material ni en contar rebotes.
-  if(b.restTime>.24||b.stillTime>.75||(b.wetTime||0)>.65&&speed<2.5){
-   this.finishShot();return;
+  // No time, distance or bounce-count cap. Only sustained physical rest.
+  const planarSpeed=Math.hypot(b.vx,b.vz);
+  const planarMoved=Math.hypot(b.x-prev.x,b.z-prev.z);
+  // Tiny vertical solver corrections on a roof are not airborne flight.
+  // Check an actual supporting surface, and only when nearly stationary.
+  let support=null;
+  if(planarSpeed<.20&&Math.abs(b.vy)<1.5&&planarMoved<=.25*dt+.001){
+   if(touching)support=b.y-radius;
+   else{
+    const floor=surfaceBelowBall(b);
+    const gap=b.y-radius-floor.y;
+    if(gap>=-.02&&gap<=.12)support=floor.y;
+   }
   }
-  if(this.simElapsed>340||b.z>200000||b.y< -10)this.finishShot();
+  if(support!==null){
+   b.restTime=(b.restTime||0)+dt;
+   if(b.restTime>=.45){
+    b.y=support+radius;b.vx=0;b.vy=0;b.vz=0;
+    this.finishShot();return;
+   }
+  }else b.restTime=0;
  }
  finishShot(){if(this.state!=='flight')return;this.clearTransientToast();this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('app').classList.add('resting');el('pitch-surface').hidden=true;el('again').hidden=false;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
  this.renderEncounterRewards?.(reward);
@@ -756,7 +766,7 @@ export class BaseballGame{
    // rolling topspin, including small airborne hops between bounces.
    if(this.state==='flight')advanceVisualSpin(this.ball,dt);
    this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
-   if(this.liveSeconds>23)this.finishShot();
+   // The display clock is telemetry only; simulateStep decides physical rest.
  }
  const flight=this.state==='flight'||this.state==='rest';let desiredCam,desiredTarget,zoom;
  if(flight&&this.ball){const b=this.ball;const speed=Math.hypot(b.vz,b.vx);desiredCam=[b.x+clamp(b.y*.035,9,50),b.y+Math.min(120,16+b.y*.18),b.z-clamp(18+speed*.42,32,310)];desiredTarget=[b.x,b.y*.54,b.z+clamp(speed*.14,14,65)];zoom=58}

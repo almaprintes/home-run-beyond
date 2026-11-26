@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initBallSpin,advanceVisualSpin,integratePhysicalSpin,freezeBallSpin} from '../src/ball-spin.js';
+import {BaseballGame} from '../src/game.js';
 import {BatterSprites,shadeRollingSurface} from '../src/sprites.js';
 test('freeze preserves position, visible quaternion and accumulated angle',()=>{
  const b={x:5,y:1.45,z:90,vx:2,vy:0,vz:5};initBallSpin(b);
@@ -39,4 +40,31 @@ test('no visual reset at slow speed and no hit mark or ghost trail',()=>{
  assert.match(g,/freezeBallSpin\(b\);this.state='rest'/);
  assert.doesNotMatch(g,/spawnBat\(/);
  assert.match(w,/game.ball&&\['flight','landing','rest'\]/);
+});
+
+function testFlight(ball){
+ const g=Object.create(BaseballGame.prototype);
+ Object.assign(g,{state:'flight',ball:{bounces:0,maxZ:0,...ball},simElapsed:0,liveSeconds:30,audio:{impact(){}}});
+ g.finishShot=()=>{g.state='rest'};
+ return g;
+}
+test('airborne ball cannot finish even after 23 seconds, 340 simulated seconds or 200 km',()=>{
+ const g=testFlight({x:0,y:80,z:200001,vx:0,vy:0,vz:60,restTime:1,stillTime:1,wetTime:5});
+ g.simElapsed=341;
+ g.simulateStep(.02);
+ assert.equal(g.state,'flight');assert.ok(g.ball.z>200001);assert.equal(g.ball.restTime,0);
+ const source=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/liveSeconds\s*>\s*23|simElapsed\s*>\s*340|b\.z\s*>\s*200000/);
+});
+test('rolling and backwards motion continue until sustained supported rest',()=>{
+ for(const dir of [-1,1]){
+  const g=testFlight({x:0,y:1.45,z:80,vx:0,vy:0,vz:dir*3,restTime:.44});
+  g.simulateStep(.02);assert.equal(g.state,'flight');assert.equal(g.ball.restTime,0);
+  for(let i=0;i<600&&g.state==='flight';i++)g.simulateStep(.02);
+  assert.equal(g.state,'rest');assert.equal(Math.hypot(g.ball.vx,g.ball.vy,g.ball.vz),0);assert.equal(g.ball.y,1.45);
+ }
+});
+test('a near-stationary ball at the top of its arc is still in flight',()=>{
+ const g=testFlight({x:0,y:25,z:80,vx:0,vy:0,vz:0,restTime:.44,wetTime:4});
+ g.simulateStep(.02);assert.equal(g.state,'flight');assert.equal(g.ball.restTime,0);assert.ok(g.ball.vy<0);
 });
