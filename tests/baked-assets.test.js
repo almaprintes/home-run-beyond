@@ -264,7 +264,7 @@ test('approved rake artwork survives the bake byte for byte',()=>{
  assert.equal(item.name,'Fútbol Blaugrana');assert.equal(item.price,2700);
  assert.deepEqual(OUTFIT_WEAPON_POSES.futbol_azulgrana,OUTFIT_WEAPON_POSES.futbol_rojo);
  for(const pose of OUTFIT_POSES)for(const noBat of [false,true]){
-  const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.29$/);
+  const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.42$/);
   assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
  }
  const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');

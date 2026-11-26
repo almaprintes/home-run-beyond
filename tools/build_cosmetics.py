@@ -403,7 +403,10 @@ def betis_uniform(image,pose):
     return out
 
 def blaugrana_uniform(image,pose):
-    """Full football character variant, preserving the approved pose and alpha."""
+    """Recolour the approved red/white kit, preserving pose, shading and alpha.
+    White fabric has warm shadows; a narrow neutral-only mask leaves white seams.
+    Use full-strength hue remapping on fabric, with a soft edge only near skin.
+    """
     out=image.convert("RGBA");px=out.load();w,h=out.size
     low,high={'ready':(230,286),'watch':(230,286),'loaded':(235,295),'contact':(229,295),'follow':(230,292)}[pose]
     clamp=lambda x:max(0,min(1,x))
@@ -411,22 +414,42 @@ def blaugrana_uniform(image,pose):
         for x in range(w):
             r,g,b,a=px[x,y]
             if not a:continue
-            red=clamp((r-max(g,b)-18)/30)*clamp((r/(g+1)-1.70)/.35)*clamp((b+20-g)/10)
+            lum=(r+g+b)/3
+            red=clamp((r-max(g,b)-14)/22)*clamp((r/(g+1)-1.55)/.35)*clamp((b+20-g)/10)
             if red:
-                col=(min(255,.66*r+.20*g),min(255,.20*r+.24*g),min(255,.33*r+.42*b))
+                # Deep red rather than purple: retain luminance of the source cloth.
+                col=(min(226,.81*r+.12*g),min(86,.14*r+.13*g),min(116,.26*r+.20*b))
                 px[x,y]=tuple(round(v+(n-v)*red) for v,n in zip((r,g,b),col))+(a,)
                 continue
-            lum=(r+g+b)/3;spread=max(r,g,b)-min(r,g,b)
-            white=clamp((32-spread)/18)*clamp((lum-95)/65) if y<329 else 0
+            # Neutral and slightly warm whites, including shaded folds. Skin
+            # has substantially larger red/blue and green/blue separation.
+            spread=max(r,g,b)-min(r,g,b)
+            neutral=clamp((max(30,lum*.36)-spread)/max(8,lum*.085))
+            skin_guard=clamp((1.45-r/(b+1))/.17)
+            white=neutral*skin_guard*clamp((lum-65)/23) if y<329 else 0
             if white:
-                col=(.20*lum,.35*lum,min(255,.76*lum+18))
+                # Saturated royal blue, with the full tonal range of the fabric.
+                col=(min(65,12+.16*lum),min(142,28+.39*lum),min(245,60+.76*lum))
                 px[x,y]=tuple(round(v+(n-v)*white) for v,n in zip((r,g,b),col))+(a,)
                 continue
             dark=clamp((25-spread)/12)*clamp((115-lum)/25) if low<=y<=high else 0
             if dark:
-                col=(.60*lum,.75*lum,min(255,1.22*lum+8))
+                col=(.53*lum,.72*lum,min(255,1.24*lum+9))
                 px[x,y]=tuple(round(v+(n-v)*dark) for v,n in zip((r,g,b),col))+(a,)
     return out
+
+def verify_blaugrana_palette():
+    # Exact unit samples for bright white, neutral shadow, warm white fold and skin.
+    source=Image.new("RGBA",(384,384),(0,0,0,0))
+    samples=[(242,239,230,255),(165,160,151,255),(195,180,164,255),(230,158,110,255),(190,38,48,255)]
+    for i,p in enumerate(samples):source.putpixel((100+i,200),p)
+    result=blaugrana_uniform(source,"ready")
+    for i in range(3):
+        r,g,b,a=result.getpixel((100+i,200))
+        assert b>g+40 and g>r+20 and a==255, "Incomplete blue stripe recolour"
+    assert result.getpixel((103,200))==samples[3], "Skin colour changed"
+    r,g,b,a=result.getpixel((104,200))
+    assert r>g*2 and r>b*1.6 and a==255, "Granate is not red"
 
 def wimbledon_uniform(image,pose):
     """White tennis whites on the validated complete character, no helmet."""
@@ -452,6 +475,7 @@ def wimbledon_uniform(image,pose):
     return out
 
 def main():
+    verify_blaugrana_palette()
     outfits=catalog("outfit");bats=catalog("bat");balls=catalog("ball")
     if (len(outfits),len(bats),len(balls))!=(33,36,32):
         raise ValueError("Unexpected cosmetic catalogue size")

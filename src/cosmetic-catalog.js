@@ -67,7 +67,7 @@ blue|Clásico azul|350|classic|#3b9fde|#e5f9ff|👕
 green|Clásico verde|780|classic|#4dc496|#f1ffe2|👕
 purple|Clásico violeta|780|classic|#a785fa|#f9dcff|👕
 gold|Dorado campeón|2400|classic|#f3be4c|#fff7db|👕
-futbol_azulgrana|Fútbol Blaugrana|2700|stripes|#294eaf|#a83e61|⚽
+futbol_azulgrana|Fútbol Blaugrana|2700|stripes|#245ebf|#9d2340|⚽
 futbol_blanco|Fútbol blanco total|2600|shoulders|#e9edf2|#cbb77c|⚽
 futbol_rojo|Fútbol Athletic|2900|stripes|#e15550|#f7f4e9|⚽
 futbol_amarillo|Fútbol amarillo|3000|hoops|#f6c83f|#233b5a|⚽
