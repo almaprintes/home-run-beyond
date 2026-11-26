@@ -271,13 +271,18 @@ test('approved rake artwork survives the bake byte for byte',()=>{
  assert.match(generator,/blaugrana_uniform\(baked,pose\)/);
  });
 
-test('Guardameta naranja uses full helmet-free football poses and the same grip registration',()=>{
- const item=OUTFIT_CATALOG.find(x=>x.id==='portero');
- assert.equal(item.price,4800);assert.deepEqual(OUTFIT_WEAPON_POSES.portero,OUTFIT_WEAPON_POSES.futbol_rojo);
- for(const pose of OUTFIT_POSES)for(const noBat of [false,true]){
-  const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.43$/);
-  assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
+test('Guardameta naranja uses five approved original sprites and matching weapon registration',()=>{
+ const item=OUTFIT_CATALOG.find(x=>x.id==='portero');assert.equal(item.price,4800);
+ const anchors=JSON.parse(readFileSync(new URL('../assets/approved/outfits/portero/anchors.json',import.meta.url),'utf8'));
+ assert.deepEqual(OUTFIT_WEAPON_POSES.portero,anchors);
+ for(const pose of OUTFIT_POSES){
+  const source=readFileSync(new URL('../assets/approved/outfits/portero/'+pose+'-nobat.webp',import.meta.url));
+  assert.equal(source.toString('ascii',8,12),'WEBP');
+  for(const noBat of [false,true]){
+   const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.44$/);
+   assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
+  }
  }
  const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
- assert.match(generator,/goalkeeper_uniform\(baked,pose,anchors\[pose\]\)/);
+ assert.doesNotMatch(generator,/goalkeeper_uniform/);
 });

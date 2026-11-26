@@ -451,51 +451,6 @@ def verify_blaugrana_palette():
     r,g,b,a=result.getpixel((104,200))
     assert r>g*2 and r>b*1.6 and a==255, "Granate is not red"
 
-def goalkeeper_uniform(image,pose,anchor):
-    """Helmet-free full football pose, orange keeper kit and shaded gloves."""
-    out=image.convert("RGBA");px=out.load();w,h=out.size
-    low,high={'ready':(230,286),'watch':(230,286),'loaded':(235,295),'contact':(229,295),'follow':(230,292)}[pose]
-    gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h
-    dx,dy=(anchor["tip"][0]-anchor["grip"][0])*w,(anchor["tip"][1]-anchor["grip"][1])*h
-    length=math.hypot(dx,dy) or 1
-    ux,uy=dx/length,dy/length
-    clamp=lambda x:max(0,min(1,x))
-    for y in range(h):
-        for x in range(w):
-            r,g,b,a=px[x,y]
-            if not a:continue
-            lum=(r+g+b)/3;spread=max(r,g,b)-min(r,g,b)
-            # Grip-registered mask: recolour only skin and wristbands near
-            # the two hands. The bat is composed afterwards behind the gloves.
-            along=(x-gx)*ux+(y-gy)*uy
-            cross=-(x-gx)*uy+(y-gy)*ux
-            distance=(along/(h*.075))**2+(cross/(w*.062))**2
-            hand=clamp((1.12-distance)/.23) if y>h*.27 else 0
-            skin=clamp((r-g-16)/19)*clamp((g-b-10)/18)*clamp((r-75)/35)
-            wrist=clamp((35-spread)/19)*clamp((100-lum)/35)
-            glove=hand*max(skin,wrist)
-            if glove:
-                # Blue fabric, pale padded knuckle panel, dark cuffs.
-                panel=clamp((.28-abs(cross)/(w*.062))/.20)*skin
-                blue=(min(100,18+.30*lum),min(135,29+.40*lum),min(240,65+.75*lum))
-                pad=(min(248,110+.60*lum),min(250,119+.57*lum),min(253,132+.55*lum))
-                col=tuple(v+(n-v)*panel for v,n in zip(blue,pad))
-                px[x,y]=tuple(round(v+(n-v)*glove) for v,n in zip((r,g,b),col))+(a,)
-                continue
-            if y<140:continue
-            red=clamp((r-max(g,b)-14)/22)*clamp((r/(g+1)-1.62)/.30)*clamp((b+20-g)/10)
-            white=clamp((max(30,lum*.36)-spread)/max(8,lum*.085))*clamp((1.45-r/(b+1))/.17)*clamp((lum-65)/23) if y<329 else 0
-            shorts=clamp((25-spread)/12)*clamp((115-lum)/25) if low<=y<=high else 0
-            fabric=max(red,white,shorts)
-            if fabric:
-                # Equal orange family for shirt, shorts and socks; preserve
-                # the source shading rather than paint a flat orange block.
-                value=max(r,lum) if red else lum
-                if shorts>max(red,white):value=85+lum*1.05
-                col=(min(255,34+.91*value),min(174,12+.55*value),min(79,5+.23*value))
-                px[x,y]=tuple(round(v+(n-v)*fabric) for v,n in zip((r,g,b),col))+(a,)
-    return out
-
 def wimbledon_uniform(image,pose):
     """White tennis whites on the validated complete character, no helmet."""
     out=image.convert("RGBA");px=out.load();w,h=out.size
@@ -540,7 +495,7 @@ def main():
         for item in outfits:
             for nobat in (False,True):
                 path=OUT/"outfits"/item["id"]/(pose+("-nobat" if nobat else "")+".webp")
-                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"] in ("futbol_verde","futbol_azulgrana","portero") else item["id"])
+                approved=ROOT/"assets"/"approved"/"outfits"/("futbol_rojo" if item["id"] in ("futbol_verde","futbol_azulgrana") else item["id"])
                 if approved.is_dir():
                     # Approved complete character, never recolor or mask its body.
                     anchors=json.loads((approved/"anchors.json").read_text(encoding="utf-8"))
@@ -548,7 +503,6 @@ def main():
                     baked=opaque_core(Image.open(source).convert("RGBA"))
                     if item["id"]=="futbol_verde":baked=betis_uniform(baked,pose)
                     if item["id"]=="futbol_azulgrana":baked=blaugrana_uniform(baked,pose)
-                    if item["id"]=="portero":baked=goalkeeper_uniform(baked,pose,anchors[pose])
                     if not nobat:
                         anchor=anchors[pose];w,h=baked.size
                         gx,gy=anchor["grip"][0]*w,anchor["grip"][1]*h
