@@ -1,3 +1,4 @@
+import {batterOriginY,weaponPlacement} from '../src/sprites.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
@@ -279,10 +280,22 @@ test('Guardameta naranja uses five approved original sprites and matching weapon
   const source=readFileSync(new URL('../assets/approved/outfits/portero/'+pose+'-nobat.webp',import.meta.url));
   assert.equal(source.toString('ascii',8,12),'WEBP');
   for(const noBat of [false,true]){
-   const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.44$/);
+   const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.45$/);
    assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
   }
  }
  const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
  assert.doesNotMatch(generator,/goalkeeper_uniform/);
+});
+
+test('Guardameta boots are grounded in every frame and the equipped bat follows the same offset',()=>{
+ for(const pose of OUTFIT_POSES){
+  const a=OUTFIT_WEAPON_POSES.portero[pose],sole=pose==='follow'?354:353;
+  assert.equal(a.footY,sole/384);
+  const origin=batterOriginY(700,384,a);
+  assert.equal(origin+sole,700);
+  const weapon=weaponPlacement(pose,100,origin,384,384,'portero');
+  assert.equal(weapon.y,origin+a.grip[1]*384);
+ }
+ assert.equal(batterOriginY(700,384,null),316);
 });

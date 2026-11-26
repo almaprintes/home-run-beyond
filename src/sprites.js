@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.44';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.44';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.44';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.44';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.44';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.44';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.45';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.45';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.45';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.45';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.45';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.45';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -185,6 +185,8 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
 
 // Coloca el asset completo en el lienzo global, NO en el recorte del bateador.
 // El plano se pinta detrás del personaje; los brazos tapan la empuñadura.
+// Register visible soles, rather than the transparent canvas edge.
+export function batterOriginY(groundY,heightPx,registration){return groundY-heightPx*(registration?.footY??1)}
 export function weaponPlacement(pose,originX,originY,width,height,outfitId){
  const anchor=OUTFIT_WEAPON_POSES[outfitId]?.[pose]||WEAPON_POSES[pose]||WEAPON_POSES.ready;
  const [gx,gy]=anchor.grip,[tx,ty]=anchor.tip;
@@ -349,7 +351,7 @@ export class BatterSprites{
     const outfitId=game.save?.equippedOutfit;
     const registration=sprite!==this.images[pose]?OUTFIT_WEAPON_POSES[outfitId]?.[pose]:null;
     const originX=foot.x-widthPx*(registration?.foot??.47);
-    const originY=foot.y-heightPx;
+    const originY=batterOriginY(foot.y,heightPx,registration);
     ctx.save();
     // Una sombra mínima bajo el sprite lo integra en el estadio 3D.
     ctx.fillStyle='rgba(4,22,31,.26)';
