@@ -53,7 +53,7 @@ test('las monedas aparecen separadas entre base y bonus',()=>{
  const save=initialSave();save.levels.multiplier=7;
  const r=settleShot(save,959);
  assert.equal(r.baseCoins,Math.floor(959*.75));
- assert.equal(r.multiplier,1.24);
+ assert.equal(r.multiplier,1.36);
  assert.equal(r.coins,r.baseCoins+r.bonusCoins);
  assert.ok(r.coins>r.baseCoins);
  assert.equal(save.coins,170+r.coins);

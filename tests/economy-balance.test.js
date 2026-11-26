@@ -42,7 +42,7 @@ test('multiplicador termina en ×3 y no consume moneda ni bono posteriormente',(
  assert.equal(BONUS_EVERY,5);
  assert.equal(bonusCredits(save),2);
 });
-test('conserva monedas, progreso y fórmula de recompensa sin inflar multiplicador',()=>{
+test('conserva monedas y progreso con la nueva curva de multiplicador',()=>{
  const save=sanitizeSave({version:2,levels:{power:49,swing:17,multiplier:9},coins:1311,best:1730,shots:97,paidUpgrades:72,bonusClaims:6});
  assert.deepEqual(save.levels,{power:49,swing:17,multiplier:9});
  assert.equal(save.coins,1311);
@@ -52,6 +52,11 @@ test('conserva monedas, progreso y fórmula de recompensa sin inflar multiplicad
  assert.equal(save.bonusClaims,6);
  const coins=coinRewardBreakdown(795,save.levels);
  assert.equal(coins.base,596);
- assert.equal(coins.multiplier,1.32);
- assert.equal(coins.total,786);
+ assert.equal(coins.multiplier,1.48);
+ assert.equal(coins.total,882);
 });
+
+ test('multiplicador aumenta un 6% al principio, se modera y conserva el máximo de x3',()=>{
+ for(const [level,expected] of [[1,1],[2,1.06],[11,1.6],[21,2.2],[22,2.24],[31,2.6],[32,2.62],[41,2.8],[51,3],[99,3]])assert.equal(coinMultiplier(level),expected);
+ for(let n=2;n<=51;n++){assert.ok(coinMultiplier(n)>coinMultiplier(n-1));assert.ok(coinMultiplier(n)>=((100+4*(n-1))/100));}
+ });

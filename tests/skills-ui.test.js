@@ -87,14 +87,14 @@ test('la tarjeta de Multiplicador muestra el premio actual y el del siguiente ni
   game.audio={cash(){}};game.persist=()=>{};game.toast=()=>{};
   game.drawUI();
   assert.equal(nodes.get('level-multiplier').textContent,'NIV. 8');
-  assert.equal(nodes.get('multiplier-current').textContent,'×1,28');
-  assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,32');
+  assert.equal(nodes.get('multiplier-current').textContent,'×1,42');
+  assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,48');
   assert.equal(nodes.get('cost-multiplier').textContent,formatInt(upgradeCost(8,'multiplier')));
-  assert.match(nodes.get('up-multiplier')['aria-label'],/nivel 8, multiplicador actual por 1\.28, siguiente por 1\.32/);
+  assert.match(nodes.get('up-multiplier')['aria-label'],/nivel 8, multiplicador actual por 1\.42, siguiente por 1\.48/);
   game.buyUpgrade('multiplier');
   assert.equal(game.save.levels.multiplier,9);
-  assert.equal(nodes.get('multiplier-current').textContent,'×1,32');
-  assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,36');
+  assert.equal(nodes.get('multiplier-current').textContent,'×1,48');
+  assert.equal(nodes.get('multiplier-next').textContent,'SIG. ×1,54');
   assert.equal(nodes.get('level-multiplier').textContent,'NIV. 9');
   assert.equal(nodes.get('cost-multiplier').textContent,formatInt(upgradeCost(9,'multiplier')));
  }finally{

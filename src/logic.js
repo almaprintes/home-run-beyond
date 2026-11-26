@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.32';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.32';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.33';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.33';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -119,7 +119,11 @@ export function calculateShot(levels,timingMs,bonuses={}){
  const vx=speed*slice*.19,vy=speed*Math.sin(angle),vz=Math.sqrt(Math.max(0,speed*speed-vy*vy-vx*vx));
  return {quality,initialSpeed:speed,vx,vy,vz,angle,contactOffsetMm,ratedDistance:speed*speed*Math.sin(2*angle)/9.81};
 }
-export function coinMultiplier(level=1){return 1+.04*Math.min(50,Math.max(0,level-1))}
+// Front-load the return on investment without raising the established x3 cap.
+export function coinMultiplier(level=1){
+ const n=Math.min(50,Math.max(0,level-1));
+ return (100+6*Math.min(20,n)+4*Math.min(10,Math.max(0,n-20))+2*Math.max(0,n-30))/100;
+}
 export function coinRewardBreakdown(meters,levels,ballBonus=0){
  const distance=Math.max(0,Math.floor(Number(meters)||0));
  const base=Math.floor(distance*.75),multiplier=coinMultiplier(levels.multiplier||1)*(1+Math.max(0,Math.min(.35,ballBonus)));

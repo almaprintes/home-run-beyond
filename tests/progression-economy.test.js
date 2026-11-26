@@ -102,11 +102,11 @@ test('progreso jugable: los retos normales progresan sin exigir miles de batazos
  assert.ok(Math.min(...play.map(x=>x.target))>=3);
 });
 
-test('ROI de multiplicador auditable: la ganancia marginal por golpe es 4% del básico',()=>{
+test('ROI de multiplicador auditable: la ganancia marginal inicial por golpe es 6% del básico',()=>{
  const reference=coinRewardBreakdown(120,{power:1,swing:1,multiplier:1});
  const after=coinRewardBreakdown(120,{power:1,swing:1,multiplier:2});
  assert.equal(reference.total,90);
- assert.equal(after.total,93);
+ assert.equal(after.total,95);
  assert.equal(upgradeCost(1,'multiplier'),290);
  // No se modifica la física ni se presentan distancias ideales como garantizadas.
  const theoretical=calculateShot({power:1,swing:1,multiplier:1},0);
