@@ -1,4 +1,6 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.45';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.46';
+import {groundAt} from './world.js?v=0.77.46';
+export const MAX_GLASS_SHARDS=84;
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
 export const EFFECT_MATERIALS=Object.freeze({
@@ -38,8 +40,8 @@ function project(vp,x,y,z,width,height){
 }
 
 export class ImpactEffects{
- constructor(){this.particles=[];this.rings=[];this.seed=1;this.solarClock=0}
- clear(){this.particles.length=0;this.rings.length=0;this.solarClock=0}
+ constructor(){this.particles=[];this.rings=[];this.seed=1;this.solarClock=0;this.glassShards=[];this.glassChimeCooldown=0}
+ clear(){this.particles.length=0;this.rings.length=0;this.solarClock=0;this.glassShards.length=0;this.glassChimeCooldown=0}
  spawn({x=0,y=0,z=0,material='concrete',strength=20,normal={x:0,y:1,z:0},ballId=null}={}){
   const style=materialEffect(material),scale=fxStrength(strength);
   if(ballId==='sol'){
@@ -65,6 +67,70 @@ export class ImpactEffects{
   // Límite estricto: efectos de muchos rebotes no penalizan el iPhone.
   if(this.particles.length>90)this.particles.splice(0,this.particles.length-90);
   if(this.rings.length>8)this.rings.splice(0,this.rings.length-8);
+ }
+ // Each pane's actual exterior face is used even when struck from inside.
+ spawnGlassShards(hit,strength=20){
+  const b=hit?.building,parts=hit?.windowId?.split(':');
+  const axis=parts?.[2],side=Number(parts?.[3]);
+  if(!b||!['x','z'].includes(axis)||Math.abs(side)!==1||!hit.point)return;
+  const along=axis==='x'?'z':'x',half=axis==='x'?b.w/2:b.d/2,span=axis==='x'?b.d/2:b.w/2;
+  const plane=b[axis]+side*half,center=b[along],power=fxStrength(strength),seed=this.seed++;
+  const count=6+Math.round(power*6);
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  for(let i=0;i<count;i++){
+   const u=hash(i+3,seed),v=hash(i+43,seed),w=hash(i+83,seed);
+   const p={x:0,z:0,y:Math.max(.25,hit.point.y+(u-.5)*1.1),vx:0,vz:0,vy:1+v*(2+power*3),
+    axis,side,plane,center,span,age:0,settled:false,settledAge:0,bounces:0,
+    restLife:2.4+w*1.4,size:.34+u*.83,aspect:.5+v*.55,
+    rx:u*6.28,ry:v*6.28,rz:w*6.28,spin:3+u*9,
+    color:['#a8dce9','#d4f5fb','#75b9ce','#edfaff'][i%4]};
+   p[axis]=plane+side*(.28+v*.38);
+   p[along]=clamp(hit.point[along]+(w-.5)*1.8,center-span-.4,center+span+.4);
+   p['v'+axis]=side*(.8+power*2.8+u*.9);
+   p['v'+along]=(w-.5)*(2+power*3.8);
+   this.glassShards.push(p);
+  }
+  if(this.glassShards.length>MAX_GLASS_SHARDS)this.glassShards.splice(0,this.glassShards.length-MAX_GLASS_SHARDS);
+ }
+ updateGlassShards(step,onGlassLand){
+  this.glassChimeCooldown=Math.max(0,this.glassChimeCooldown-step);
+  let landed=false;
+  for(const p of this.glassShards){
+   p.age+=step;
+   if(p.settled){p.settledAge+=step;continue}
+   p.vy-=18*step;
+   p.x+=p.vx*step;p.y+=p.vy*step;p.z+=p.vz*step;
+   const drag=Math.exp(-1.1*step);p.vx*=drag;p.vz*=drag;
+   const along=p.axis==='x'?'z':'x',out=(p[p.axis]-p.plane)*p.side;
+   if(out<.22||out>5.5){
+    p[p.axis]=p.plane+p.side*Math.max(.22,Math.min(5.5,out));p['v'+p.axis]=0;
+   }
+   const lateral=p[along]-p.center;
+   if(Math.abs(lateral)>p.span+2){
+    p[along]=p.center+Math.sign(lateral)*(p.span+2);p['v'+along]=0;
+   }
+   p.rx+=p.spin*step;p.ry+=p.spin*.57*step;p.rz+=p.spin*.73*step;
+   const floor=groundAt(p.x,p.z).y+.075;
+   if(p.y<=floor){
+    p.y=floor;
+    if(p.bounces===0)landed=true;
+    p.bounces++;p.vy=Math.abs(p.vy)*.16;p.vx*=.24;p.vz*=.24;p.spin*=.30;
+    if(p.bounces>=2||p.vy<.65){p.settled=true;p.vx=p.vy=p.vz=0;p.rx=p.rz=0}
+   }
+  }
+  if(landed&&this.glassChimeCooldown===0){this.glassChimeCooldown=.35;onGlassLand?.()}
+  this.glassShards=this.glassShards.filter(p=>p.settled?p.settledAge<p.restLife:p.age<12);
+ }
+ drawGlassShards(r,cam){
+  if(!this.glassShards.length)return;
+  r.setLayer?.('opaque');r.setMaterial?.('plain');
+  for(const p of this.glassShards){
+   if(Math.hypot(p.x-cam[0],p.z-cam[2])>260)continue;
+   const fade=p.settled?Math.min(1,Math.max(0,(p.restLife-p.settledAge)/.7)):1;
+   const size=p.size*fade;
+   if(size<.025)continue;
+   r.add?.('glassShard',p.x,p.y,p.z,size,.045*fade,size*p.aspect,p.color,p.ry,p.rx,p.rz,'plain');
+  }
  }
  addSolarParticle(x,y,z,vx,vy,vz,life,size,seed,index,flame){
   this.particles.push({x,y,z,vx,vy,vz,age:0,life,gravity:flame?-3:9,kind:flame?'flame':'ember',color:['#fff1a2','#ffcc4b','#ff8427','#f64b1d'][Math.floor(hash(index+71,seed)*4)],size,material:'solar'});
@@ -96,8 +162,9 @@ export class ImpactEffects{
   const strength=quality==='perfect'?100:quality==='excellent'?73:quality==='good'?42:18;
   this.spawn({x,y,z,material:'bat',strength,normal:{x:0,y:1,z:1}});
  }
- update(dt){
+ update(dt,onGlassLand){
   const step=Math.max(0,Math.min(.06,Number(dt)||0));
+  this.updateGlassShards(step,onGlassLand);
   for(const p of this.particles){
    p.age+=step;p.x+=p.vx*step;p.y+=p.vy*step;p.z+=p.vz*step;
    p.vy-=p.gravity*step;p.vx*=Math.exp(-1.6*step);p.vz*=Math.exp(-1.6*step);

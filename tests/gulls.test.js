@@ -29,7 +29,7 @@ test('atlas is real WebP and uses all nine frames',()=>{
  const bytes=readFileSync(new URL('../assets/environment/gull-flight.webp',import.meta.url));assert.equal(bytes.toString('ascii',8,12),'WEBP');assert.ok(bytes.length>30000);
  const frames=[0,.2,.4,.8,1.1,1.5].map(age=>gullFrame(0,{age}));assert.deepEqual(frames,[3,4,5,6,7,8]);
  assert.deepEqual([0,1/5.8,2/5.8,3/5.8].map(t=>gullFrame(t,{age:Infinity,phase:0})),[0,1,2,1]);
- const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(sw,/gull-flight\.webp\?v=0\.77\.45/);
+ const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');assert.match(sw,/gull-flight\.webp\?v=0\.77\.46/);
 });
 test('procedural fallback remains available if atlas cannot load',()=>{
  const calls=[],r={add(...a){calls.push(a)}};const n=drawGulls(r,[0,25,400],{clock:1});assert.ok(n>0);assert.equal(calls.length,n*8);

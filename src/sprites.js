@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.45';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.45';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.45';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.45';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.45';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.45';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.46';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.46';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.46';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.46';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.46';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.46';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
