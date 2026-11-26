@@ -398,3 +398,19 @@
 .resting .result.has-encounter .result-panel{max-height:min(300px,calc(100dvh - 350px))}
 @media(max-height:720px){.encounter-pop{top:calc(205px + env(safe-area-inset-top))}.resting .result.has-encounter .result-panel{max-height:calc(100dvh - 318px)}.encounter-reward{padding:4px 7px}.encounter-reward b{font-size:20px}}
 @media(prefers-reduced-motion:reduce){.encounter-pop.reward-pop-in{animation:none}}
+
+/* 0.77.32: flight telemetry is confined to the safe upper edge. */
+.run-info{top:calc(64px + env(safe-area-inset-top));left:auto;right:max(18px,env(safe-area-inset-right));width:auto;max-width:48%;display:flex;align-items:baseline;justify-content:flex-end;gap:6px;text-align:right;white-space:nowrap;pointer-events:none}
+.run-info .distance-label{font-size:9px;letter-spacing:.65px}
+.run-info .distance{font-size:clamp(23px,7vw,34px);line-height:1.05;letter-spacing:-.8px;text-shadow:0 2px 5px #07182fbb}
+.run-info .distance small{font-size:13px;margin-left:2px}
+.run-info .record-badge{position:absolute;right:0;top:100%;font-size:9px;padding:3px 6px}
+.run-info .impact{position:absolute;right:0;top:100%;font-size:12px;line-height:1.2;min-height:0;letter-spacing:.25px;animation:flight-quality-out .8s linear both;pointer-events:none}
+@keyframes flight-quality-out{0%,60%{opacity:1}100%{opacity:0}}
+#app:has(#run-info:not([hidden])) .region{top:calc(74px + env(safe-area-inset-top));left:max(18px,env(safe-area-inset-left));right:auto;transform:none;max-width:48%;overflow:hidden;text-overflow:ellipsis;font-size:10px;letter-spacing:.55px;text-shadow:0 2px 5px #07182fbb}
+.encounter-pop{top:calc(99px + env(safe-area-inset-top));gap:8px;padding:6px 12px;border-radius:12px}
+.encounter-pop .encounter-icon{font-size:24px}
+.encounter-pop .encounter-title{font-size:10px}
+.encounter-pop .encounter-amount{font-size:19px}
+@media(max-width:355px){.run-info .distance-label{display:none}.run-info .distance{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.run-info .impact{animation:flight-quality-out .8s steps(1,end) both}}
