@@ -1,11 +1,11 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.52';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.52';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.53';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.53';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
 export function skillMaxLevel(key){return key==='multiplier'?MULTIPLIER_MAX_LEVEL:MAX_LEVEL}
 export const BONUS_EVERY=5;
-export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,earnedCoins:0,furthestZ:0,lastDiscoveryShot:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
+export const DEFAULT_SAVE=Object.freeze({version:3,coins:170,best:0,shots:0,totalMeters:0,earnedCoins:0,furthestZ:0,lastDiscoveryShot:0,levels:{power:1,swing:1,multiplier:1},owned:['classic'],equipped:'classic',ownedOutfits:['red'],equippedOutfit:'red',ownedBalls:['classic'],equippedBall:'classic',sound:true,music:false,voice:true,vibration:true,reducedEffects:false,cinematicCamera:true,showHints:true,graphics:'auto',batterySaver:false,seenIntro:false,achievements:[],discovered:[...STARTER_DISCOVERIES],discoveryStats:{...INITIAL_DISCOVERY_STATS},discoveryFlags:[],paidUpgrades:0,bonusClaims:0,pendingLegacyBonuses:0});
 export function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
 export function initialSave(){return JSON.parse(JSON.stringify(DEFAULT_SAVE))}
 export function sanitizeSave(raw){
@@ -36,6 +36,7 @@ export function sanitizeSave(raw){
  s.voice=raw.voice!==false;
  s.vibration=raw.vibration!==false;
  s.reducedEffects=raw.reducedEffects===true;
+ s.cinematicCamera=raw.cinematicCamera!==false;
  s.showHints=raw.showHints!==false;
  s.graphics=['auto','high','low'].includes(raw.graphics)?raw.graphics:'auto';
  s.batterySaver=raw.batterySaver===true;

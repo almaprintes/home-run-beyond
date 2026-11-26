@@ -443,3 +443,7 @@
 
 .ws-test[aria-pressed=true]{background:#b5e3cb;color:#123b2d;border-color:#d0f5df}
 .catalog-test-active::after{content:"MODO PRUEBAS · NO SE GUARDA";position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 3px);transform:translateX(-50%);z-index:90;pointer-events:none;padding:3px 8px;border-radius:6px;background:#73491c;color:#fff2cc;font-size:10px;font-weight:800;letter-spacing:.35px;white-space:nowrap}
+
+.orbit-skip{position:absolute;inset:0;z-index:75;display:flex;align-items:flex-end;justify-content:center;padding:0 16px calc(28px + env(safe-area-inset-bottom));background:transparent;border:0;color:#fff;cursor:pointer;touch-action:manipulation}
+.orbit-skip span{border-radius:24px;padding:10px 16px;background:#071725b5;border:1px solid #e9f6ff55;font-weight:800;font-size:11px;letter-spacing:.8px;text-shadow:0 1px 4px #000}
+.orbit-skip[hidden]{display:none}

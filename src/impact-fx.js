@@ -1,5 +1,5 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.52';
-import {groundAt} from './world.js?v=0.77.52';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.53';
+import {groundAt} from './world.js?v=0.77.53';
 export const MAX_GLASS_SHARDS=84;
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
@@ -92,12 +92,12 @@ export class ImpactEffects{
   }
   if(this.glassShards.length>MAX_GLASS_SHARDS)this.glassShards.splice(0,this.glassShards.length-MAX_GLASS_SHARDS);
  }
- updateGlassShards(step,onGlassLand){
+ updateGlassShards(step,onGlassLand,holdDebris=false){
   this.glassChimeCooldown=Math.max(0,this.glassChimeCooldown-step);
   let landed=false;
   for(const p of this.glassShards){
    p.age+=step;
-   if(p.settled){p.settledAge+=step;continue}
+   if(p.settled){if(!holdDebris)p.settledAge+=step;continue}
    p.vy-=18*step;
    p.x+=p.vx*step;p.y+=p.vy*step;p.z+=p.vz*step;
    const drag=Math.exp(-1.1*step);p.vx*=drag;p.vz*=drag;
@@ -162,9 +162,9 @@ export class ImpactEffects{
   const strength=quality==='perfect'?100:quality==='excellent'?73:quality==='good'?42:18;
   this.spawn({x,y,z,material:'bat',strength,normal:{x:0,y:1,z:1}});
  }
- update(dt,onGlassLand){
+ update(dt,onGlassLand,holdDebris=false){
   const step=Math.max(0,Math.min(.06,Number(dt)||0));
-  this.updateGlassShards(step,onGlassLand);
+  this.updateGlassShards(step,onGlassLand,holdDebris);
   for(const p of this.particles){
    p.age+=step;p.x+=p.vx*step;p.y+=p.vy*step;p.z+=p.vz*step;
    p.vy-=p.gravity*step;p.vx*=Math.exp(-1.6*step);p.vz*=Math.exp(-1.6*step);
