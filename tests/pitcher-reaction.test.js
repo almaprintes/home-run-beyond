@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pitcherPose,pitcherReactionPlan} from '../src/pitcher.js';
+import {pitcherPose,pitcherReactionPlan,pitcherCutActive,pitcherCamera} from '../src/pitcher.js';
 import {drawWorld,drawPitcher,pitcherBallPosition} from '../src/world.js';
 test('pitcher salta hacia un batazo próximo sin modificar su trayectoria',()=>{
  const shot=Object.freeze({vx:6,vy:16,vz:36}),plan=pitcherReactionPlan(shot);
@@ -25,4 +25,23 @@ test('el mundo sigue dibujando al pitcher tras el golpe',()=>{
  const shot={vx:0,vy:16,vz:36},plan=pitcherReactionPlan(shot);
  drawWorld(r,[0,9,-15],{state:'flight',ball:{x:0,y:8,z:18,vx:0,vy:16,vz:36},pendingShot:shot,pitcherReaction:plan,liveSeconds:plan.start+.4,sprites:{ballLoaded:true}});
  assert.ok(calls.some(a=>a[0]==='ball'&&a[3]>19&&a[3]<23&&a.at(-1)==='#94582e'));
+});
+
+test('personalized face and conditional camera never mutate the ball',()=>{
+ const plan=pitcherReactionPlan({vx:6,vy:16,vz:36});
+ const ball=Object.freeze({x:1,y:20,z:100,vx:6,vy:16,vz:36});
+ const g={state:'flight',liveSeconds:.8,pitcherReaction:plan,save:{cinematicCamera:true},ball};
+ assert.equal(pitcherCutActive(g),true);
+ assert.equal(pitcherCutActive({...g,liveSeconds:.5}),false);
+ assert.equal(pitcherCutActive({...g,liveSeconds:1.1}),false);
+ assert.equal(pitcherCutActive({...g,save:{cinematicCamera:false}}),false);
+ assert.equal(pitcherCutActive({...g,save:{cinematicCamera:true,reducedEffects:true}}),false);
+ assert.equal(pitcherCutActive({...g,pitcherReaction:{jump:false}}),false);
+ assert.ok(pitcherCamera(g).camera.every(Number.isFinite));
+ assert.equal(pitcherPose({...g,pitcherCut:true}).phase,'jump');
+ assert.equal(ball.z,100);
+ const calls=[],r={add(...a){calls.push(a)},pole(){},box(){},ball(){}};
+ drawPitcher(r,pitcherPose({state:'ready'}));
+ assert.ok(calls.some(a=>a.includes('#1464a1')));
+ assert.ok(calls.some(a=>a.includes('#a9a8a1')));
 });

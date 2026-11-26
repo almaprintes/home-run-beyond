@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.63';
-import {drawGulls} from './gulls.js?v=0.77.63';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.63';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.63';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.63';
+import {lerp} from './engine.js?v=0.77.64';
+import {drawGulls} from './gulls.js?v=0.77.64';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.64';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.64';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.64';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -674,11 +674,11 @@ function stadium(r){r.field(0,-.02,38,285,290,'#448e60');for(let i=0;i<11;i++){c
  for(const [x,z] of [[-116,32],[116,32],[-75,-65],[75,-65]]){r.pole(x,18,z,1.35,36,'#a2b8b9');r.box(x,36,z,13,4,3,'#d9e9de');for(let d=-1;d<=1;d++)r.ball(x+d*4,36,z-1.8,2.4,'#fff5c3')}
  for(let i=-7;i<8;i++){if(i===0)continue;tree(r,i*35,150+Math.abs(i)*7,7+rand(i)*5,i)}
 }
-// Articulated 3D pitcher: jersey, piping, belt, cap, cleats and leather mitt.
+// Personalized articulated pitcher: shaved head, salt-and-pepper beard and blue sports sunglasses.
 export function drawPitcher(r,pose=pitcherPose()){
- const x=pose.shift||0,z=PITCHER_Z,base=.76+(pose.lift||0);
+ const x=pose.shift||0,z=PITCHER_Z,base=.76+(pose.lift||0)-(pose.phase==='land'?.20:0);
  const side=pose.side||0,reach=pose.reach||0,throwing=pose.throw||0,step=pose.step||0;
- const lean=pose.lean||0,skin='#d99b73',jersey='#e9edf1',pants='#cdd7e1',navy='#1e3657',trim='#b93b45',leather='#94582e';
+ const lean=pose.lean||0,skin='#d9a07e',jersey='#f5f5f2',pants='#e5e9ed',navy='#193a70',trim='#2866a5',leather='#94582e';
  r.setMaterial?.('plain');
  r.add('ball',x,.78,z,2.6,.045,1.65,'#845e41');
  const body=(u,v,w)=>[x+u+lean*Math.max(0,v-1.8),base+v,z+w];
@@ -693,7 +693,7 @@ export function drawPitcher(r,pose=pitcherPose()){
  }
  const waist=body(0,2.32,0),chest=body(0,3.49,.05*throwing);
  r.add('ball',...waist,1.65,.72,1.10,pants);
- r.add('ball',...chest,2.03,2.18,1.30,jersey,0,0,-lean*.30);
+ r.add('ball',...chest,2.19,2.18,1.44,jersey,0,0,-lean*.30);
  r.box(...body(0,2.37,-.48),1.58,.19,.18,navy);
  r.box(...body(0,2.37,-.60),.30,.20,.10,'#a9b5c2');
  // Jersey front is toward the batter (negative Z).
@@ -704,18 +704,29 @@ export function drawPitcher(r,pose=pitcherPose()){
  r.box(...body(-.55,3.76,-.60),.36,.33,.07,navy);
  r.box(...body(-.55,3.76,-.65),.18,.18,.05,trim);
  const neck=body(0,4.49,0);r.pole(...neck,.34,.48,skin);
- const head=body((pose.look||0)*.10,5.00,-.04);
- r.add('ball',...head,1.54,1.73,1.38,skin);
- for(const s of [-1,1]){
-  r.ball(head[0]+s*.72,head[1]-.03,head[2],.30,skin);
-  r.ball(head[0]+s*.28,head[1]+.09,head[2]-.66,.15,'#202a37');
-  r.box(head[0]+s*.28,head[1]+.24,head[2]-.63,.24,.075,.09,'#654536');
+ // Bald cartoon head, full salt-and-pepper beard, blue wraparound glasses.
+ const head=body((pose.look||0)*.13,5.13,-.04),[hx,hy,hz]=head;
+ r.add('ball',hx,hy,hz,1.91,2.03,1.69,skin);
+ r.add('ball',hx,hy+.43,hz-.08,1.68,1.12,1.48,'#e3ad8c');
+ r.add('ball',hx,hy-.57,hz-.28,1.74,1.18,1.45,'#777978');
+ r.add('ball',hx,hy-.72,hz-.54,1.26,.78,1.03,'#a9a8a1');
+ for(const side of [-1,1]){
+  r.add('ball',hx+side*.74,hy-.34,hz-.30,.44,.82,.85,'#858582');
+  r.add('ball',hx+side*.31,hy-.37,hz-.86,.57,.23,.21,'#575957',0,0,side*.14);
+  r.add('ball',hx+side*.86,hy-.03,hz,.28,.45,.31,skin);
+  r.add('ball',hx+side*.90,hy-.03,hz-.10,.11,.22,.12,'#b97b65');
+  r.add('ball',hx+side*.45,hy+.14,hz-.77,.95,.65,.35,'#1464a1',0,side*.13,0);
+  r.add('ball',hx+side*.45,hy+.14,hz-.91,.79,.49,.19,'#101c2b',0,side*.13,0);
+  r.add('ball',hx+side*.47,hy+.30,hz-1.00,.51,.075,.035,'#5a8bab',0,side*.13,0);
+  limb(r,[hx+side*.84,hy+.18,hz-.70],[hx+side*.93,hy+.16,hz+.16],.062,'#143853');
+  for(let i=0;i<5;i++){
+   const bx=hx+side*(.16+i*.125),by=hy-.84+i*.058,bz=hz-.94+i*.053;
+   limb(r,[bx,by+.10,bz],[bx+side*.035,by-.035,bz+.015],.024,i%2?'#c7c4bd':'#92938f');
+  }
  }
- r.ball(head[0],head[1]-.10,head[2]-.73,.24,skin);
- r.box(head[0],head[1]-.37,head[2]-.58,.30,.065,.08,'#8e5243');
- r.add('ball',head[0],head[1]+.62,head[2]+.03,1.68,.82,1.56,navy);
- r.add('ball',head[0],head[1]+.35,head[2]-.72,1.45,.14,.97,navy);
- r.box(head[0],head[1]+.57,head[2]-.70,.27,.26,.08,'#f2f4f7');
+ r.add('ball',hx,hy+.18,hz-.91,.30,.13,.15,'#1c5d93');
+ r.add('ball',hx,hy-.12,hz-.92,.39,.42,.43,skin);
+ r.add('ball',hx,hy-.48,hz-.91,.36,.085,.12,'#7b4e46');
  const gloveSide=1; // Left glove stays on the same hand throughout the animation.
  const glove=body(gloveSide*.57+side*reach*1.30,3.05+reach*(1.35+1.62*(pose.reachHeight||0)),-.86+reach*.63);
  const gloveElbow=body(gloveSide*1.16+side*reach*.13,3.32+reach*.82,-.24);
@@ -724,7 +735,7 @@ export function drawPitcher(r,pose=pitcherPose()){
  for(const [s,elbow,hand] of [[gloveSide,gloveElbow,glove],[-gloveSide,throwingElbow,throwingHand]]){
   const shoulder=body(s*.82,4.01,0);
   const cuff=shoulder.map((v,i)=>v+(elbow[i]-v)*.47);
-  limb(r,shoulder,cuff,.42,jersey);r.ball(...cuff,.70,jersey);
+  limb(r,shoulder,cuff,.46,navy);r.ball(...cuff,.77,navy);
   limb(r,cuff,elbow,.29,skin);limb(r,elbow,hand,.25,skin);
   r.ball(...hand,.53,skin);
  }

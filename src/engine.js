@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.63';
+import {pitcherPose} from './pitcher.js?v=0.77.64';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -382,7 +382,7 @@ export class CanvasRenderer{
  c.lineCap='round';c.strokeStyle='#f0eadb';c.lineWidth=15;for(let side of [-1,1]){c.beginPath();c.moveTo(side*10,-60);c.lineTo(side*16,-8);c.stroke()}
  this.poly([[-25,-115],[25,-115],[20,-60],[-20,-60]],batter?'#f4a144':'#f2efe8');
  c.strokeStyle='#e0a079';c.lineWidth=12;c.beginPath();c.moveTo(-22,-105);c.lineTo(-35,-78);c.moveTo(22,-105);c.lineTo(36,-76);c.stroke();
- c.fillStyle='#c58c69';c.beginPath();c.arc(0,-140,27,0,Math.PI*2);c.fill();this.poly([[-26,-153],[-12,-169],[24,-163],[27,-150]],batter?'#142e4a':'#28708b');
+ c.fillStyle='#d9a07e';c.beginPath();c.arc(0,-140,batter?27:30,0,Math.PI*2);c.fill();if(batter){this.poly([[-26,-153],[-12,-169],[24,-163],[27,-150]],'#142e4a')}else{c.fillStyle='#878985';c.beginPath();c.ellipse(0,-128,27,19,0,0,Math.PI*2);c.fill();c.fillStyle='#b1b0a9';c.beginPath();c.ellipse(0,-120,17,10,0,0,Math.PI*2);c.fill();for(const side of [-1,1]){c.fillStyle='#1464a1';c.beginPath();c.ellipse(side*15,-144,16,11,0,0,Math.PI*2);c.fill();c.fillStyle='#101c2b';c.beginPath();c.ellipse(side*15,-144,13,8,0,0,Math.PI*2);c.fill()}c.fillStyle='#1464a1';c.fillRect(-4,-146,8,3);c.fillStyle='#575957';c.fillRect(-11,-130,22,4)}
  c.strokeStyle=batter?(this.game?.batColor||'#e7b56e'):'#e0a078';c.lineWidth=9;c.beginPath();if(batter){c.moveTo(29,-97);c.lineTo(29+Math.sin(phase*3.3+.6)*67,-150-Math.cos(phase*3.3)*29)}else{c.moveTo(25,-92);c.lineTo(44+(pose?.side||0)*14,-87-(pose?.reach||0)*92-(pose?.throw||0)*24)}c.stroke();
  if(!batter){const gx=44+(pose?.side||0)*14,gy=-87-(pose?.reach||0)*92-(pose?.throw||0)*24;c.fillStyle='#995f32';c.beginPath();c.ellipse(gx,gy,14,18,0,0,Math.PI*2);c.fill();c.strokeStyle='#e2ad76';c.lineWidth=2;c.stroke();c.strokeStyle='#253d5e';c.lineWidth=4;c.beginPath();c.moveTo(0,-110);c.lineTo(0,-62);c.stroke();}
  c.restore()}
