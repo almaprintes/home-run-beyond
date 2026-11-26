@@ -86,7 +86,7 @@ luchador|Lucha libre|6900|wrestling|#df5ab8|#ffe68d|🤼
 golfista|Golfista clásico|4700|polo|#a6d7b4|#ffffff|⛳
 retro|Béisbol retro|3500|pinstripes|#e6dfcf|#c54d47|⚾
 cricket|Críquet crema|4200|polo|#f3ecd6|#b0a37f|🏏
-portero|Guardameta naranja|4800|jersey|#f68b46|#2c455e|🥅
+portero|Guardameta naranja|4800|jersey|#f08027|#253f78|🥅
 chef|Chef de campeonato|7300|chef|#f5f3e5|#e45750|👨‍🍳
 pescador|Pescador del muelle|7900|fisher|#5e9db2|#f8dc92|🎣
 pirata|Pirata del home|9100|pirate|#303e54|#d2a365|🏴‍☠️

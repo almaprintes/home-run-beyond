@@ -270,3 +270,14 @@ test('approved rake artwork survives the bake byte for byte',()=>{
  const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
  assert.match(generator,/blaugrana_uniform\(baked,pose\)/);
  });
+
+test('Guardameta naranja uses full helmet-free football poses and the same grip registration',()=>{
+ const item=OUTFIT_CATALOG.find(x=>x.id==='portero');
+ assert.equal(item.price,4800);assert.deepEqual(OUTFIT_WEAPON_POSES.portero,OUTFIT_WEAPON_POSES.futbol_rojo);
+ for(const pose of OUTFIT_POSES)for(const noBat of [false,true]){
+  const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.43$/);
+  assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
+ }
+ const generator=readFileSync(new URL('../tools/build_cosmetics.py',import.meta.url),'utf8');
+ assert.match(generator,/goalkeeper_uniform\(baked,pose,anchors\[pose\]\)/);
+});
