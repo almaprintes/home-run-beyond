@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.39';
-import {drawGulls} from './gulls.js?v=0.77.39';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.39';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.39';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.39';
+import {lerp} from './engine.js?v=0.77.40';
+import {drawGulls} from './gulls.js?v=0.77.40';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.40';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.40';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.40';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -369,14 +369,16 @@ function treeObscuresBall(cam,ball,x,z,h){
  const radius=Math.max(4,h*.35);
  return segmentBlockedByBox(cam,ball,{min:[x-radius,0,z-radius],max:[x+radius,h*1.48,z+radius]});
 }
-function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
+export const GLASS_INTERIOR_DISTANCE=190;
+function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null,cam=null){
  const b=buildingAt(idx,row);if(!b)return;
  if(ghost)r.setLayer?.('ghost');
  const paint=b.color;const y=b.h*.5;const col=paint;
  r.setMaterial?.(rand(idx*17,row*13)<.60?'plaster':'brick');
  const f=buildingFacade(b),nearBall=focusBall&&Math.hypot(focusBall.x-x,focusBall.z-z)<75;
  const damaged=f.windows.some(w=>brokenWindows?.has(w.id));
- const detailed=!!(nearBall||damaged); // Hollow geometry only when a ball can interact.
+ const nearCamera=cam&&Math.hypot(cam[0]-x,Math.max(0,cam[1]-b.h),cam[2]-z)<=GLASS_INTERIOR_DISTANCE;
+ const detailed=!!(nearBall||damaged||nearCamera); // Real openings wherever glass is transparent.
  const drawPart=(p,color)=>{const [a,c,d]=p.min,[e,g,h]=p.max;r.box((a+e)/2,(c+g)/2,(d+h)/2,e-a,g-c,h-d,color)};
  if(detailed){for(const p of f.walls)drawPart(p,col);for(const p of f.floors)drawPart(p,'#8d8c81')}
  else r.box(x,y,z,b.w,b.h,b.d,col);
@@ -385,6 +387,7 @@ function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
  r.setMaterial?.('metal');
  r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
  r.setMaterial?.('glass');
+ if(detailed&&!ghost)r.setLayer?.('glass');
  for(const w of f.windows){
   if(brokenWindows?.has(w.id))continue;
   if(!detailed&&lod>=2&&Number(w.id.split(':').at(-1))%2!==0)continue;
@@ -624,7 +627,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
   if(urbanClear(z,4,2)&&!pavedGroundAt(x,z))drawTree(x,z,8+rand(n+5)*6,n);
   if(urbanClear(z+12,4,2)&&!pavedGroundAt(x+15,z+12))drawTree(x+15,z+12,5+rand(n+7)*6,n+32);
  }
- else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall);}}}
+ else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall,cam);}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
  for(const patch of WET_PATCHES){
   if(Math.abs(patch.z-viewZ)>700)continue;

@@ -56,7 +56,7 @@ test('hierba, ladrillo, asfalto, tejas y hormigón se usan en los objetos dibuja
   drawWorld(renderer,[0,24,600],{state:'ready',clock:0,pitch:0,swing:0,batColor:'#ffc55a'});
   const ids=new Set();
   for(const mesh of Object.values(renderer.meshes)){
-   for(const layer of ['arr','ghost','overlay']){
+   for(const layer of ['arr','ghost','glass','overlay']){
     const a=mesh[layer];for(let i=19;i<a.length;i+=20)ids.add(a[i]);
    }
   }

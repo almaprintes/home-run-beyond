@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildingAt,buildingFacade,traceBuildingCollision,windowAppearance,drawWorld} from '../src/world.js';
+import {buildingAt,buildingFacade,traceBuildingCollision,windowAppearance,drawWorld,GLASS_INTERIOR_DISTANCE} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 import {synthImpulse} from '../src/audio.js';
 import {materialEffect} from '../src/impact-fx.js';
@@ -59,4 +59,14 @@ test('broken panes remove the whole reflective glass instance',()=>{
   return panes.filter(a=>Math.abs(a[0]-p.x)<1e-6&&Math.abs(a[1]-p.y)<1e-6&&Math.abs(a[2]-p.z)<1e-6);
  }
  assert.equal(capture(new Set()).length,1);assert.equal(capture(new Set([pane.id])).length,0);
+});
+
+test('near-camera windows reveal the hollow shell even before the ball approaches',()=>{
+ let material,layer='opaque';const calls=[];
+ const r={begin(){},setLayer(l){layer=l},setMaterial(m){material=m},box(...a){calls.push({material,layer,a})},field(){},ball(){},pole(){},cone(){},add(){}};
+ drawWorld(r,[b.x,20,b.z-30],{state:'ready',clock:0});
+ const p=center(pane);
+ assert.equal(GLASS_INTERIOR_DISTANCE,190);
+ assert.ok(calls.some(c=>c.layer==='glass'&&c.material==='glass'&&Math.abs(c.a[0]-p.x)<1e-6&&Math.abs(c.a[1]-p.y)<1e-6&&Math.abs(c.a[2]-p.z)<1e-6));
+ assert.ok(!calls.some(c=>Math.abs(c.a[0]-b.x)<1e-6&&Math.abs(c.a[2]-b.z)<1e-6&&c.a[3]===b.w&&c.a[4]===b.h&&c.a[5]===b.d),'solid core would block transmission');
 });
