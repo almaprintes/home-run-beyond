@@ -70,7 +70,7 @@ gold|Dorado campeón|2400|classic|#f3be4c|#fff7db|👕
 futbol_azulgrana|Fútbol Blaugrana|2700|stripes|#245ebf|#9d2340|⚽
 futbol_blanco|Fútbol Merengue|2600|shoulders|#e9edf2|#cbb77c|⚽
 futbol_rojo|Fútbol Athletic|2900|stripes|#e15550|#f7f4e9|⚽
-futbol_amarillo|Fútbol amarillo|3000|hoops|#f6c83f|#233b5a|⚽
+futbol_amarillo|Fútbol árbitro|3000|hoops|#f6c83f|#233b5a|⚽
 futbol_verde|Fútbol Betis|3100|stripes|#168346|#f5f5f5|⚽
 basket_negro|Baloncesto Canarias|3600|basket|#27303e|#f4c357|🏀
 basket_rojo|Baloncesto Baskonia|3800|basket|#d75c54|#f6f3e9|🏀

@@ -317,3 +317,23 @@ test('Fútbol Merengue has five approved independent sprites, interchangeable ba
   }
  }
 });
+
+test('Fútbol árbitro has five approved helmet-free referee sprites and grounded soles',()=>{
+ const item=OUTFIT_CATALOG.find(x=>x.id==='futbol_amarillo');assert.equal(item.name,'Fútbol árbitro');assert.equal(item.price,3000);
+ const anchors=JSON.parse(readFileSync(new URL('../assets/approved/outfits/futbol_amarillo/anchors.json',import.meta.url),'utf8'));
+ assert.deepEqual(OUTFIT_WEAPON_POSES.futbol_amarillo,anchors);
+ const hashes=new Set();
+ for(const pose of OUTFIT_POSES){
+  const source=readFileSync(new URL('../assets/approved/outfits/futbol_amarillo/'+pose+'-nobat.webp',import.meta.url));
+  assert.equal(source.toString('ascii',8,12),'WEBP');
+  hashes.add(createHash('sha256').update(source).digest('hex'));
+  const a=anchors[pose];assert.equal(a.footY,365/384);
+  assert.equal(batterOriginY(700,384,a)+365,700);
+  const grip=weaponPlacement(pose,0,335,480,384,item.id);assert.equal(grip.y,335+a.grip[1]*384);
+  for(const noBat of [false,true]){
+   const url=bakedAssetUrl('outfit',item.id,pose,noBat);assert.match(url,/v=0\.77\.55$/);
+   assert.notEqual(assertWebP(url),assertWebP(bakedAssetUrl('outfit','futbol_rojo',pose,noBat)));
+  }
+ }
+ assert.equal(hashes.size,5);
+});
