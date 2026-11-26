@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.56';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.56';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.56';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.56';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.56';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.56';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.57';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.57';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.57';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.57';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.57';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.57';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -155,7 +155,7 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
  // No photograph, mirrored back, baked highlights, or fabric texture on the
  // rotating material. The screen-space normal determines light and silhouette.
  const BEACH_PANELS=[[246,84,93],[246,213,81],[78,181,222],[95,206,133],[245,245,240],[154,102,205]];
- export function shadeBeachSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){
+ function shadeRoundMaterial(spin,camera,target,output,size=BALL_SURFACE_SIZE,material='beach'){
  const view=lookAt(camera,target),q=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
  const qx=-q[0],qy=-q[1],qz=-q[2],qw=q[3];
  const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
@@ -170,6 +170,23 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
    const wx=xr*sx+xu*sy+xt*sz,wy=yr*sx+yu*sy+yt*sz,wz=zr*sx+zu*sy+zt*sz;
    const cx=2*(qy*wz-qz*wy),cy=2*(qz*wx-qx*wz),cz=2*(qx*wy-qy*wx);
    const ox=wx+qw*cx+qy*cz-qz*cy,oy=wy+qw*cy+qz*cx-qx*cz,oz=wz+qw*cz+qx*cy-qy*cx;
+   if(material==='orange'){
+    // Small peel pores and the calyx are fixed to the object's 3D normals.
+    // Lighting stays outside that rotation, so the fruit never rolls like a coin.
+    const longitude=Math.atan2(oz,ox);
+    const pores=Math.pow(Math.max(0,Math.sin(ox*87+Math.sin(oy*29))*Math.sin(oy*91+Math.sin(oz*31))*Math.sin(oz*83+Math.sin(ox*27))),3);
+    const mottling=Math.sin(ox*17+oy*11)*Math.sin(oz*19-oy*13);
+    const cap=oy>.975+.009*Math.cos(longitude*5);
+    const diffuse=.58+.42*Math.max(0,-.40*sx+.55*sy+.73*sz);
+    const gloss=.12*Math.pow(Math.max(0,-.28*sx+.37*sy+.885*sz),18);
+    const tone=1+.045*mottling-.19*pores;
+    const r=cap?(oy>.997?96:65):245,g=cap?(oy>.997?65:112):137,b=cap?39:29;
+    output[k]=Math.min(255,r*tone*diffuse+255*gloss);
+    output[k+1]=Math.min(255,g*tone*diffuse+255*gloss);
+    output[k+2]=Math.min(255,b*tone*diffuse+255*gloss);
+    output[k+3]=255*Math.min(1,(1-Math.sqrt(rr))*size*.5);
+    continue;
+   }
    // Longitude is continuous around the full sphere. Small welded seams
    // follow the meridians, independent of camera and highlight.
    const u=((Math.atan2(oz,ox)/tau+1.0833333333333333)%1)*6;
@@ -184,6 +201,8 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
  }
  return output;
 }
+export function shadeBeachSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'beach')}
+export function shadeOrangeSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'orange')}
 export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null,cache=null){
  const radius=size*.5;
  if(spin?.orientation&&camera&&target&&cache&&typeof document!=='undefined'&&
@@ -198,13 +217,14 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
     const outCtx=outCanvas.getContext('2d');
     cache.image=image;cache.loadedMode=cache.mode;
-    const sourceImage=cache.mode==='beach'?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
-    cache.source=cache.mode==='beach'?null:{width:sourceImage.width,height:sourceImage.height,
+    const sourceImage=['beach','orange'].includes(cache.mode)?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.source=['beach','orange'].includes(cache.mode)?null:{width:sourceImage.width,height:sourceImage.height,
      data:cache.leatherColor?neutralizeBaseballLighting(sourceImage.data,sourceImage.width,sourceImage.height,cache.leatherColor):opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
     cache.canvas=outCanvas;cache.context=outCtx;
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
    if(cache.mode==='beach')shadeBeachSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
+   else if(cache.mode==='orange')shadeOrangeSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
     spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47);
    cache.context.putImageData(cache.frame,0,0);
@@ -325,6 +345,13 @@ export class BatterSprites{
    this.ballSurfaceCache.leatherColor=null;
    this.ballSurfaceCache.textureRadius=.35;
    drawSpinningBaseball(ctx,image,size*.72,spin,camera,target,this.ballSurfaceCache);
+   return;
+  }
+  if(item.id==='naranja'&&camera&&target){
+   this.ballSurfaceCache.mode='orange';
+   this.ballSurfaceCache.leatherColor=null;
+   this.ballSurfaceCache.textureRadius=.47;
+   drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
    return;
   }
   if(item.id==='playa'&&camera&&target){
@@ -461,7 +488,7 @@ export class BatterSprites{
     const bounce=ballBounceCompression(item.id,b.bounceVisual||0,game.state);
     // The special-ball artwork has a slight transparent rim; the projected
     // baseball sphere fills its canvas. Correct only near actual support.
-    const visibleRadius=item.design==='baseball'||item.id==='playa'?.5:.47;
+    const visibleRadius=item.design==='baseball'||['playa','naranja'].includes(item.id)?.5:.47;
     const support=clearance>=-.18&&clearance<2.9
      ?projectToScreen(camera,target,[b.x,Math.max(surface.y,b.y-1.45),b.z],width,height,zoom):null;
     const visualY=support?ballGroundedScreenY(p.y,support.y,size,clearance,bounce,visibleRadius):p.y;

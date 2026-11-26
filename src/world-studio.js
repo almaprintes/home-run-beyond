@@ -1,8 +1,8 @@
 
-import {Renderer} from './engine.js?v=0.77.56';
-import {drawWorld,buildingAt,buildingBoxes,fountainParts,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.56';
-import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.56';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.56';
+import {Renderer} from './engine.js?v=0.77.57';
+import {drawWorld,buildingAt,buildingBoxes,fountainParts,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.57';
+import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.57';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.57';
 
 export const STUDIO_HOLD_MS=7000;
 export const STUDIO_EXPORT={start:-100,end:2000,width:600,tileHeight:350,pixelsPerMeter:2};

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
 import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
-import {BatterSprites,shadeRollingSurface,shadeBeachSphere} from '../src/sprites.js';
+import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
  const baseball=BALL_CATALOG.filter(item=>ballRenderMode(item)==='baseball');
@@ -67,7 +67,7 @@ test('misma imagen equipada sale del pitcher y llega al bate',()=>{
   assert.equal(painted.at(-1)[3],32,id);
  }
  assert.equal(painted.length,26);
- assert.equal(rotations.length,16,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
+ assert.equal(rotations.length,14,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
 });
 
 test('dorada es oro pulido con costuras metálicas, no otra pelota amarilla',()=>{
@@ -122,4 +122,27 @@ test('beach sphere stays circular through a complete camera orbit, with stationa
  const before=frame.slice();
  spin.visualOrientation=[0,0,0,1];shadeBeachSphere(spin,[0,24,40],[0,0,0],frame,n);
  assert.deepEqual(alpha(frame),silhouette);assert.notDeepEqual(frame,before);
+});
+
+test('orange uses a continuous rigid sphere with a rotating calyx, not a flat sprite',()=>{
+ const sprites=new BatterSprites({getContext(){return null}}),image={width:160,height:160};
+ sprites.getStyledBall=()=>image;let rotations=0,draws=0;
+ const ctx={rotate(){rotations++},drawImage(img){assert.equal(img,image);draws++}};
+ const game={save:{equippedBall:'naranja'}};
+ for(const spin of [null,{orientation:[0,0,0,1],angle:2}])sprites.drawEquippedBall(ctx,game,32,spin,[0,5,-20],[0,0,0]);
+ assert.equal(rotations,0);assert.equal(draws,2);assert.equal(sprites.ballSurfaceCache.mode,'orange');
+ const n=96,out=new Uint8ClampedArray(n*n*4);
+ const spin={orientation:[0,0,0,1]};
+ const paint=(s,cam)=>shadeOrangeSphere(s,cam,[0,0,0],out,n).slice();
+ const first=paint(spin,[0,24,40]),turned=paint({...spin,visualOrientation:[Math.sin(.8),0,0,Math.cos(.8)]},[0,24,40]);
+ assert.notDeepEqual(first,turned);
+ const alpha=f=>Array.from(f.filter((_,i)=>i%4===3));
+ assert.deepEqual(alpha(first),alpha(turned));
+ for(let i=0;i<=8;i++){
+  const a=i*Math.PI/4,frame=paint(spin,[40*Math.sin(a),24,40*Math.cos(a)]);
+  assert.deepEqual(alpha(frame),alpha(first));
+ }
+ assert.deepEqual(paint({...spin,angle:7},[0,24,40]),first);
+ const top=paint(spin,[0,40,.1]),mid=(48*n+48)*4;
+ assert.ok(top[mid+1]>top[mid],'green stem visible from above');
 });
