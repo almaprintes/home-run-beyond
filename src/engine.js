@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.38';
+import {pitcherPose} from './pitcher.js?v=0.77.39';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -13,17 +13,18 @@ layout(location=7) in float aMaterial;
 uniform mat4 uViewProj;
 uniform vec3 uCamPos;
 out vec3 vCol;out float vFog;out float vShade;out float vHeight;
-out vec3 vWorld;out vec3 vNormal;flat out int vMaterial;
+out vec3 vWorld;out vec3 vNormal;out vec3 vLocal;flat out int vMaterial;
 void main(){mat4 model=mat4(m0,m1,m2,m3);vec4 world=model*vec4(aPos,1.);vec3 n=normalize(mat3(model)*aNormal);
 float sun=max(0.,dot(n,normalize(vec3(-0.6,1.8,0.7))));
 float fill=max(0.,dot(n,normalize(vec3(0.8,0.65,-0.3))));
 vShade=0.64+sun*.31+fill*.08+clamp(world.y/900.,0.,.14);
-vCol=aColor;vHeight=world.y;vFog=length(world.xyz-uCamPos);vWorld=world.xyz;vNormal=n;vMaterial=int(aMaterial+.5);gl_Position=uViewProj*world;}
+vCol=aColor;vHeight=world.y;vFog=length(world.xyz-uCamPos);vWorld=world.xyz;vNormal=n;vLocal=aPos;vMaterial=int(aMaterial+.5);gl_Position=uViewProj*world;}
 `;
 const FRAG=`#version 300 es
 precision highp float;
 in vec3 vCol;in float vFog;in float vShade;in float vHeight;
-in vec3 vWorld;in vec3 vNormal;flat in int vMaterial;
+in vec3 vWorld;in vec3 vNormal;in vec3 vLocal;
+uniform vec3 uCamPos;flat in int vMaterial;
 uniform float uFogDistance;
 uniform vec3 uFogColor;
 uniform float uOpacity;
@@ -32,7 +33,32 @@ uniform highp sampler2DArray uMaterialArray;
 out vec4 fragColor;
 void main(){
  vec3 base=vCol;
- if(uTextureReady>.5 && vMaterial>0){
+ // Glass is analytic, not a thirteenth atlas layer: one instance per pane.
+ if(vMaterial==13){
+  vec3 normal=normalize(vNormal);
+  vec2 uv=vec2(abs(normal.x)>abs(normal.z)?vLocal.z:vLocal.x,vLocal.y)+.5;
+  float warm=step(vCol.b+.06,vCol.r);
+  vec3 sky=vec3(.63,.82,.91),ground=vec3(.16,.29,.34);
+  vec3 reflected=mix(ground,sky,smoothstep(.05,.98,uv.y));
+  float fresnel=pow(1.-clamp(abs(dot(normal,normalize(uCamPos-vWorld))),0.,1.),3.);
+  vec3 pane=mix(vCol*.78,reflected,.38+.30*fresnel);
+  vec3 interior=mix(vCol*.55,vCol*1.13,smoothstep(.05,.90,uv.y));
+  pane=mix(pane,interior,warm*.88);
+  // Soft diagonal sky glint and a wider secondary reflection.
+  float diagonal=uv.x+uv.y*.72;
+  float glint=smoothstep(.38,.51,diagonal)*(1.-smoothstep(.59,.76,diagonal));
+  float broad=smoothstep(1.03,1.19,diagonal)*(1.-smoothstep(1.31,1.48,diagonal));
+  float detail=1.-smoothstep(110.,310.,vFog);
+  pane=mix(pane,vec3(.91,.97,1.),(glint*.20+broad*.09)*detail*(1.-warm*.77));
+  vec2 edge=min(uv,1.-uv);
+  float border=min(edge.x,edge.y);
+  float aa=max(fwidth(border),.004);
+  float frame=1.-smoothstep(.043-aa,.043+aa,border);
+  float recess=1.-smoothstep(.068-aa,.091+aa,border);
+  pane*=1.-recess*.18*detail;
+  vec3 frameColor=mix(vec3(.22,.29,.32),vec3(.45,.39,.31),warm);
+  base=mix(pane,frameColor,frame*detail);
+ }else if(uTextureReady>.5 && vMaterial>0 && vMaterial<=12){
   vec3 n=abs(normalize(vNormal));
   vec2 coord=n.y>max(n.x,n.z)?vWorld.xz:(n.x>n.z?vWorld.zy:vWorld.xy);
   float density=vMaterial==1?22.:vMaterial==2?16.:vMaterial==3?17.:vMaterial==4?18.:
@@ -197,7 +223,7 @@ function matrix(x,y,z,sx,sy,sz,ry=0,rx=0,rz=0){
  const a20=-syy*cz+cy*sxx*szz,a21=syy*szz+cy*sxx*cz,a22=cy*cx;
  return [a00*sx,a10*sx,a20*sx,0,a01*sy,a11*sy,a21*sy,0,a02*sz,a12*sz,a22*sz,0,x,y,z,1]
 }
-export const MATERIAL_IDS=Object.freeze({plain:0,grass:1,brick:2,asphalt:3,roof:4,wood:5,concrete:6,water:7,dirt:8,plaster:9,metal:10,paving:11,rubber:12});
+export const MATERIAL_IDS=Object.freeze({plain:0,grass:1,brick:2,asphalt:3,roof:4,wood:5,concrete:6,water:7,dirt:8,plaster:9,metal:10,paving:11,rubber:12,glass:13});
 export class Renderer{
  constructor(canvas){this.canvas=canvas;let gl=canvas.getContext('webgl2',{antialias:true,alpha:true,powerPreference:'high-performance',depth:true,stencil:false,desynchronized:true});if(!gl)throw Error('Este dispositivo no admite WebGL2');this.gl=gl;this.program=makeProgram(gl);this.uniforms={};for(let n of ['uViewProj','uCamPos','uFogDistance','uFogColor','uOpacity','uTextureReady','uMaterialArray'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
  this.meshes={};for(const [name,geom] of Object.entries({box:cube(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane(),carTire:wheelTire(),carRim:wheelAlloy(),carArch:wheelArch(),...Object.fromEntries(Object.keys(CAR_CABINS).flatMap(kind=>[['carBody_'+kind,carShell(kind)],['carGlass_'+kind,carCabin(kind,'glass')],['carRoof_'+kind,carCabin(kind,'roof')]]))})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],solid:[],overlay:[]};}

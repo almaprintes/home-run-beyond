@@ -28,7 +28,7 @@ test('atlas de 12 materiales en mosaico 4×3 con capas independientes',()=>{
  assert.equal(png.readUInt32BE(16),768);
  assert.equal(png.readUInt32BE(20),576);
  assert.ok(png.length>30000&&png.length<500000,'atlas demasiado grande');
- assert.deepEqual(Object.values(MATERIAL_IDS),Array.from({length:13},(_,i)=>i));
+ assert.deepEqual(Object.values(MATERIAL_IDS),Array.from({length:14},(_,i)=>i));
 });
 
 test('el motor añade un identificador de material a cada instancia',()=>{
@@ -60,7 +60,7 @@ test('hierba, ladrillo, asfalto, tejas y hormigón se usan en los objetos dibuja
     const a=mesh[layer];for(let i=19;i<a.length;i+=20)ids.add(a[i]);
    }
   }
-  for(const material of ['grass','brick','plaster','asphalt','roof','metal','paving']){
+  for(const material of ['grass','brick','plaster','asphalt','roof','metal','paving','glass']){
    assert.ok(ids.has(MATERIAL_IDS[material]),'falta textura '+material);
   }
  }finally{if(old===undefined)delete globalThis.window;else globalThis.window=old}
@@ -117,3 +117,10 @@ test('carga GPU sube 12 capas y genera los mipmaps una sola vez',()=>{
  }
 });
 
+
+test('glass uses local pane coordinates, view reflection and an analytic frame without atlas access',()=>{
+ const code=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
+ assert.equal(MATERIAL_IDS.glass,13);assert.match(code,/if\(vMaterial==13\)/);
+ assert.match(code,/vLocal=aPos/);assert.match(code,/fresnel/);assert.match(code,/fwidth\(border\)/);
+ assert.match(code,/vMaterial<=12/);
+});

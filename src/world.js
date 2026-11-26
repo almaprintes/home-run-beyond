@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.38';
-import {drawGulls} from './gulls.js?v=0.77.38';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.38';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.38';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.38';
+import {lerp} from './engine.js?v=0.77.39';
+import {drawGulls} from './gulls.js?v=0.77.39';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.39';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.39';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.39';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -122,6 +122,13 @@ export function buildingBoxes(b){
 }
 // Residential shells: render and collision share the actual openings.
 const facadeCache=new Map();
+export function windowAppearance(id){
+ let seed=0;for(const ch of id)seed=(Math.imul(seed,31)+ch.charCodeAt(0))|0;
+ const roll=rand(seed,52),tone=rand(seed,19);
+ const category=roll<.70?'cool':roll<.90?'neutral':'warm';
+ const colors=category==='cool'?['#578da7','#629cb8','#719fb0','#48778e']:category==='neutral'?['#7c929a','#657b86','#889da3']:['#d6b27e','#e6c786','#c49b68'];
+ return {category,color:colors[Math.floor(tone*colors.length)]};
+}
 export function buildingFacade(b){
  const key=b.i+':'+b.j;
  if(facadeCache.has(key))return facadeCache.get(key);
@@ -146,7 +153,7 @@ export function buildingFacade(b){
     rect(walls,'wall','concrete',left,low,left+margin,high);
     rect(walls,'wall','concrete',right-margin,low,right,high);
     const id=key+':'+axis+':'+side+':'+row+':'+col;
-    rect(windows,'glass','glass',left+margin,low,right-margin,high,{id,axis,side,color:rand(b.i*31+col*17,b.j*13+row*11+side)>.76?'#e6c786':'#77a9b6'});
+    rect(windows,'glass','glass',left+margin,low,right-margin,high,{id,axis,side,...windowAppearance(id)});
    }
   }
  }
@@ -377,7 +384,7 @@ function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
  r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);
  r.setMaterial?.('metal');
  r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
- r.setMaterial?.('plain');
+ r.setMaterial?.('glass');
  for(const w of f.windows){
   if(brokenWindows?.has(w.id))continue;
   if(!detailed&&lod>=2&&Number(w.id.split(':').at(-1))%2!==0)continue;
@@ -385,8 +392,8 @@ function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null){
   const shift=detailed?0:w.side*.31;
   const xx=(a+e)/2+(w.axis==='x'?shift:0),zz=(d+h)/2+(w.axis==='z'?shift:0);
   r.box(xx,(c+g)/2,zz,e-a,g-c,h-d,w.color);
-  if(detailed)r.box(xx+(w.axis==='x'?w.side*.055:0),g-.27,zz+(w.axis==='z'?w.side*.055:0),w.axis==='x'?.025:(e-a)*.90,.23,w.axis==='z'?.025:(h-d)*.90,'#c5e3e7');
  }
+ r.setMaterial?.('plain');
  r.setLayer?.('opaque');
 }
 function road(r,x,z,w,d){

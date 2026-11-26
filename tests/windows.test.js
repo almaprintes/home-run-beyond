@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildingAt,buildingFacade,traceBuildingCollision} from '../src/world.js';
+import {buildingAt,buildingFacade,traceBuildingCollision,windowAppearance,drawWorld} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 import {synthImpulse} from '../src/audio.js';
 import {materialEffect} from '../src/impact-fx.js';
@@ -37,4 +37,26 @@ test('cristal tiene partículas de fragmentos y un timbre propio',()=>{
  const x=synthImpulse('glass',22050),y=synthImpulse('concrete',22050);
  assert.ok(x.every(Number.isFinite));assert.ok(Math.max(...x.map(Math.abs))>.7);
  assert.notDeepEqual(x,y);
+});
+
+test('glass has deterministic cold, neutral and warm tones without changing collision boxes',()=>{
+ const counts={cool:0,neutral:0,warm:0};let n=0;
+ for(let j=0;j<=24;j++)for(let i=-4;i<=4;i++){
+  const b=buildingAt(i,j);if(!b)continue;
+  for(const w of buildingFacade(b).windows){
+   assert.deepEqual(windowAppearance(w.id),{category:w.category,color:w.color});
+   counts[w.category]++;n++;
+  }
+ }
+ assert.ok(Math.abs(counts.cool/n-.7)<.04);assert.ok(Math.abs(counts.neutral/n-.2)<.04);assert.ok(Math.abs(counts.warm/n-.1)<.04);
+});
+test('broken panes remove the whole reflective glass instance',()=>{
+ const p=center(pane);
+ function capture(brokenWindows){
+  let material;const panes=[];
+  const r={begin(){},setLayer(){},setMaterial(m){material=m},box(...a){if(material==='glass')panes.push(a)},field(){},ball(){},pole(){},cone(){},add(){}};
+  drawWorld(r,[b.x,20,b.z-25],{state:'flight',ball:{...p,vx:0,vy:0,vz:0},brokenWindows,clock:0});
+  return panes.filter(a=>Math.abs(a[0]-p.x)<1e-6&&Math.abs(a[1]-p.y)<1e-6&&Math.abs(a[2]-p.z)<1e-6);
+ }
+ assert.equal(capture(new Set()).length,1);assert.equal(capture(new Set([pane.id])).length,0);
 });
