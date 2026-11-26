@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.51';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.51';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.51';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY} from './ball-visuals.js?v=0.77.51';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.51';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.51';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.52';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.52';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.52';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY} from './ball-visuals.js?v=0.77.52';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.52';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.52';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -111,7 +111,7 @@ export function neutralizeBaseballLighting(data,w,h,color='#ffffff'){
  }
  return opaqueBaseballPixels(out,w,h);
 }
-export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE,fixedLight=false,textureRadius=.47){
+export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE,fixedLight=false,textureRadius=.47,continuousPanels=false){
  const view=lookAt(camera,target),qu=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
  const qx=-qu[0],qy=-qu[1],qz=-qu[2],qw=qu[3];
  const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
@@ -135,7 +135,8 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
    const oz=wz+qw*cz+qx*cy-qy*cx;
    // Original 2D baseball supplied by the creator forms the visible half;
    // mirror it for the hidden half, keeping the approved seams/colour.
-   const u=.5+textureRadius*ox*(oz<0?-1:1);
+   // Continuous mirrored back for beach-ball panels: no abrupt hue flip at the equator.
+   const u=.5+textureRadius*ox*(continuousPanels?1:oz<0?-1:1);
    const v=.5-textureRadius*oy;
    const ix=Math.max(0,Math.min(w-1,Math.round(u*(w-1))));
    const iy=Math.max(0,Math.min(h-1,Math.round(v*(h-1))));
@@ -171,7 +172,7 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
    shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
-    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47);
+    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47,cache.mode==='beach');
    cache.context.putImageData(cache.frame,0,0);
    ctx.drawImage(cache.canvas,-radius,-radius,size,size);
    return;
@@ -290,6 +291,16 @@ export class BatterSprites{
    this.ballSurfaceCache.leatherColor=null;
    this.ballSurfaceCache.textureRadius=.35;
    drawSpinningBaseball(ctx,image,size*.72,spin,camera,target,this.ballSurfaceCache);
+   return;
+  }
+  if(item.id==='playa'&&spin?.orientation&&camera&&target){
+   // Use the approved panel art on a spherical surface rather than rotating
+   // the entire billboard about the camera axis. Preserve the same visual
+   // quaternion and backspin-to-topspin transition as the standard ball.
+   this.ballSurfaceCache.mode='beach';
+   this.ballSurfaceCache.leatherColor=null;
+   this.ballSurfaceCache.textureRadius=.47;
+   drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
    return;
   }
   if(item.design==='baseball'&&spin?.orientation&&camera&&target){
@@ -416,7 +427,7 @@ export class BatterSprites{
     const item=BALL_STYLES.find(ball=>ball.id===game.save?.equippedBall)||BALL_STYLES[0];
     // The special-ball artwork has a slight transparent rim; the projected
     // baseball sphere fills its canvas. Correct only near actual support.
-    const visibleRadius=item.design==='baseball'?.5:.47;
+    const visibleRadius=item.design==='baseball'||item.id==='playa'?.5:.47;
     const support=clearance>=-.18&&clearance<2.9
      ?projectToScreen(camera,target,[b.x,Math.max(surface.y,b.y-1.45),b.z],width,height,zoom):null;
     const visualY=support?ballGroundedScreenY(p.y,support.y,size,clearance,bounce,visibleRadius):p.y;

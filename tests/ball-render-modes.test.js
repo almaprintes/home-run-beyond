@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
 import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
-import {BatterSprites} from '../src/sprites.js';
+import {BatterSprites,shadeRollingSurface} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
  const baseball=BALL_CATALOG.filter(item=>ballRenderMode(item)==='baseball');
@@ -67,7 +67,7 @@ test('misma imagen equipada sale del pitcher y llega al bate',()=>{
   assert.equal(painted.at(-1)[3],32,id);
  }
  assert.equal(painted.length,26);
- assert.equal(rotations.length,18,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
+ assert.equal(rotations.length,17,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
 });
 
 test('dorada es oro pulido con costuras metálicas, no otra pelota amarilla',()=>{
@@ -85,4 +85,21 @@ test('pelota negra sin halo blanco: precio 720 y validación de silueta y costur
  assert.equal(BALL_CATALOG.find(x=>x.id==='negra').price,720);
  const py=readFileSync(new URL('../tools/ball_art.py',import.meta.url),'utf8');
  assert.match(py,/return black_baseball\(original, color\)/);assert.match(py,/white fringe on black baseball/);
+});
+
+test('beach ball uses smooth world-axis spherical roll and keeps its original art',()=>{
+ const sprites=new BatterSprites({getContext(){return null}});
+ const image={width:160,height:160};sprites.getStyledBall=()=>image;
+ let flat=0,drawn=0;
+ const ctx={rotate(){flat++},drawImage(img){assert.equal(img,image);drawn++}};
+ const game={save:{equippedBall:'playa'}};
+ sprites.drawEquippedBall(ctx,game,32,{angle:4,orientation:[0,0,0,1]},[0,5,-20],[0,2,20]);
+ assert.equal(flat,0);assert.equal(drawn,1);assert.equal(sprites.ballSurfaceCache.mode,'beach');
+ const n=32,src=new Uint8ClampedArray(n*n*4),out=new Uint8ClampedArray(n*n*4);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){const i=(y*n+x)*4;src[i]=x*8;src[i+1]=y*8;src[i+3]=255}
+ const paint=spin=>{shadeRollingSurface(src,n,n,spin,[0,5,-20],[0,2,20],out,n,false,.47,true);return out.slice()};
+ const spin={angle:0,orientation:[0,0,0,1],visualOrientation:[0,0,0,1]};
+ const first=paint(spin);spin.angle=3;assert.deepEqual(paint(spin),first);
+ spin.visualOrientation=[Math.sin(.4),0,0,Math.cos(.4)];
+ assert.notDeepEqual(paint(spin),first);
 });
