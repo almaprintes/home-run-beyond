@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.35';
-import {drawGulls} from './gulls.js?v=0.77.35';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.35';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.35';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.35';
+import {lerp} from './engine.js?v=0.77.36';
+import {drawGulls} from './gulls.js?v=0.77.36';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.36';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.36';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.36';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -20,7 +20,7 @@ function tree(r,x,z,h=7,seed=1){
 function bush(r,x,z,s=2){r.ball(x,s*.38,z,s,'#43835e')}
 export const RIVER_HALF_WIDTH=245;
 export function riverAt(z,x=0){return z>1620&&z<1740&&Math.abs(x)<=RIVER_HALF_WIDTH}
-export function roadAt(z){return z>155&&z<2000&&Math.abs((z+35)%200-100)<14}
+export function roadAt(z){return ROAD_CENTERS.some(center=>Math.abs(z-center)<14)}
 export function areaAt(z){return biomeAt(z).name}
 function worldHeight(x,z){if(z<1850)return 0;if(z<3600){const a=Math.sin(z*.004+x*.013)*.65+Math.sin(z*.015-x*.009)*.3;return Math.max(0,a*4)}return Math.max(0,(Math.sin(x*.009+z*.004)+Math.sin(x*.004-z*.007))*.8)}
 const WET_PATCHES=[
@@ -48,13 +48,27 @@ function buildingData(i,j){
  return {h,w,d,color:choose(n+4,walls),roof:roofMaterial==='rubber'?'#314f55':choose(n+8,roofs),roofMaterial};
 }
 
-// Única fuente de verdad para los edificios visibles y sus colisiones.
-// La cuadrícula también genera árboles y huecos para carreteras/río.
+// One deterministic urban plan shared by rendering, physics and World Studio.
+export const BUILDING_PAVING_MARGIN=9; // 8 m beyond the 1 m roof overhang.
+export const ROAD_LOT_GAP=6;
+export function buildingParcel(b){
+ return {x:b.x,z:b.z,w:b.w+2*BUILDING_PAVING_MARGIN,d:b.d+2*BUILDING_PAVING_MARGIN,material:'paving',color:'#b5b0a1',offset:-.038};
+}
+function civicSpace(i,j){
+ if((j===8||j===9)&&(i===-2||i===-1))return 'park';
+ if(j===14&&(i===1||i===2))return 'plaza';
+ if(j===5&&i===3)return 'vacant';
+ return null;
+}
+function urbanClear(z,halfDepth=0,gap=0){
+ return z-halfDepth-gap>=150&&z+halfDepth+gap<=1603&&ROAD_CENTERS.every(center=>Math.abs(z-center)>=14+halfDepth+gap);
+}
 export function buildingAt(i,j){
  if(!Number.isInteger(i)||!Number.isInteger(j)||i< -4||i>4||j<0||j>24)return null;
  const x=i*60,z=270+j*60,n=i*11+j*191;
- if(riverAt(z)||roadAt(z)||rand(n)<.16)return null;
- return {x,z,i,j,...buildingData(i,j)};
+ const b={x,z,i,j,...buildingData(i,j)};
+ if(civicSpace(i,j)||rand(n)<.08||!urbanClear(z,b.d/2+BUILDING_PAVING_MARGIN,ROAD_LOT_GAP))return null;
+ return b;
 }
 export function buildingBoxes(b){
  const halfW=b.w/2,halfD=b.d/2;
@@ -356,6 +370,17 @@ const urbanParcels=new Map();
 export function terrainParcels(chunk){
  if(urbanParcels.has(chunk))return urbanParcels.get(chunk);
  const mid=chunk*200+100,parcels=[];
+ if(chunk>=1&&chunk<=8){
+  for(let j=0;j<=24;j++)for(let i=-4;i<=4;i++){
+   const b=buildingAt(i,j);
+   if(b&&Math.floor(b.z/200)===chunk)parcels.push(buildingParcel(b));
+  }
+  // Deliberately reserved public square and unbuilt lot, never random slabs.
+  if(chunk===5)parcels.push({x:90,z:1110,w:92,d:40,material:'paving',color:'#c3bcb0',offset:-.038});
+  if(chunk===2)parcels.push({x:180,z:570,w:36,d:32,material:'dirt',color:'#ac9877',offset:-.065});
+  urbanParcels.set(chunk,parcels);
+  return parcels;
+ }
  for(let i=-2;i<=2;i++){
   const seed=chunk*61+i*131,originalMat=terrainPatchMaterial(chunk,i);
   const material=mid>5500?groundVisualMaterial(mid):originalMat;
@@ -366,11 +391,6 @@ export function terrainParcels(chunk){
   const x=Math.max(WORLD_CENTER_X-WORLD_HALF_WIDTH+w/2,Math.min(WORLD_CENTER_X+WORLD_HALF_WIDTH-w/2,xx));
   parcels.push({x,z,w,d,color,material,offset:-.065});
  }
- if(chunk>0&&chunk<8)for(const side of [-1,1]){
-  parcels.push({x:WORLD_CENTER_X+side*235,z:mid,w:110,d:130,color:'#aba99b',material:'paving',offset:-.038});
-  parcels.push({x:WORLD_CENTER_X+side*258,z:mid+38,w:60,d:46,color:'#a78765',material:'dirt',offset:-.032});
- }
- if(chunk>0&&chunk<8)urbanParcels.set(chunk,parcels);
  return parcels;
 }
 // Resolve urban ground once, in world space, into non-overlapping rectangles.
@@ -404,16 +424,9 @@ export function urbanGroundTiles(band){
    candidates.push({...p,priority});
   }
  }
- // The small square slabs used to be separate decorative boxes.
- for(let j=0;j<=24;j++){
-  const z=270+j*60;if(roadAt(z)||riverAt(z))continue;
-  if(z+29<=z0||z+21>=z1)continue;
-  for(let i=-4;i<=4;i++)candidates.push({x:i*60+24,z:z+25,w:8,d:8,material:'paving',color:'#b9b8ad',priority:50});
- }
  candidates.sort((a,b)=>b.priority-a.priority);
  const protectedRects=[];
- for(let c=1;c<=9;c++){
-  const z=200*c+65;
+ for(const z of ROAD_CENTERS){
   if(z+14>z0&&z-14<z1)protectedRects.push({...area,z0:z-14,z1:z+14});
  }
  // Do not draw paving through the existing river/bank overlay.
@@ -553,7 +566,11 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
    }
  }
  if(viewZ<2800){const lo=Math.max(0,Math.floor((viewZ-400-270)/60)),hi=Math.min(24,Math.floor((viewZ+400-270)/60));for(let j=lo;j<=hi;j++){const z=270+j*60;if(riverAt(z)||roadAt(z))continue;for(let i=-4;i<=4;i++){const x=i*60;if(Math.abs(x-viewX)>450)continue;const n=i*11+j*191;const lod=Math.abs(z-viewZ)>210?2:1;const b=buildingAt(i,j);
- if(!b){drawTree(x,z,8+rand(n+5)*6,n);drawTree(x+15,z+12,5+rand(n+7)*6,n+32)}
+ if(!b){
+  if(civicSpace(i,j)==='plaza'||civicSpace(i,j)==='vacant')continue;
+  if(urbanClear(z,4,2)&&!pavedGroundAt(x,z))drawTree(x,z,8+rand(n+5)*6,n);
+  if(urbanClear(z+12,4,2)&&!pavedGroundAt(x+15,z+12))drawTree(x+15,z+12,5+rand(n+7)*6,n+32);
+ }
  else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall);}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
  for(const patch of WET_PATCHES){

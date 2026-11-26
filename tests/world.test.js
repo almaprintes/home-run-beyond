@@ -22,7 +22,7 @@ test('todas las colisiones comparten la generación del decorado, sin edificios 
    assert.equal(collideBuilding({x,y:b.h+7,z}),null);
   }
  }
- assert.ok(buildings>100);assert.ok(empty>15);
+ assert.equal(buildings,92);assert.ok(empty>15);
 });
 
 test('el barrido continuo detecta impactos contra tejados, fachadas y casetas',()=>{

@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {urbanGroundTiles,groundAt,drawTerrain,roadAt,riverAt,traceBuildingCollision} from '../src/world.js';
+import {urbanGroundTiles,groundAt,drawTerrain,roadAt,riverAt,traceBuildingCollision,buildingAt,buildingParcel} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 import {WORLD_WIDTH} from '../src/biomes.js';
 
-test('urban ground has exactly one non-overlapping tile per point, including attached slabs',()=>{
+const sampleBuilding=buildingAt(0,1),sampleParcel=buildingParcel(sampleBuilding);
+const sampleX=sampleBuilding.x+sampleBuilding.w/2+5,sampleZ=sampleBuilding.z;
+test('urban ground has exactly one non-overlapping tile per point, including building parcels',()=>{
  let paved=0;
  for(let band=3;band<=32;band++){
   const tiles=urbanGroundTiles(band);
@@ -27,7 +29,7 @@ test('urban ground has exactly one non-overlapping tile per point, including att
   }
  }
  assert.ok(paved>30);
- assert.equal(groundAt(24,355).type,'paving','building annex slab');
+ assert.equal(groundAt(sampleX,sampleZ).type,'paving','building perimeter');
  assert.equal(groundAt(0,1680).type,'water');
 });
 test('camera motion does not change the geometry or material of a slab',()=>{
@@ -35,13 +37,13 @@ test('camera motion does not change the geometry or material of a slab',()=>{
   const fields=[];
   const r={field(x,y,z,w,d,color,rot,material){if(material==='paving')fields.push({x,y,z,w,d,material})},setLayer(){},setMaterial(){},add(){},box(){},ball(){},pole(){},cone(){}};
   drawTerrain(r,z,0,65,0,null);
-  return fields.filter(p=>Math.abs(p.x-24)<p.w/2&&Math.abs(p.z-355)<p.d/2);
+  return fields.filter(p=>Math.abs(p.x-sampleX)<p.w/2&&Math.abs(p.z-sampleZ)<p.d/2);
  };
  const a=capture(330),b=capture(650);
  assert.equal(a.length,1);assert.deepEqual(a,b);
 });
 test('first impact on a small paving slab uses hard response',()=>{
- const x=24,z=355,dt=1/60,g=Object.create(BaseballGame.prototype);
+ const x=sampleX,z=sampleZ,dt=1/60,g=Object.create(BaseballGame.prototype);
  g.state='flight';g.simElapsed=0;g.audio={impact(){}};g.finishShot=()=>{};
  g.ball={x,y:1.48,z,vx:0,vy:-12,vz:2,bounces:0,maxZ:z};
  g.simulateStep(dt);

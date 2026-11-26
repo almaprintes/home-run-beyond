@@ -9,7 +9,7 @@ export const TRAFFIC_VEHICLES=Object.freeze([
  {id:'pickup_gris',kind:'pickup',color:'#959d9c',length:8.7,width:3.95,radius:1.13},
  {id:'sedan_negro',kind:'sedan',color:'#292d38',length:8.1,width:3.65,radius:.96}
 ]);
-export const ROAD_CENTERS=Object.freeze([265,465,665,865,1065,1265,1465,1665,1865]);
+export const ROAD_CENTERS=Object.freeze([265,465,665,865,1065,1265,1465,1865]);
 // El punto de reciclaje queda fuera de la calzada, cuyo límite es +/-280.
 export const TRAFFIC_HALF_SPAN=322;
 const TAU=Math.PI*2,wrap=(n,span)=>((n%span)+span)%span;

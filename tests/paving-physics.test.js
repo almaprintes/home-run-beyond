@@ -1,23 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {groundAt,terrainParcels} from '../src/world.js';
+import {groundAt,terrainParcels,buildingAt} from '../src/world.js';
 import {BaseballGame,groundRollRetention} from '../src/game.js';
 import {WORLD_CENTER_X} from '../src/biomes.js';
 import {GameAudio} from '../src/audio.js';
 import {materialEffect} from '../src/impact-fx.js';
 
+const building=buildingAt(0,1),sampleX=building.x+building.w/2+5,sampleZ=building.z;
 test('urban paving matches drawn parcels, with road, water and dirt overlays retaining priority',()=>{
- const x=WORLD_CENTER_X+235;
- assert.ok(terrainParcels(1).some(p=>p.material==='paving'&&Math.abs(x-p.x)<=p.w/2&&Math.abs(300-p.z)<=p.d/2));
- assert.equal(groundAt(x,300).type,'paving');
+ const x=sampleX;
+ assert.ok(terrainParcels(1).some(p=>p.material==='paving'&&Math.abs(x-p.x)<=p.w/2&&Math.abs(sampleZ-p.z)<=p.d/2));
+ assert.equal(groundAt(x,sampleZ).type,'paving');
  assert.equal(groundAt(x,265).type,'road');
- assert.equal(groundAt(WORLD_CENTER_X+258,338).type,'grass');
+ assert.equal(groundAt(0,287).type,'grass');
  assert.equal(groundAt(0,1680).type,'water');
  assert.equal(groundAt(0,50).type,'grass');
 });
 test('cobblestone bounce and rolling retain more speed than grass but less than road',()=>{
  const g=Object.create(BaseballGame.prototype);
- const x=WORLD_CENTER_X+235,z=300,dt=1/60;
+ const x=sampleX,z=sampleZ,dt=1/60;
  const sounds=[];
  g.state='flight';g.simElapsed=0;
  g.audio={impact:(mat)=>sounds.push(mat)};
