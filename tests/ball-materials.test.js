@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity,ballShadowGeometry} from '../src/ball-visuals.js';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity,ballShadowGeometry,ballGroundedScreenY} from '../src/ball-visuals.js';
 import {buildingAt,surfaceBelowBall,groundAt} from '../src/world.js';
 import {readFileSync} from 'node:fs';
 
@@ -58,4 +58,18 @@ test('shadow follows visible diameter, never oversized and only slightly expands
  assert.ok(ballShadowOpacity(0)<=.26);
  const code=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
  assert.match(code,/ballShadowGeometry\(size,altitude\)/);
+});
+
+test('contact uses the visible lower edge at every sprite size and compression',()=>{
+ for(const size of [16,28,46])for(const radius of [.47,.5])for(const bounce of [0,1]){
+  const y=ballGroundedScreenY(640,700,size,0,bounce,radius);
+  assert.ok(Math.abs(y+size*radius*(1-.11*bounce)-700)<1e-9);
+ }
+ assert.equal(ballGroundedScreenY(640,700,40,3),640);
+ assert.equal(ballGroundedScreenY(640,700,40,-1),640);
+ const mid=ballGroundedScreenY(640,700,40,1.5);
+ assert.ok(mid>640&&mid<680);
+ const code=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ assert.match(code,/const visualY=support\?ballGroundedScreenY/);
+ assert.match(code,/ctx\.translate\(p\.x,visualY\)/);
 });

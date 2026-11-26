@@ -17,6 +17,17 @@ export function ballShadowGeometry(diameter,altitude=0){
  const spread=1+.05*(1-Math.exp(-h/18));
  return {rx:size*.38*spread,ry:size*.14*spread,blur:Math.min(4,size*.08*spread)};
 }
+// The cinematic diameter is independent of world radius. Anchor the lower
+// visible edge at the projected physical contact point near a surface.
+export function ballGroundedScreenY(centerY,groundY,diameter,clearance,bounce=0,visibleRadius=.5){
+ if(![centerY,groundY,diameter,clearance].every(Number.isFinite))return centerY;
+ // Ignore floors above the sphere's physical underside (e.g. an interior).
+ if(clearance<-.18||clearance>=2.9)return centerY;
+ const t=Math.max(0,Math.min(1,(clearance-.12)/2.78));
+ const weight=1-t*t*(3-2*t);
+ const radius=diameter*visibleRadius*(1-.11*Math.max(0,Math.min(1,bounce)));
+ return centerY+(groundY-radius-centerY)*weight;
+}
 export function ballImpactOpacity(age){
  if(!Number.isFinite(age)||age<0||age>.36)return 0;
  return Math.pow(1-age/.36,1.8)*.62;

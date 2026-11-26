@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.49';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.49';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.49';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry} from './ball-visuals.js?v=0.77.49';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.49';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.49';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.50';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.50';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.50';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY} from './ball-visuals.js?v=0.77.50';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.50';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.50';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -411,6 +411,15 @@ export class BatterSprites{
     const size=ballSpriteDiameter(radiusPx,width);
     // Sombra proyectada sobre la superficie física: hierba, asfalto, tejado o agua.
     const surface=surfaceBelowBall(b);
+    const bounce=game.state==='rest'?0:Math.max(0,Math.min(1,b.bounceVisual||0));
+    const clearance=b.y-1.45-surface.y;
+    const item=BALL_STYLES.find(ball=>ball.id===game.save?.equippedBall)||BALL_STYLES[0];
+    // The special-ball artwork has a slight transparent rim; the projected
+    // baseball sphere fills its canvas. Correct only near actual support.
+    const visibleRadius=item.design==='baseball'?.5:.47;
+    const support=clearance>=-.18&&clearance<2.9
+     ?projectToScreen(camera,target,[b.x,Math.max(surface.y,b.y-1.45),b.z],width,height,zoom):null;
+    const visualY=support?ballGroundedScreenY(p.y,support.y,size,clearance,bounce,visibleRadius):p.y;
     const shadow=projectToScreen(camera,target,[b.x,surface.y+.08,b.z],width,height,zoom);
     if(shadow&&shadow.x>-80&&shadow.x<width+80&&shadow.y>-80&&shadow.y<height+80){
      const altitude=Math.max(0,b.y-surface.y);
@@ -425,14 +434,13 @@ export class BatterSprites{
     if(game.save?.equippedBall==='sol'&&game.state==='flight'&&!game.save?.reducedEffects&&ctx.createRadialGradient){
      const speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
      if(speed>.35){
-      const glow=ctx.createRadialGradient(p.x,p.y,size*.30,p.x,p.y,size*.86);
+      const glow=ctx.createRadialGradient(p.x,visualY,size*.30,p.x,visualY,size*.86);
       glow.addColorStop(0,'rgba(255,184,42,.25)');glow.addColorStop(1,'rgba(255,102,20,0)');
       ctx.save();ctx.globalAlpha=Math.min(1,speed/8);ctx.fillStyle=glow;
-      ctx.beginPath();ctx.arc(p.x,p.y,size*.86,0,Math.PI*2);ctx.fill();ctx.restore();
+      ctx.beginPath();ctx.arc(p.x,visualY,size*.86,0,Math.PI*2);ctx.fill();ctx.restore();
      }
     }
-    ctx.save();ctx.translate(p.x,p.y);
-    const bounce=game.state==='rest'?0:Math.max(0,Math.min(1,b.bounceVisual||0));
+    ctx.save();ctx.translate(p.x,visualY);
     if(bounce)ctx.scale(1+.08*bounce,1-.11*bounce);
     this.drawEquippedBall(ctx,game,size,b.spin,camera,target);
     ctx.restore();
