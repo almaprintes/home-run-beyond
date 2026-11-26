@@ -1,8 +1,9 @@
-import {lerp} from './engine.js?v=0.77.61';
-import {drawGulls} from './gulls.js?v=0.77.61';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.61';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.61';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.61';
+import {cosmeticItem} from './cosmetic-catalog.js?v=0.77.62';
+import {lerp} from './engine.js?v=0.77.62';
+import {drawGulls} from './gulls.js?v=0.77.62';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.62';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.62';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.62';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -741,27 +742,46 @@ function limb(r,a,b,radius,color){
  const rx=Math.atan2(dz,dy),rz=-Math.asin(Math.max(-1,Math.min(1,dx/len)));
  r.pole((a[0]+b[0])*.5,(a[1]+b[1])*.5,(a[2]+b[2])*.5,radius,len,color,0,rx,rz);
 }
-export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e'){
+export function drawBatter(r,x=-2.3,z=-5,phase=0,batColor='#e7b56e',finishOutfit=null){
  const p=Math.max(0,Math.min(1,phase)),s=p*p*(3-2*p),skin='#bc815f';
- const shirt='#feaa45',cap='#152e50',pants='#fcf7e8';
+ const shirt=finishOutfit?.color||'#feaa45',cap=finishOutfit?.accent||'#152e50';
+ const football=finishOutfit?.id?.startsWith('futbol_'),shorts=football||['basket','running','boxing'].includes(finishOutfit?.design);
+ const pants=finishOutfit?.id==='futbol_amarillo'?'#20242b':shorts?cap:'#fcf7e8';
  // Postura lateral de bateo: piernas abiertas, rodillas flexionadas y hombros girados.
  r.add('ball',x,.06,z,3.1,.08,2.2,'#285a4b');
  for(const side of [-1,1]){
   const fx=x+side*1.04,fz=z+side*.43;
   limb(r,[x+side*.6,2.03,z],[fx,1.0,fz],.34,pants);
-  limb(r,[fx,1.0,fz],[fx+side*.22,.33,fz+.13],.30,pants);
+  limb(r,[fx,1.0,fz],[fx+side*.22,.33,fz+.13],.30,shorts?skin:pants);
   r.box(fx+side*.30,.24,fz+.33,1.2,.46,1.55,'#1d344e',.25);
  }
  r.box(x,2.5,z,2.35,.33,1.45,'#203c55',.70);
  r.box(x,3.25,z,2.40,2.25,1.55,shirt,.78);
  r.box(x+.83,3.23,z+.18,.21,.8,.75,'#fff0d4',.78);
  r.ball(x,5.03,z,1.90,skin);
- r.add('ball',x,5.70,z,2.06,.43,2.03,cap);
- r.box(x+.72,5.57,z+.58,1.57,.20,1.1,cap,.55);
+ if(finishOutfit&&finishOutfit.design!=='classic'&&finishOutfit.design!=='pinstripes'){
+  r.add('ball',x+.15,5.68,z,1.95,.76,2.02,'#4b3025');
+  r.add('ball',x+.55,5.22,z,1.0,1.25,1.96,'#4b3025');
+ }else{
+  r.add('ball',x,5.70,z,2.06,.43,2.03,cap);
+  if(finishOutfit)r.box(x-.86,5.55,z,1.55,.20,1.58,cap);
+  else r.box(x+.72,5.57,z+.58,1.57,.20,1.1,cap,.55);
+ }
  // Cara y gorra apuntadas al costado del campo para verse desde la cámara diagonal.
- r.ball(x-.81,5.04,z+.38,.15,'#202638');
- r.ball(x-.87,5.04,z-.26,.12,'#202638');
- r.box(x-.91,4.74,z+.05,.10,.12,.48,'#9d6147');
+ if(finishOutfit){
+  for(const side of [-1,1]){
+   r.add('ball',x-.86,5.10,z+side*.37,.20,.33,.40,'#fff9f1');
+   r.add('ball',x-.98,5.10,z+side*.37,.11,.25,.18,'#253343');
+   r.box(x-.86,5.37,z+side*.37,.12,.09,.38,'#50382c',0,0,side*.14);
+  }
+  r.ball(x-1.00,4.92,z,.26,'#d99b73');
+  r.box(x-.87,4.72,z,.12,.12,.36,'#77432e');
+  r.box(x-.92,4.76,z,.09,.055,.26,'#fff9f1');
+ }else{
+  r.ball(x-.81,5.04,z+.38,.15,'#202638');
+  r.ball(x-.87,5.04,z-.26,.12,'#202638');
+  r.box(x-.91,4.74,z+.05,.10,.12,.48,'#9d6147');
+ }
  const hand=[x+.92-.44*s,4.32-.14*s,z-1.0+1.04*s];
  const leftShoulder=[x-.84,4.03,z+.12],rightShoulder=[x+.90,4.15,z+.26];
  const leftElbow=[x-.15,3.80,z-1.12+.44*s];
@@ -828,13 +848,14 @@ export function drawWorld(r,cam,game){
  drawTerrain(r,z,x,game.worldStudio?200:cam[1],game.clock||0,(['flight','landing','rest'].includes(game.state)||game.state==='orbit')?game.ball:null,game.brokenWindows);
  if(!game.worldStudio&&!game.save?.reducedEffects)game.impactFX?.drawGlassShards?.(r,cam);
  // Tráfico volumétrico: misma matriz, misma profundidad, 4 ruedas por coche.
- if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&(game.worldStudio||cam[1]<340)){stadium(r);if(!game.worldStudio){if(game.state==='flight'&&game.launchView)drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,true,game.ballStyleColor||'#fffefa',pitcherPose(game));
+ if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&(game.worldStudio||cam[1]<340)){stadium(r);if(!game.worldStudio){if(game.state==='flight'&&game.launchFront){drawBatter(r,-2.3,-5,1,game.batColor,cosmeticItem('outfit',game.save?.equippedOutfit)||cosmeticItem('outfit','red'));}
+ else if(game.state==='flight'&&game.launchView)drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,true,game.ballStyleColor||'#fffefa',pitcherPose(game));
  else if(game.state!=='flight'&&game.state!=='landing'&&game.state!=='orbit'&&!(game.state==='rest'&&game.ball))drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
   !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa',pitcherPose(game));
  else drawPitcher(r,pitcherPose(game));}
  // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.
  }
  if(game.ball&&['flight','landing','rest'].includes(game.state)||game.ball&&game.state==='orbit'){const b=game.ball;
-  if(!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,b.spin?.angle||0);
+  if(!game.launchFront&&!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,b.spin?.angle||0);
  }
 }

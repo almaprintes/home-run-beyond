@@ -95,3 +95,9 @@ test('slow roof contact advances horizontally with continuous friction instead o
   assert.equal(g.state,'flight');assert.ok(g.ball.z-z>.45,material);assert.ok(g.ball.vz>.9,material);assert.equal(g.ball.bounces,0);
  }
 });
+
+test('supported stationary ball finishes on the first simulation step, without waiting .45 seconds',()=>{
+ const g=testFlight({x:0,y:1.45,z:80,vx:0,vy:0,vz:0,restTime:0});
+ g.simulateStep(.016);
+ assert.equal(g.state,'rest');assert.equal(g.ball.y,1.45);assert.equal(g.ball.vy,0);
+});

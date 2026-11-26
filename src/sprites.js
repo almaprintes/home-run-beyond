@@ -1,10 +1,10 @@
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.61';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.61';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.61';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.61';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.61';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.61';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.61';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.62';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.62';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.62';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.62';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.62';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.62';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.62';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -21,7 +21,8 @@ export const BATTER_ASSETS=Object.freeze({
  gull:GULL_ATLAS
 });
 
-export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null,launchView=false}={}){
+export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null,launchView=false,launchFront=false}={}){
+ if(state==='flight'&&launchFront)return null;
  if(state==='flight'&&launchView)return swingElapsed<.073?'contact':'follow';
  if(state==='menu'||state==='ready'||state==='rest'&&!ball)return 'ready';
  if(state==='pitching')return pitch>.72?'loaded':pitch>.12?'watch':'ready';
@@ -502,7 +503,7 @@ export class BatterSprites{
     ctx.restore();
    }
   }
-  if(this.ballLoaded&&game.ball&&['flight','landing','rest','orbit'].includes(game.state)){
+  if(!game.launchFront&&this.ballLoaded&&game.ball&&['flight','landing','rest','orbit'].includes(game.state)){
    const b=game.ball;
    const p=projectToScreen(camera,target,[b.x,b.y,b.z],width,height,zoom);
    if(p&&p.x>-160&&p.x<width+160&&p.y>-160&&p.y<height+160){

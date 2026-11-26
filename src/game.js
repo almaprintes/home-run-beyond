@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.61';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.61';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.61';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.61';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.61';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.61';
-import {GameAudio} from './audio.js?v=0.77.61';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.61';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.61';
-import {BatterSprites} from './sprites.js?v=0.77.61';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.61';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.61';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.61';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.61';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.61';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.61';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.62';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.62';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.62';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.62';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.62';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.62';
+import {GameAudio} from './audio.js?v=0.77.62';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.62';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.62';
+import {BatterSprites} from './sprites.js?v=0.77.62';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.62';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.62';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.62';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.62';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.62';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.62';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -23,6 +23,17 @@ export function groundRollRetention(type,dt){
 }
 // Keep the launch composition while the ball departs in real simulation time.
 export const LAUNCH_VIEW_SECONDS=.65;
+export const FINISH_CLOSEUP_SECONDS=.38;
+export function launchShotPhase(elapsed,cinematic=true){
+ return elapsed<LAUNCH_VIEW_SECONDS?'rear':cinematic&&elapsed<LAUNCH_VIEW_SECONDS+FINISH_CLOSEUP_SECONDS?'front':null;
+}
+export function finishCloseupPose(elapsed=0){
+ const t=clamp((elapsed-LAUNCH_VIEW_SECONDS)/FINISH_CLOSEUP_SECONDS,0,1);
+ return {camera:[-10.9+.42*t,5.65,-1.6-.25*t],target:[-2.3,4.6,-5],zoom:42};
+}
+export function rollingContactTime(previous,contact,vy,dt){
+ return contact&&Math.abs(vy)<.15?Math.max(0,previous||0)+dt:0;
+}
 export function flightTimeScale(speed,launchView=false){return launchView?1:clamp(speed/58,1,22)}
 // A low tracking shot is purely camera-side. Don't descend through a roof,
  // facade or other solid object: fall back to the original flight framing.
@@ -51,9 +62,12 @@ export function createShotOrbit(ball,camera,target){
 }
 export function shotOrbitPose(orbit,elapsed){
  const t=clamp(elapsed/SHOT_ORBIT_SECONDS,0,1),a=orbit.angle+t*Math.PI*2,b=orbit.ball;
- const ease=clamp(elapsed/.40,0,1),blend=ease*ease*(3-2*ease);
- const destination=[b.x+Math.sin(a)*orbit.radius,orbit.height+4*Math.sin(Math.PI*t),b.z+Math.cos(a)*orbit.radius];
- return {camera:destination.map((v,i)=>lerp(orbit.origin[i],v,blend)),
+ const blend=clamp(elapsed/.40,0,1);
+ const initialRadius=Math.hypot(orbit.origin[0]-b.x,orbit.origin[2]-b.z);
+ const radius=lerp(initialRadius,orbit.radius,blend);
+ const height=lerp(orbit.origin[1],orbit.height,blend)+4*Math.sin(Math.PI*t);
+ const destination=elapsed<=0?[...orbit.origin]:[b.x+Math.sin(a)*radius,height,b.z+Math.cos(a)*radius];
+ return {camera:destination,
   target:[b.x,b.y,b.z].map((v,i)=>lerp(orbit.originTarget[i],v,blend)),zoom:58};
 }
 export class BaseballGame{
@@ -172,7 +186,7 @@ export class BaseballGame{
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
-  this.audio?.stopFlightWind?.();this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.audio?.stopFlightWind?.();this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=false;this.launchFront=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.closeDiscovery();this.clearTransientToast();this.clearEncounterReward?.();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
@@ -452,7 +466,7 @@ export class BaseballGame{
  onAction(time){if(!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false,time);}
 
  startPitch(){
-  this.audio?.stopFlightWind?.();this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.audio?.stopFlightWind?.();this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=false;this.launchFront=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.brokenWindows=new Set();this.gullHits??=new Map();
   this.clearEncounterReward?.();this.renderEncounterRewards?.();
   this.clearTransientToast();
@@ -554,7 +568,7 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=true;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=true;this.launchFront=false;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  showEncounterReward(kind,count){
   if(typeof document==='undefined')return;
@@ -766,8 +780,9 @@ export class BaseballGame{
    }
   }
   b.spinContact=touching;
+  b.rollContactTime=rollingContactTime(b.rollContactTime,touching,b.vy,dt);
   integratePhysicalSpin(b,prev,dt,touching,hit?.material||groundAt(b.x,b.z).type);
-  // No time, distance or bounce-count cap. Only sustained physical rest.
+  // No time, distance or bounce-count cap. Confirm actual surface support.
   const planarSpeed=Math.hypot(b.vx,b.vz);
   const planarMoved=Math.hypot(b.x-prev.x,b.z-prev.z);
   // Tiny vertical solver corrections on a roof are not airborne flight.
@@ -783,13 +798,14 @@ export class BaseballGame{
   }
   if(support!==null){
    b.restTime=(b.restTime||0)+dt;
-   if(b.restTime>=.45){
+   // Supported, nearly stationary contact needs no artificial waiting.
+   if(touching||b.restTime>=.10){
     b.y=support+radius;b.vx=0;b.vy=0;b.vz=0;
     this.finishShot();return;
    }
   }else b.restTime=0;
  }
- finishShot(){if(this.state!=='flight')return;this.clearTransientToast();this.audio?.stopFlightWind?.();this.launchView=false;this.launchCamera=null;this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('pitch-surface').hidden=true;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
+ finishShot(){if(this.state!=='flight')return;this.clearTransientToast();this.audio?.stopFlightWind?.();this.launchView=false;this.launchFront=false;this.launchCamera=null;this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('pitch-surface').hidden=true;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
  const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
@@ -855,7 +871,7 @@ export class BaseballGame{
    if(this.swingElapsed>=.09)this.resolveSwing();
  }
  if(this.state==='flight'){
-   const departure=!!this.launchCamera&&this.liveSeconds<LAUNCH_VIEW_SECONDS;
+   const departure=!!this.launchCamera&&!!launchShotPhase(this.liveSeconds,this.save?.cinematicCamera!==false);
    this.liveSeconds+=dt;
    if(departure){
     this.swingElapsed+=dt;
@@ -872,7 +888,8 @@ export class BaseballGame{
     advanceVisualSpin(this.ball,dt);
     if(this.save?.equippedBall==='sol'&&!this.save?.reducedEffects)this.impactFX?.spawnSolarTrail(this.ball,dt);
    }
-   this.launchView=this.state==='flight'&&!!this.launchCamera&&this.liveSeconds<LAUNCH_VIEW_SECONDS;
+   const launchPhase=this.state==='flight'&&this.launchCamera?launchShotPhase(this.liveSeconds,this.save?.cinematicCamera!==false):null;
+   this.launchView=!!launchPhase;this.launchFront=launchPhase==='front';
    if(this.state==='flight')this.audio?.flightWind?.(Math.hypot(this.ball.vx,this.ball.vy,this.ball.vz),this.launchView||this.save?.reducedEffects?0:1);
    this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
    // The display clock is telemetry only; simulateStep decides physical rest.
@@ -881,7 +898,8 @@ export class BaseballGame{
  const departure=this.state==='flight'&&this.launchView&&!!this.launchCamera;
  const cutToFlight=this.state==='flight'&&!departure&&!!this.launchCamera;
  if(departure){
-  desiredCam=this.launchCamera.camera;desiredTarget=this.launchCamera.target;zoom=62;
+  if(this.launchFront){const close=finishCloseupPose(this.liveSeconds);desiredCam=close.camera;desiredTarget=close.target;zoom=close.zoom;}
+  else{desiredCam=this.launchCamera.camera;desiredTarget=this.launchCamera.target;zoom=62;}
  }else if(this.shotOrbit&&['orbit','rest'].includes(this.state)){
   if(this.state==='orbit')this.shotOrbit.elapsed=Math.min(SHOT_ORBIT_SECONDS,this.shotOrbit.elapsed+dt);
   const pose=shotOrbitPose(this.shotOrbit,this.shotOrbit.elapsed);desiredCam=pose.camera;desiredTarget=pose.target;zoom=pose.zoom;
@@ -889,9 +907,8 @@ export class BaseballGame{
  }else if(flight&&this.ball){const b=this.ball;const speed=Math.hypot(b.vz,b.vx);desiredCam=[b.x+clamp(b.y*.035,9,50),b.y+Math.min(120,16+b.y*.18),b.z-clamp(18+speed*.42,32,310)];desiredTarget=[b.x,b.y*.54,b.z+clamp(speed*.14,14,65)];zoom=58;
   if(this.state==='flight'&&this.save?.cinematicCamera!==false&&!this.save?.reducedEffects){
    const floor=surfaceBelowBall(b),clearance=Math.max(0,b.y-1.45-floor.y);
-   const near=b.spin?.groundEngaged&&clearance<6&&speed<65;
-   const wanted=near?Math.min(1,(6-clearance)/4):0;
-   this.groundCameraBlend=lerp(this.groundCameraBlend||0,wanted,1-Math.exp(-dt*2.8));
+   const near=b.spinContact===true&&(b.rollContactTime||0)>=.30&&Math.abs(b.vy)<.15&&clearance<.20&&speed<65;
+   this.groundCameraBlend=near?lerp(this.groundCameraBlend||0,1,1-Math.exp(-dt*2.8)):0;
    const blocked=cam=>surfaceBelowBall({x:cam[0],y:1e6,z:cam[2]}).y+2>cam[1]||!!traceBuildingCollision(b,{x:cam[0],y:cam[1],z:cam[2]},.5,this.brokenWindows)||!!traceStadiumContainerCollision(b,{x:cam[0],y:cam[1],z:cam[2]},.5)||!!traceFountainCollision(b,{x:cam[0],y:cam[1],z:cam[2]},.5);
    const low=groundTrackingPose(b,this.groundHeading||[0,1],clearance,this.groundCameraBlend,blocked);
    if(low){this.groundHeading=low.heading;const w=this.groundCameraBlend;

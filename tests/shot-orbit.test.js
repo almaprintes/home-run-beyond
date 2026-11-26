@@ -13,6 +13,10 @@ test('360 orbit follows stationary ball, starts from current camera and clears n
  const o=createShotOrbit(b,cam,target);
  assert.equal(SHOT_ORBIT_SECONDS,4);
  assert.deepEqual(shotOrbitPose(o,0).camera,cam);
+ const first=shotOrbitPose(o,.016).camera;
+ const firstAngle=Math.atan2(first[0]-b.x,first[2]-b.z);
+ const angularStep=Math.atan2(Math.sin(firstAngle-o.angle),Math.cos(firstAngle-o.angle));
+ assert.ok(Math.abs(angularStep-.016/SHOT_ORBIT_SECONDS*Math.PI*2)<1e-8,'orbit turns from first frame, no angular ease-in pause');
  const p1=shotOrbitPose(o,1),p2=shotOrbitPose(o,2),p3=shotOrbitPose(o,3),p4=shotOrbitPose(o,4);
  for(const p of [p1,p2,p3,p4]){
   assert.deepEqual(p.target,[b.x,b.y,b.z]);
