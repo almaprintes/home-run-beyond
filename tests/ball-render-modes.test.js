@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
 import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
-import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere} from '../src/sprites.js';
+import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere,shadeRainbowSphere} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
  const baseball=BALL_CATALOG.filter(item=>ballRenderMode(item)==='baseball');
@@ -145,4 +145,25 @@ test('orange uses a continuous rigid sphere with a rotating calyx, not a flat sp
  assert.deepEqual(paint({...spin,angle:7},[0,24,40]),first);
  const top=paint(spin,[0,40,.1]),mid=(48*n+48)*4;
  assert.ok(top[mid+1]>top[mid],'green stem visible from above');
+});
+
+test('rainbow sphere uses object-space bands and never rotates the flat billboard',()=>{
+ const sprites=new BatterSprites({getContext(){return null}}),image={width:160,height:160};
+ sprites.getStyledBall=()=>image;let flat=0,draws=0;
+ const ctx={rotate(){flat++},drawImage(img){assert.equal(img,image);draws++}};
+ const game={save:{equippedBall:'arcoiris'}};
+ for(const spin of [null,{orientation:[0,0,0,1],angle:3}])sprites.drawEquippedBall(ctx,game,32,spin,[0,5,-20],[0,0,0]);
+ assert.equal(flat,0);assert.equal(draws,2);assert.equal(sprites.ballSurfaceCache.mode,'rainbow');
+ const n=96,out=new Uint8ClampedArray(n*n*4),spin={orientation:[0,0,0,1]};
+ const paint=(s,c)=>shadeRainbowSphere(s,c,[0,0,0],out,n).slice();
+ const cam=[0,24,40],first=paint(spin,cam),alpha=f=>Array.from(f.filter((_,i)=>i%4===3));
+ const rotated=paint({...spin,visualOrientation:[Math.sin(.6),0,0,Math.cos(.6)]},cam);
+ assert.notDeepEqual(rotated,first);assert.deepEqual(alpha(rotated),alpha(first));
+ assert.deepEqual(paint({...spin,angle:5},cam),first);
+ for(let i=0;i<=24;i++){
+  const a=i*Math.PI/12,frame=paint(spin,[40*Math.sin(a),24,40*Math.cos(a)]);
+  assert.deepEqual(alpha(frame),alpha(first));assert.equal(frame[(48*n+48)*4+3],255);
+  if(i===6)assert.notDeepEqual(frame,first);
+ }
+ assert.deepEqual(paint(spin,cam),first);
 });
