@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.46';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.46';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.46';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.46';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.46';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.46';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.47';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.47';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.47';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry} from './ball-visuals.js?v=0.77.47';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.47';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.47';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -417,8 +417,9 @@ export class BatterSprites{
      ctx.save();
      ctx.globalAlpha=ballShadowOpacity(altitude);
      ctx.fillStyle=surface.type==='water'||surface.type==='swamp'||surface.type==='puddle'?'#d4f4e7':'#071820';
-     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=Math.min(16,size*.45);
-     ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,size*.66,size*.23,0,0,Math.PI*2);ctx.fill();
+     const shape=ballShadowGeometry(size,altitude);
+     ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=shape.blur;
+     ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,shape.rx,shape.ry,0,0,Math.PI*2);ctx.fill();
      ctx.restore();
     }
     if(game.save?.equippedBall==='sol'&&game.state==='flight'&&!game.save?.reducedEffects&&ctx.createRadialGradient){

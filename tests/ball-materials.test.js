@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity} from '../src/ball-visuals.js';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity,ballShadowGeometry} from '../src/ball-visuals.js';
 import {buildingAt,surfaceBelowBall,groundAt} from '../src/world.js';
 import {readFileSync} from 'node:fs';
 
@@ -44,4 +44,18 @@ test('el sprite dibuja sombra, estela tenue y anillo de contacto sin alterar fí
  assert.doesNotMatch(code,/createLinearGradient/);
  assert.match(game,/b\.impactAge=0/);
  assert.doesNotMatch(code,/Math\.min\(118/);
+});
+
+test('shadow follows visible diameter, never oversized and only slightly expands with height',()=>{
+ for(const d of [16,22,32,46]){
+  for(const h of [0,1.45,20,200]){
+   const s=ballShadowGeometry(d,h);
+   assert.ok(2*s.rx>=.70*d&&2*s.rx<=.80*d);
+   assert.ok(s.ry/s.rx>=.35&&s.ry/s.rx<=.45);
+   assert.ok(s.blur<=4);
+  }
+ }
+ assert.ok(ballShadowOpacity(0)<=.26);
+ const code=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ assert.match(code,/ballShadowGeometry\(size,altitude\)/);
 });

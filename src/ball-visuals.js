@@ -8,7 +8,14 @@ export function ballSpriteDiameter(projectedRadiusPx,screenWidth=390){
 }
 export function ballShadowOpacity(altitude){
  const h=Math.max(0,Number.isFinite(altitude)?altitude:1e4);
- return Math.max(.018,Math.min(.34,.34*Math.exp(-h/18)));
+ return Math.max(.014,Math.min(.26,.26*Math.exp(-h/18)));
+}
+// Ellipse radii, not diameters: 76% of the visible ball's width.
+export function ballShadowGeometry(diameter,altitude=0){
+ const size=Number.isFinite(diameter)?Math.max(0,diameter):0;
+ const h=Number.isFinite(altitude)?Math.max(0,altitude):0;
+ const spread=1+.05*(1-Math.exp(-h/18));
+ return {rx:size*.38*spread,ry:size*.14*spread,blur:Math.min(4,size*.08*spread)};
 }
 export function ballImpactOpacity(age){
  if(!Number.isFinite(age)||age<0||age>.36)return 0;
