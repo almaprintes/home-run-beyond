@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.64';
+import {pitcherPose} from './pitcher.js?v=0.77.65';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -394,7 +394,7 @@ export class CanvasRenderer{
  this.poly([[w*.5,h*.55],[w*.72,h*.63],[w*.5,h*.72],[w*.28,h*.63]],'#7bb875');
  c.strokeStyle='#fff4da';c.lineWidth=2.5;c.beginPath();c.moveTo(w*.5,h*.75);c.lineTo(w*.73,h*.62);c.moveTo(w*.5,h*.75);c.lineTo(w*.27,h*.62);c.stroke();
  c.fillStyle='#f8ead9';c.beginPath();c.ellipse(w*.5,h*.6,w*.055,h*.016,0,0,Math.PI*2);c.fill();
- this.person(w*.50,h*.585,.39,false,g?.pitch||0,pitcherPose(g));this.person(w*.74,h*.82,.71,true,g?.swing||0);
+ if(!(g?.sprites?.images?.pitcher&&g?.sprites?.ctx))this.person(w*.50,h*.585,.39,false,g?.pitch||0,pitcherPose(g));this.person(w*.74,h*.82,.71,true,g?.swing||0);
  if(g?.state==='pitching'&&!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){let p=g.pitch||0,ballx=lerp(w*.50,w*.72,p),bally=lerp(h*.48,h*.72,p);c.fillStyle=g.ballStyleColor||'#fff';c.beginPath();c.arc(ballx,bally,Math.max(5,p*9),0,Math.PI*2);c.fill();}
  }
  flightScene(c,w,h,g){const b=g.ball||{z:0,x:0,y:0};const ratio=b.z/1300;
@@ -402,7 +402,7 @@ export class CanvasRenderer{
  for(let i=0;i<10;i++){let z=i*170+Math.floor(b.z/250)*250;let k=1-i/14;let bw=(13+((i*11)%12))*k,xx=((i*127-b.z*.22)% (w+160)+w+160)%(w+160)-60,by=h*(.44+i*.056),bh=20+(i*19)%80;
  this.poly([[xx,by],[xx+bw,by],[xx+bw,by-bh],[xx,by-bh]],['#d7b5a1','#d6daca','#d8c8a0','#b6cee1'][i%4]);
  this.poly([[xx,by-bh],[xx+bw*.2,by-bh-11],[xx+bw*1.2,by-bh-11],[xx+bw,by-bh]],'#db886d')}
- if(b.z<95&&b.z>=-10)this.person(w*.5,h*.61+Math.max(0,b.z-21)*1.4,.39,false,0,pitcherPose(g));
+ if(b.z<95&&b.z>=-10&&!(g?.sprites?.images?.pitcher&&g?.sprites?.ctx))this.person(w*.5,h*.61+Math.max(0,b.z-21)*1.4,.39,false,0,pitcherPose(g));
  const y=h*.65;this.poly([[0,y],[w,y-h*.16],[w,y-h*.08],[0,y+h*.12]],'#405e63');
  c.save();c.translate(w*.52,h*.48);
  if(!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){

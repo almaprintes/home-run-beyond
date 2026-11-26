@@ -1,10 +1,11 @@
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.64';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.64';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.64';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.64';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.64';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.64';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.64';
+import {pitcherPose,PITCHER_Z,PITCHER_CUT_START,PITCHER_CUT_END} from './pitcher.js?v=0.77.65';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.65';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.65';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.65';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.65';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.65';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.65';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.65';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -20,6 +21,29 @@ export const BATTER_ASSETS=Object.freeze({
  spark:'./assets/hit-spark.webp',
  gull:GULL_ATLAS
 });
+
+// Six hand-registered, full-body renders from the approved personalized artwork.
+// 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.65';
+export const PITCHER_FRAMES=Object.freeze([
+ {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
+]);
+export function selectPitcherFrame(game={}){
+ if(game.state==='orbit'||game.worldStudio)return null;
+ if(game.pitcherCut){
+  const p=((game.liveSeconds||0)-PITCHER_CUT_START)/(PITCHER_CUT_END-PITCHER_CUT_START);
+  return p<.15?3:p<.82?4:5;
+ }
+ if(['flight','landing','rest'].includes(game.state)&&game.ball){
+  const phase=pitcherPose(game).phase;
+  return phase==='jump'?4:phase==='land'?5:3;
+ }
+ if(['pitching','aiming','swinging','whiff'].includes(game.state)){
+  const t=(game.pitchElapsed||0)/(game.pitchDuration||1.52);
+  return t<.06?1:t<.25?2:0;
+ }
+ return 0;
+}
 
 export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null,launchView=false}={}){
  if(state==='flight'&&launchView)return swingElapsed<.073?'contact':'follow';
@@ -279,7 +303,7 @@ export class BatterSprites{
  }
  load(){
   if(!this.ctx||typeof Image==='undefined')return Promise.resolve(false);
-  const loaders=Object.entries(BATTER_ASSETS).map(([key,url])=>new Promise(resolve=>{
+  const loaders=Object.entries({...BATTER_ASSETS,pitcher:PITCHER_ATLAS}).map(([key,url])=>new Promise(resolve=>{
    const picture=new Image();
    picture.onload=()=>{this.images[key]=picture;resolve(true)};
    picture.onerror=()=>{console.warn('Asset no disponible',url);resolve(false)};
@@ -437,6 +461,25 @@ export class BatterSprites{
     ctx.save();ctx.translate(p.x,p.y);if(flip)ctx.scale(-1,1);
     ctx.drawImage(atlas,(frame%3)*GULL_CELL,Math.floor(frame/3)*GULL_CELL,GULL_CELL,GULL_CELL,-size/2,-size/2,size,size);
     ctx.restore();
+   }
+  }
+  // Draw behind the batter and the independent pitch/flight ball.
+  const pitcherFrame=selectPitcherFrame(game),pitcherAtlas=this.images.pitcher;
+  if(pitcherAtlas&&pitcherFrame!==null&&camera&&target&&camera[2]<PITCHER_Z+4&&camera[1]<100){
+   const pp=pitcherPose(game),anchor=PITCHER_FRAMES[pitcherFrame];
+   const shift=(pitcherFrame===4||pitcherFrame===5)?pp.shift||0:0;
+   const lift=pitcherFrame===4?Math.max(.7,pp.lift||0):0;
+   const foot=projectToScreen(camera,target,[shift,.76+lift,PITCHER_Z],width,height,zoom);
+   const top=projectToScreen(camera,target,[shift,6.7+lift,PITCHER_Z],width,height,zoom);
+   const ground=projectToScreen(camera,target,[shift,.78,PITCHER_Z],width,height,zoom);
+   if(foot&&top&&ground&&foot.w>0&&foot.x>-width&&foot.x<2*width){
+    const scale=Math.min(height*1.25,Math.abs(foot.y-top.y))/478;
+    if(scale>.012){
+     ctx.save();
+     ctx.fillStyle='rgba(37,25,15,.22)';ctx.beginPath();ctx.ellipse(ground.x,ground.y,Math.max(2,94*scale),Math.max(1,16*scale),0,0,Math.PI*2);ctx.fill();
+     ctx.drawImage(pitcherAtlas,(pitcherFrame%3)*512,Math.floor(pitcherFrame/3)*512,512,512,foot.x-anchor.x*scale,foot.y-anchor.y*scale,512*scale,512*scale);
+     ctx.restore();
+    }
    }
   }
   drawCinematicAccents(ctx,game,camera,target,width,height,zoom);

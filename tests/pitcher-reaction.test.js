@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pitcherPose,pitcherReactionPlan,pitcherCutActive,pitcherCamera} from '../src/pitcher.js';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {selectPitcherFrame,PITCHER_ATLAS,PITCHER_FRAMES} from '../src/sprites.js';
 import {drawWorld,drawPitcher,pitcherBallPosition} from '../src/world.js';
 test('pitcher salta hacia un batazo próximo sin modificar su trayectoria',()=>{
  const shot=Object.freeze({vx:6,vy:16,vz:36}),plan=pitcherReactionPlan(shot);
@@ -44,4 +47,19 @@ test('personalized face and conditional camera never mutate the ball',()=>{
  drawPitcher(r,pitcherPose({state:'ready'}));
  assert.ok(calls.some(a=>a.includes('#1464a1')));
  assert.ok(calls.some(a=>a.includes('#a9a8a1')));
+});
+
+test('six approved sprite frames are loaded from the verified transparent WebP',()=>{
+ const asset=readFileSync(new URL('../'+PITCHER_ATLAS.split('?')[0].slice(2),import.meta.url));
+ assert.equal(asset.toString('ascii',8,12),'WEBP');
+ assert.equal(asset.length,159614);
+ assert.equal(createHash('sha1').update('blob '+asset.length+'\0').update(asset).digest('hex'),'1fb5818e5f0346d4cc84b8f13c4188f4fb061cba');
+ assert.equal(PITCHER_FRAMES.length,6);
+ assert.equal(selectPitcherFrame({state:'ready'}),0);
+ assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.02,pitchDuration:1.52}),1);
+ assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.2,pitchDuration:1.52}),2);
+ assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.66}),3);
+ assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.8}),4);
+ assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:1.01}),5);
+ assert.equal(selectPitcherFrame({state:'orbit'}),null);
 });
