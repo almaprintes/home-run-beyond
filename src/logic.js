@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.50';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.50';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.51';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.51';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -160,6 +160,17 @@ export const SHOP_SECTIONS=Object.freeze({
  outfit:{label:'Ropa',items:OUTFITS,owned:'ownedOutfits',equipped:'equippedOutfit'},
  ball:{label:'Pelotas',items:BALL_STYLES,owned:'ownedBalls',equipped:'equippedBall'}
 });
+// A disposable copy for testing art, never the player's actual saved progress.
+export function createCatalogTestSave(realSave){
+ const test=JSON.parse(JSON.stringify(realSave));
+ const discovered=new Set(test.discovered||[]);
+ for(const [category,section] of Object.entries(SHOP_SECTIONS)){
+  test[section.owned]=section.items.map(item=>item.id);
+  for(const item of section.items)discovered.add(category+':'+item.id);
+ }
+ test.discovered=[...discovered];
+ return test;
+}
 export function equipCosmetic(save,section,id){
  const catalog=SHOP_SECTIONS[section];
  const item=catalog?.items.find(x=>x.id===id);

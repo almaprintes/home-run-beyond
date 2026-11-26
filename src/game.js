@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.50';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.50';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.50';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.50';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.50';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.50';
-import {GameAudio} from './audio.js?v=0.77.50';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.50';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.50';
-import {BatterSprites} from './sprites.js?v=0.77.50';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.50';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.50';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.50';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.50';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.50';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.50';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.51';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.51';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.51';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.51';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.51';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.51';
+import {GameAudio} from './audio.js?v=0.77.51';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.51';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.51';
+import {BatterSprites} from './sprites.js?v=0.77.51';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.51';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.51';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.51';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.51';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.51';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.51';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -33,7 +33,24 @@ export class BaseballGame{
   if(typeof document!=='undefined'&&!el('shop')?.hidden)this.renderShop();
  }).catch(err=>console.warn('Bateador 2.5D no disponible',err));
  this.initUI();this.applySettings();this.drawUI();this.showMenu();requestAnimationFrame(now=>this.frame(now));}
- persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(this.save))}catch(e){if(e?.name!=='SecurityError')console.warn('No se pudo guardar el progreso',e)}}
+ persist(){if(this.catalogTestOriginal)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(this.save))}catch(e){if(e?.name!=='SecurityError')console.warn('No se pudo guardar el progreso',e)}}
+ get catalogTestActive(){return !!this.catalogTestOriginal}
+ setCatalogTestMode(active){
+  if(!['menu','ready','rest'].includes(this.state)||this.rewardPending)return false;
+  if(Boolean(active)===this.catalogTestActive)return true;
+  if(active){
+   this.catalogTestOriginal=this.save;
+   this.save=createCatalogTestSave(this.catalogTestOriginal);
+  }else{
+   this.save=this.catalogTestOriginal;
+   this.catalogTestOriginal=null;
+  }
+  this.batColor=COSMETICS.find(c=>c.id===this.save.equipped)?.color||'#e7b56e';
+  this.closeItemPreview(false);el('shop').hidden=true;el('settings').hidden=true;
+  this.applySettings();this.showMenu();
+  this.sprites?.prepareEquipment?.(this.save);
+  return true;
+ }
  initUI(){const click=(id,fn)=>el(id).addEventListener('click',e=>{e.preventDefault();fn(e)});
  const pitchSurface=el('pitch-surface'),action=el('action');
  // A single control path regardless of where the finger starts on iPhone.
@@ -176,6 +193,7 @@ export class BaseballGame{
   el('settings-graphics').value=this.save.graphics;
  }
  resetProgress(){
+  if(this.catalogTestActive){this.toast('SAL DEL MODO PRUEBAS PARA REINICIAR TU PARTIDA');return;}
   if(typeof window==='undefined'||!window.confirm?.('¿Borrar todas las monedas, mejoras, ropa, bates, pelotas y récords de este dispositivo? No se puede deshacer.'))return;
   this.save=initialSave();this.batColor=COSMETICS[0].color;
   this.persist();this.applySettings();this.renderSettings();this.drawUI();
@@ -240,7 +258,7 @@ export class BaseballGame{
   }
   const count=discoveredCount(this.save,this.shopSection);
   el('shop-discovery-count').textContent=category.label.toUpperCase()+': '+count.found+'/'+count.total+' DESCUBIERTOS';
-  el('shop-discovery-next').textContent=nextDiscoveryHint(this.save,this.shopSection);
+  el('shop-discovery-next').textContent=this.catalogTestActive?'MODO PRUEBAS · TODO ADQUIRIDO · NO SE GUARDA':nextDiscoveryHint(this.save,this.shopSection);
   el('shop-discovery-bar').style.width=(100*count.found/count.total).toFixed(1)+'%';
   const container=el('shop-items');container.replaceChildren();
   for(const item of [...category.items].sort((a,b)=>discoveryRegion(this.shopSection,a.id).at-discoveryRegion(this.shopSection,b.id).at||a.price-b.price)){
@@ -316,7 +334,7 @@ export class BaseballGame{
   if(!['power','swing','multiplier'].includes(key))return;
   // Nunca cobrar monedas ni mostrar un anuncio por un nivel sin beneficio.
   if(this.save.levels[key]>=skillMaxLevel(key)){this.toast('MÁXIMO ALCANZADO');return;}
-  if(bonusCredits(this.save)>0&&hasRewardedAds()){
+  if(!this.catalogTestActive&&bonusCredits(this.save)>0&&hasRewardedAds()){
    this.rewardPending=true;this.drawUI();
    showRewardedAd().then(rewarded=>{if(rewarded)this.applyBonus(key);else this.toast('VÍDEO NO COMPLETADO · CONSERVAS EL BONO')})
     .finally(()=>{this.rewardPending=false;this.drawUI()});
@@ -331,6 +349,7 @@ export class BaseballGame{
  }
  applyBonus(key){if(claimBonus(this.save,key)){this.audio.cash();this.persist();this.drawUI();this.toast('🎁 NIVEL EXTRA POR ANUNCIO')}}
  drawUI(){
+  el('app').classList.toggle('catalog-test-active',this.catalogTestActive);
   el('money').textContent=formatInt(this.save.coins);el('best-hud').textContent=formatInt(this.save.best)+' m';
   el('menu-money').textContent=formatInt(this.save.coins);
   el('menu-best').textContent=formatInt(this.save.best)+' m';
@@ -343,7 +362,7 @@ export class BaseballGame{
   el('menu-equipment').textContent='🏏 '+bat.name+'  ·  👕 '+outfit.name+'  ·  ⚾ '+ball.name;
   el('shots-hud').textContent=formatInt(this.save.shots);el('region-hud').textContent=areaAt(Math.max(this.save.best,0));
   el('sound').textContent=this.save.sound?'♫':'♩';
-  const bonus=bonusCredits(this.save)>0,hasAds=hasRewardedAds(),progress=bonusProgress(this.save);
+  const bonus=bonusCredits(this.save)>0,hasAds=!this.catalogTestActive&&hasRewardedAds(),progress=bonusProgress(this.save);
   el('bonus-track').classList.toggle('ready',bonus);
   el('bonus-text').textContent=bonus?(hasAds?'BONO DISPONIBLE · VER ANUNCIO':'BONO PENDIENTE · SIN ANUNCIOS'):'MEJORA EXTRA CADA '+BONUS_EVERY+' COMPRAS';
   el('bonus-progress').textContent=bonus?(hasAds?'ELIGE SKILL':'EN ESPERA'):progress+'/'+BONUS_EVERY;

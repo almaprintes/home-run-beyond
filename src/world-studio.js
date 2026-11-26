@@ -1,8 +1,8 @@
 
-import {Renderer} from './engine.js?v=0.77.50';
-import {drawWorld,buildingAt,buildingBoxes,fountainParts,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.50';
-import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.50';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.50';
+import {Renderer} from './engine.js?v=0.77.51';
+import {drawWorld,buildingAt,buildingBoxes,fountainParts,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.51';
+import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.51';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.51';
 
 export const STUDIO_HOLD_MS=7000;
 export const STUDIO_EXPORT={start:-100,end:2000,width:600,tileHeight:350,pixelsPerMeter:2};
@@ -73,7 +73,7 @@ class WorldStudio{
   panel.innerHTML='<header class="ws-head"><div><strong>WORLD STUDIO</strong><small>HOME RUN BEYOND · MAPA REAL</small></div><button class="ws-button" data-ws="close">Cerrar ×</button></header>'+
    '<div class="ws-map"><canvas aria-label="Vista cenital del mundo"></canvas><canvas aria-hidden="true"></canvas><div class="ws-info"></div><div class="ws-scale">100 m</div></div>'+
    '<div class="ws-controls"><div class="ws-row"><button class="ws-button" data-ws="home">Estadio</button><button class="ws-button" data-ws="out">−</button><button class="ws-button" data-ws="in">+</button><label>Distancia <input data-ws="jump" type="number" min="0" max="200000" step="50" value="230" inputmode="numeric"/> m</label></div>'+
-   '<div class="ws-row"><label><input data-ws="collisions" type="checkbox"/> Colisiones</label><button class="ws-button ws-primary" data-ws="capture">PNG visible</button><button class="ws-button ws-primary" data-ws="full">PNG 0–2 km</button></div><div class="ws-status" role="status">Arrastra para explorar · pellizca para ampliar</div></div>';
+   '<div class="ws-row"><label><input data-ws="collisions" type="checkbox"/> Colisiones</label><button class="ws-button ws-primary" data-ws="capture">PNG visible</button><button class="ws-button ws-primary" data-ws="full">PNG 0–2 km</button></div><div class="ws-row"><button class="ws-button ws-primary ws-test" data-ws="test" aria-pressed="false">Desbloquear y adquirir todo</button></div><div class="ws-status" role="status">Arrastra para explorar · pellizca para ampliar</div></div>';
   document.getElementById('app').append(panel);this.panel=panel;this.map=panel.querySelector('.ws-map');
   [this.canvas,this.overlay]=this.map.querySelectorAll('canvas');
   this.status=panel.querySelector('.ws-status');this.info=panel.querySelector('.ws-info');this.scale=panel.querySelector('.ws-scale');
@@ -82,6 +82,8 @@ class WorldStudio{
   button('close',()=>this.close());button('home',()=>{this.view={x:WORLD_CENTER_X,z:230,height:650};this.render()});
   button('in',()=>this.zoom(.75));button('out',()=>this.zoom(1/.75));
   button('capture',()=>this.export(false));button('full',()=>this.export(true));
+  this.testButton=panel.querySelector('[data-ws=test]');
+  button('test',()=>this.toggleCatalogTest());
   this.jump.addEventListener('change',()=>{this.view.z=clamp(Number(this.jump.value)||0,0,200000);this.render()});
   this.collisions.addEventListener('change',()=>this.render());
   this.map.addEventListener('pointerdown',e=>{
@@ -107,13 +109,25 @@ class WorldStudio{
  open(){
   if(!this.panel.hidden)return;
   this.priorStopped=this.game.stopped;this.game.stopped=true;this.time=this.game.clock||0;
-  this.panel.hidden=false;this.status.textContent='Arrastra para explorar · pellizca para ampliar';
+  this.panel.hidden=false;this.status.textContent='Arrastra para explorar · pellizca para ampliar';this.syncCatalogTest();
   try{this.renderer??=new Renderer(this.canvas)}catch(e){this.status.textContent='WebGL2 no disponible: '+e.message;return}
   this.renderer.dpr=Math.min(2,window.devicePixelRatio||1);
   const opened=++this.openToken||1;this.openToken=opened;
   const repaint=()=>{if(this.panel.hidden||this.openToken!==opened)return;this.render();if(!this.renderer.textureReady&&performance.now()<until)requestAnimationFrame(repaint)};
   const until=performance.now()+2500;
   requestAnimationFrame(repaint);
+ }
+ syncCatalogTest(){
+  const active=this.game.catalogTestActive;
+  this.testButton.textContent=active?'Salir de pruebas · restaurar partida':'Desbloquear y adquirir todo';
+  this.testButton.setAttribute('aria-pressed',String(active));
+ }
+ toggleCatalogTest(){
+  if(this.busy)return;
+  const enable=!this.game.catalogTestActive;
+  if(!this.game.setCatalogTestMode(enable)){this.status.textContent='Espera a terminar la acción en curso.';return}
+  this.syncCatalogTest();
+  this.status.textContent=enable?'Modo pruebas: catálogo completo, sin gastar monedas. Cierra y abre la tienda.':'Partida real restaurada.';
  }
  close(){
   if(this.busy)return;

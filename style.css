@@ -440,3 +440,6 @@
 #hud .brand,.menu-brand,.menu-title h1{position:relative;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .ws-holding::after{content:"";position:absolute;left:0;bottom:-6px;width:100%;height:3px;border-radius:4px;background:#ffc66f;box-shadow:0 0 7px #ffc66f;transform:scaleX(0);transform-origin:left center;animation:ws-hold-progress 7s linear forwards;pointer-events:none}
 @keyframes ws-hold-progress{to{transform:scaleX(1)}}
+
+.ws-test[aria-pressed=true]{background:#b5e3cb;color:#123b2d;border-color:#d0f5df}
+.catalog-test-active::after{content:"MODO PRUEBAS · NO SE GUARDA";position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 3px);transform:translateX(-50%);z-index:90;pointer-events:none;padding:3px 8px;border-radius:6px;background:#73491c;color:#fff2cc;font-size:10px;font-weight:800;letter-spacing:.35px;white-space:nowrap}

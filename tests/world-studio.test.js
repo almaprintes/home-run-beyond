@@ -33,7 +33,7 @@ test('full PNG stitches the actual world from stadium rear through 2 km without 
  assert.match(src,/drawWorld\(this.renderer,cam,/);assert.match(src,/out\.toBlob/);
  assert.match(src,/game\.stopped=true/);
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
- assert.match(sw,/world-studio\.js\?v=0\.77\.50/);
+ assert.match(sw,/world-studio\.js\?v=0\.77\.51/);
 });
 
 test('iPhone native touch long press survives duplicate pointer cancellation',()=>{
@@ -52,4 +52,33 @@ test('iPhone native touch long press survives duplicate pointer cancellation',()
  listeners.touchstart(e);listeners.touchcancel({...e,touches:[]});assert.equal(fn,null);
  const src=readFileSync(new URL('../src/world-studio.js',import.meta.url),'utf8');
  assert.match(src,/\.menu-title h1/);
+});
+
+import {initialSave,createCatalogTestSave,SHOP_SECTIONS,equipCosmetic,SAVE_KEY} from '../src/logic.js';
+import {isDiscovered} from '../src/discoveries.js';
+import {BaseballGame} from '../src/game.js';
+test('catalog test owns and discovers every item at zero cost without modifying actual progress',()=>{
+ const actual=initialSave();actual.coins=1234;actual.levels.power=24;actual.best=1116;
+ const original=JSON.stringify(actual),test=createCatalogTestSave(actual);
+ for(const [key,section] of Object.entries(SHOP_SECTIONS)){
+  assert.equal(test[section.owned].length,section.items.length);
+  for(const item of section.items){assert.ok(isDiscovered(test,key,item.id));assert.equal(equipCosmetic(test,key,item.id),'equipped')}
+ }
+ assert.equal(test.coins,1234);assert.equal(test.levels.power,24);
+ test.coins+=1000;test.best=3000;test.levels.power++;
+ assert.equal(JSON.stringify(actual),original);
+});
+test('catalog test mode cannot overwrite real local storage and restores original equipment',()=>{
+ const storage=globalThis.localStorage,doc=globalThis.document,writes=[];
+ globalThis.localStorage={setItem(k,v){writes.push([k,v])}};
+ globalThis.document={getElementById:()=>({hidden:false})};
+ try{
+  const g=Object.create(BaseballGame.prototype);Object.assign(g,{state:'menu',save:initialSave(),closeItemPreview(){},applySettings(){},showMenu(){},sprites:{prepareEquipment(){}}});
+  const original=g.save;
+  g.persist();assert.equal(writes.length,1);assert.equal(writes[0][0],SAVE_KEY);
+  assert.ok(g.setCatalogTestMode(true));assert.ok(g.catalogTestActive);assert.notEqual(g.save,original);
+  equipCosmetic(g.save,'outfit',SHOP_SECTIONS.outfit.items.at(-1).id);g.save.coins=0;g.persist();assert.equal(writes.length,1);
+  assert.ok(g.setCatalogTestMode(false));assert.equal(g.save,original);assert.equal(g.catalogTestActive,false);g.persist();assert.equal(writes.length,2);assert.equal(writes[1][1],writes[0][1]);
+  g.state='flight';assert.equal(g.setCatalogTestMode(true),false);
+ }finally{if(storage===undefined)delete globalThis.localStorage;else globalThis.localStorage=storage;if(doc===undefined)delete globalThis.document;else globalThis.document=doc}
 });

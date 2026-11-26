@@ -2,9 +2,9 @@
 // Comprar/equipar es otra acción: el precio orienta cuándo revelar cada objeto,
 // pero gastar en habilidades nunca hace retroceder los descubrimientos.
 // Regla estable por ID para no reordenar lo descubierto al crecer el catálogo.
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.50';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG} from './cosmetic-catalog.js?v=0.77.51';
 
-import {BIOMES} from './biomes.js?v=0.77.50';
+import {BIOMES} from './biomes.js?v=0.77.51';
 
 // Theme first: unlock opportunities follow the actual map, independently of purchase price.
 const STAGES=[
