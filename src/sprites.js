@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.40';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.40';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.40';
-import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.40';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.40';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.40';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.41';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.41';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.41';
+import {ballSpriteDiameter,ballShadowOpacity} from './ball-visuals.js?v=0.77.41';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.41';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.41';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -111,7 +111,7 @@ export function neutralizeBaseballLighting(data,w,h,color='#ffffff'){
  }
  return opaqueBaseballPixels(out,w,h);
 }
-export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE,fixedLight=false){
+export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BALL_SURFACE_SIZE,fixedLight=false,textureRadius=.47){
  const view=lookAt(camera,target),qu=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
  const qx=-qu[0],qy=-qu[1],qz=-qu[2],qw=qu[3];
  const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
@@ -135,8 +135,8 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
    const oz=wz+qw*cz+qx*cy-qy*cx;
    // Original 2D baseball supplied by the creator forms the visible half;
    // mirror it for the hidden half, keeping the approved seams/colour.
-   const u=.5+.47*ox*(oz<0?-1:1);
-   const v=.5-.47*oy;
+   const u=.5+textureRadius*ox*(oz<0?-1:1);
+   const v=.5-textureRadius*oy;
    const ix=Math.max(0,Math.min(w-1,Math.round(u*(w-1))));
    const iy=Math.max(0,Math.min(h-1,Math.round(v*(h-1))));
    const src=(iy*w+ix)*4;
@@ -155,7 +155,7 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
  if(spin?.orientation&&camera&&target&&cache&&typeof document!=='undefined'&&
     (image?.naturalWidth||image?.width)>0){
   try{
-   if(cache.image!==image){
+   if(cache.image!==image||cache.mode!==cache.loadedMode){
     const srcCanvas=document.createElement('canvas');
     srcCanvas.width=image.naturalWidth||image.width;srcCanvas.height=image.naturalHeight||image.height;
     const srcCtx=srcCanvas.getContext('2d',{willReadFrequently:true});
@@ -163,7 +163,7 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     const outCanvas=document.createElement('canvas');
     outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
     const outCtx=outCanvas.getContext('2d');
-    cache.image=image;
+    cache.image=image;cache.loadedMode=cache.mode;
     const sourceImage=srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
     cache.source={width:sourceImage.width,height:sourceImage.height,
      data:cache.leatherColor?neutralizeBaseballLighting(sourceImage.data,sourceImage.width,sourceImage.height,cache.leatherColor):opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
@@ -171,7 +171,7 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
    shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
-    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor);
+    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47);
    cache.context.putImageData(cache.frame,0,0);
    ctx.drawImage(cache.canvas,-radius,-radius,size,size);
    return;
@@ -280,7 +280,19 @@ export class BatterSprites{
   // backspin en vuelo y topspin tras el primer bote, sin girar como moneda.
   // Su copia UV se rellena internamente, SIN alterar el dibujo original.
   // Keep the same spherical projection even at zero speed: no texture snap.
+  if(item.id==='sol'&&spin?.orientation&&camera&&target){
+   // Corona is hot plasma, not a rigid painted wheel. Keep the approved
+   // silhouette and reproject the central photosphere using world-space spin.
+   ctx.drawImage(image,-size*.5,-size*.5,size,size);
+   this.ballSurfaceCache.mode='solar';
+   this.ballSurfaceCache.leatherColor=null;
+   this.ballSurfaceCache.textureRadius=.35;
+   drawSpinningBaseball(ctx,image,size*.72,spin,camera,target,this.ballSurfaceCache);
+   return;
+  }
   if(item.design==='baseball'&&spin?.orientation&&camera&&target){
+   this.ballSurfaceCache.mode='baseball';
+   this.ballSurfaceCache.textureRadius=.47;
    // Metallic gold has deliberate reflections; ordinary leather is de-lit.
    this.ballSurfaceCache.leatherColor=item.id==='dorada'?null:item.color;
    drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
@@ -406,6 +418,15 @@ export class BatterSprites{
      ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=Math.min(16,size*.45);
      ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,size*.66,size*.23,0,0,Math.PI*2);ctx.fill();
      ctx.restore();
+    }
+    if(game.save?.equippedBall==='sol'&&game.state==='flight'&&!game.save?.reducedEffects&&ctx.createRadialGradient){
+     const speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
+     if(speed>.35){
+      const glow=ctx.createRadialGradient(p.x,p.y,size*.30,p.x,p.y,size*.86);
+      glow.addColorStop(0,'rgba(255,184,42,.25)');glow.addColorStop(1,'rgba(255,102,20,0)');
+      ctx.save();ctx.globalAlpha=Math.min(1,speed/8);ctx.fillStyle=glow;
+      ctx.beginPath();ctx.arc(p.x,p.y,size*.86,0,Math.PI*2);ctx.fill();ctx.restore();
+     }
     }
     ctx.save();ctx.translate(p.x,p.y);
     const bounce=game.state==='rest'?0:Math.max(0,Math.min(1,b.bounceVisual||0));

@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.40';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.40';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.40';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.40';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.40';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.40';
-import {GameAudio} from './audio.js?v=0.77.40';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.40';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.40';
-import {BatterSprites} from './sprites.js?v=0.77.40';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.40';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.40';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.40';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.40';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.40';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.40';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.41';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.41';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.41';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.41';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.41';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.41';
+import {GameAudio} from './audio.js?v=0.77.41';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.41';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.41';
+import {BatterSprites} from './sprites.js?v=0.77.41';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.41';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.41';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.41';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.41';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.41';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.41';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -527,7 +527,7 @@ export class BaseballGame{
  }
  emitCollision(material,point,strength,normal={x:0,y:1,z:0}){
   if(!Number.isFinite(strength)||strength<1.2)return;
-  if(!this.save?.reducedEffects)this.impactFX?.spawn({x:point.x,y:point.y,z:point.z,material,strength,normal});
+  if(!this.save?.reducedEffects)this.impactFX?.spawn({x:point.x,y:point.y,z:point.z,material,strength,normal,ballId:this.save?.equippedBall});
   if(this.audio?.impact)this.audio.impact(material,strength);
   else this.audio?.land?.();
   if(!this.save?.reducedEffects)this.shake=Math.max(this.shake||0,Math.min(.13,.025+strength*.00085));
@@ -764,7 +764,10 @@ export class BaseballGame{
    // Always present spin at real display frame rate, not accelerated physics time.
    // First ground impact permanently switches the visible axis from backspin to
    // rolling topspin, including small airborne hops between bounces.
-   if(this.state==='flight')advanceVisualSpin(this.ball,dt);
+   if(this.state==='flight'){
+    advanceVisualSpin(this.ball,dt);
+    if(this.save?.equippedBall==='sol'&&!this.save?.reducedEffects)this.impactFX?.spawnSolarTrail(this.ball,dt);
+   }
    this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
    // The display clock is telemetry only; simulateStep decides physical rest.
  }

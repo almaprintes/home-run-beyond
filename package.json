@@ -1,6 +1,6 @@
 {
   "name": "home-run-beyond",
-  "version": "0.77.40",
+  "version": "0.77.41",
   "private": true,
   "type": "module",
   "description": "Home Run Beyond — juego de bateo 3D procedural PWA",

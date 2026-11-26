@@ -1,4 +1,4 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.40';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.41';
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
 export const EFFECT_MATERIALS=Object.freeze({
@@ -38,10 +38,14 @@ function project(vp,x,y,z,width,height){
 }
 
 export class ImpactEffects{
- constructor(){this.particles=[];this.rings=[];this.seed=1}
- clear(){this.particles.length=0;this.rings.length=0}
- spawn({x=0,y=0,z=0,material='concrete',strength=20,normal={x:0,y:1,z:0}}={}){
+ constructor(){this.particles=[];this.rings=[];this.seed=1;this.solarClock=0}
+ clear(){this.particles.length=0;this.rings.length=0;this.solarClock=0}
+ spawn({x=0,y=0,z=0,material='concrete',strength=20,normal={x:0,y:1,z:0},ballId=null}={}){
   const style=materialEffect(material),scale=fxStrength(strength);
+  if(ballId==='sol'){
+   if(scale>=.07)this.spawnSolarBurst({x,y,z,strength,normal});
+   return;
+  }
   if(scale<.07)return;
   const seed=this.seed++;
   const count=Math.min(18,Math.max(3,Math.round(style.count*(.40+.65*scale))));
@@ -61,6 +65,32 @@ export class ImpactEffects{
   // Límite estricto: efectos de muchos rebotes no penalizan el iPhone.
   if(this.particles.length>90)this.particles.splice(0,this.particles.length-90);
   if(this.rings.length>8)this.rings.splice(0,this.rings.length-8);
+ }
+ addSolarParticle(x,y,z,vx,vy,vz,life,size,seed,index,flame){
+  this.particles.push({x,y,z,vx,vy,vz,age:0,life,gravity:flame?-3:9,kind:flame?'flame':'ember',color:['#fff1a2','#ffcc4b','#ff8427','#f64b1d'][Math.floor(hash(index+71,seed)*4)],size,material:'solar'});
+  if(this.particles.length>90)this.particles.splice(0,this.particles.length-90);
+ }
+ spawnSolarBurst({x,y,z,strength,normal}){
+  const power=fxStrength(strength),seed=this.seed++;
+  const count=Math.round(5+9*power);
+  for(let i=0;i<count;i++){
+   const a=hash(i+1,seed)*Math.PI*2,spread=(3+10*power)*(.45+hash(i+7,seed));
+   this.addSolarParticle(x,y,z,Math.cos(a)*spread+(normal.x||0)*2,2+spread*.6,Math.sin(a)*spread+(normal.z||0)*2,.20+hash(i+31,seed)*.28,1.2+hash(i+51,seed)*2,seed,i,i%3!==0);
+  }
+ }
+ spawnSolarTrail(ball,dt){
+  const speed=Math.hypot(ball?.vx||0,ball?.vy||0,ball?.vz||0);
+  if(!ball||speed<.35||ball.spin?.frozen){this.solarClock=0;return}
+  this.solarClock+=Math.max(0,Math.min(.05,dt||0));
+  const interval=ball.spinContact?.075:.048;
+  if(this.solarClock<interval)return;
+  this.solarClock%=interval;
+  const seed=this.seed++,n=ball.spinContact?1:2;
+  const ux=(ball.vx||0)/speed,uy=(ball.vy||0)/speed,uz=(ball.vz||0)/speed;
+  for(let i=0;i<n;i++){
+   const a=hash(i+2,seed)*Math.PI*2,spread=.5+hash(i+5,seed)*.7;
+   this.addSolarParticle(ball.x-ux*1.35+Math.cos(a)*spread,ball.y-uy*.7,ball.z-uz*1.35+Math.sin(a)*spread,-ux*3+Math.cos(a),1.5-uy*2,-uz*3+Math.sin(a),.16+hash(i+9,seed)*.18,1.1+hash(i+13,seed)*1.3,seed,i,!ball.spinContact||i%2===0&&seed%3===0);
+  }
  }
  spawnBat({x=-4.5,y=2.5,z=-4.7,quality='good'}={}){
   const strength=quality==='perfect'?100:quality==='excellent'?73:quality==='good'?42:18;
@@ -97,7 +127,13 @@ export class ImpactEffects{
    ctx.save();ctx.globalAlpha=Math.max(0,(1-t)*(f.kind==='soft'?.33:.76));
    ctx.fillStyle=f.color;ctx.beginPath();
    if(f.kind==='shard'){const angle=f.age*11+f.vx;ctx.moveTo(p.x+Math.cos(angle)*r*1.7,p.y+Math.sin(angle)*r*1.7);ctx.lineTo(p.x+Math.cos(angle+2.1)*r,p.y+Math.sin(angle+2.1)*r);ctx.lineTo(p.x+Math.cos(angle+4.2)*r*1.3,p.y+Math.sin(angle+4.2)*r*1.3);ctx.closePath();}
-   else ctx.arc(p.x,p.y,r,0,Math.PI*2);
+   else if(f.kind==='flame'){
+    const tipX=p.x+Math.sin(f.age*16+f.vx)*r*.6;
+    ctx.moveTo(tipX,p.y-r*2.5);ctx.quadraticCurveTo(p.x+r*1.6,p.y,p.x+r*.65,p.y+r);
+    ctx.quadraticCurveTo(p.x-r*1.6,p.y+r*1.25,tipX,p.y-r*2.5);ctx.closePath();
+   }else if(f.kind==='ember'){
+    ctx.moveTo(p.x,p.y-r*1.7);ctx.lineTo(p.x+r*.65,p.y);ctx.lineTo(p.x,p.y+r);ctx.lineTo(p.x-r*.65,p.y);ctx.closePath();
+   }else ctx.arc(p.x,p.y,r,0,Math.PI*2);
    ctx.fill();ctx.restore();
   }
  }
