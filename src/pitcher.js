@@ -34,14 +34,16 @@ export function pitcherPose(game={}){
 
  // Editorial reaction after the rear batting shot; no changes to simulation.
  export const PITCHER_CUT_START=.65;
- export const PITCHER_CUT_END=1.03;
+ export const PITCHER_CUT_END=.85;
+ export const PITCHER_CUT_POSE_T=.5;
  export function pitcherCutActive(game){
   const t=game.liveSeconds||0;
   return game.state==='flight'&&game.save?.cinematicCamera===true&&!game.save?.reducedEffects&&!!game.pitcherReaction?.jump&&t>=PITCHER_CUT_START&&t<PITCHER_CUT_END;
  }
  export function pitcherCamera(game){
-  const plan=game.pitcherReaction,p=clamp(((game.liveSeconds||0)-PITCHER_CUT_START)/(PITCHER_CUT_END-PITCHER_CUT_START));
-  const pose=pitcherPose({...game,pitcherReactionStartedAt:undefined,liveSeconds:plan.start+plan.duration*(.12+.76*p),pitcherCut:false});
+  const plan=game.pitcherReaction;
+  // Insert of the same action at maximum extension, not a replay of the jump.
+  const pose=pitcherPose({...game,pitcherReactionStartedAt:undefined,liveSeconds:plan.start+plan.duration*PITCHER_CUT_POSE_T,pitcherCut:false});
   const sign=plan.side>=0?-1:1;
-  return {camera:[sign*(6.8-.8*p)+pose.shift*.4,4.9+pose.lift*.35,PITCHER_Z-9.5],target:[pose.shift+plan.side*.48,4.2+pose.lift*.65,PITCHER_Z],zoom:51,pose};
+  return {camera:[sign*6.4+pose.shift*.4,4.9+pose.lift*.35,PITCHER_Z-9.5],target:[pose.shift+plan.side*.48,4.2+pose.lift*.65,PITCHER_Z],zoom:51,pose};
  }

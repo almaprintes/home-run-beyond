@@ -58,8 +58,22 @@ test('six approved sprite frames are loaded from the verified transparent WebP',
  assert.equal(selectPitcherFrame({state:'ready'}),0);
  assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.02,pitchDuration:1.52}),1);
  assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.2,pitchDuration:1.52}),2);
- assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.66}),3);
+ assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.66}),4);
  assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.8}),4);
- assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:1.01}),5);
+ assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.849}),4);
  assert.equal(selectPitcherFrame({state:'orbit'}),null);
+});
+
+test('cinematic insert holds peak extension for 200 ms without replay or landing',()=>{
+ const plan=pitcherReactionPlan({vx:6,vy:16,vz:36});
+ const g={state:'flight',pitcherReaction:plan,save:{cinematicCamera:true},ball:Object.freeze({x:0,y:10,z:30})};
+ const start={...g,liveSeconds:.65},end={...g,liveSeconds:.849};
+ assert.equal(pitcherCutActive({...g,liveSeconds:.649}),false);
+ assert.equal(pitcherCutActive(start),true);
+ assert.equal(pitcherCutActive(end),true);
+ assert.equal(pitcherCutActive({...g,liveSeconds:.85}),false);
+ assert.deepEqual(pitcherCamera(start),pitcherCamera(end));
+ const pose=pitcherCamera(start).pose;
+ assert.equal(pose.phase,'jump');assert.ok(pose.lift>2);assert.equal(pose.reach,1);
+ for(const t of [.65,.7,.8,.849])assert.equal(selectPitcherFrame({...g,pitcherCut:true,liveSeconds:t}),4);
 });
