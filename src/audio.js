@@ -179,6 +179,30 @@ export class GameAudio{
   g.gain.exponentialRampToValueAtTime(.0001,t+duration);
   o.connect(g).connect(c.destination);o.start(t);o.stop(t+duration+.05);
  }
+ // One low-volume filtered wind bed for the entire flight; no repeated
+ // allocations on each frame and no sound left playing after a shot.
+ flightWind(speed,active=1){
+  const amount=this.enabled&&active?Math.max(0,Math.min(1,(speed-35)/190)):0;
+  if(amount<.015){this.stopFlightWind();return}
+  const c=this.ctx;if(!c||c.state!=='running'||!c.createBiquadFilter)return;
+  try{
+   if(!this.wind){
+    const n=Math.floor(c.sampleRate*2),buffer=c.createBuffer(1,n,c.sampleRate),samples=buffer.getChannelData(0);
+    let low=0,seed=13579;
+    for(let i=0;i<n;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;low=.76*low+.24*(seed/2147483648-1);samples[i]=low}
+    const source=c.createBufferSource(),filter=c.createBiquadFilter(),gain=c.createGain();
+    source.buffer=buffer;source.loop=true;filter.type='bandpass';filter.Q.value=.55;gain.gain.value=0;
+    source.connect(filter);filter.connect(gain);gain.connect(c.destination);source.start();
+    this.wind={source,filter,gain};
+   }
+   this.wind.filter.frequency.setTargetAtTime(250+amount*1050,c.currentTime,.12);
+   this.wind.gain.gain.setTargetAtTime(amount*.10,c.currentTime,.12);
+  }catch{this.stopFlightWind()}
+ }
+ stopFlightWind(){
+  const w=this.wind;if(!w)return;this.wind=null;
+  try{w.gain.gain.setTargetAtTime(0,this.ctx.currentTime,.035);w.source.stop(this.ctx.currentTime+.13)}catch{try{w.source.stop()}catch{}}
+ }
  sound(kind,volume=.18){
   if(!this.enabled||kind==='bat'||kind==='swing')return;this.init();const c=this.ctx;
   if(!c||!c.createBuffer||!c.createBufferSource||!c.createGain)return;

@@ -1,5 +1,5 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.60';
-import {groundAt} from './world.js?v=0.77.60';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.61';
+import {groundAt} from './world.js?v=0.77.61';
 export const MAX_GLASS_SHARDS=84;
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
@@ -39,6 +39,48 @@ function project(vp,x,y,z,width,height){
  return {x:(a+1)*.5*width,y:(1-b)*.5*height,depth:w};
 }
 
+// Graphic accents inspired by sports animation. No full-screen strobe;
+ // a single short burst, and peripheral speed strokes clear of the HUD.
+export function cinematicIntensity(quality,speed,age,launchView,reduced=false){
+ if(reduced)return {burst:0,wind:0};
+ const power=quality==='perfect'?1:quality==='excellent'?.62:0;
+ const burst=launchView?power*Math.max(0,1-age/.20)**2:0;
+ const wind=launchView?0:Math.max(0,Math.min(1,(speed-40)/160))*Math.max(0,Math.min(1,(4.5-age)/2));
+ return {burst,wind};
+}
+export function drawCinematicAccents(ctx,game,camera,target,width,height,zoom){
+ if(game.state!=='flight'||!game.ball||game.save?.reducedEffects||!ctx?.moveTo||!ctx?.lineTo)return;
+ const age=game.liveSeconds||0,b=game.ball,speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
+ const {burst,wind}=cinematicIntensity(game.pendingShot?.quality,speed,age,game.launchView);
+ if(burst>.005){
+  const vp=mul4(perspective(zoom*Math.PI/180,width/Math.max(1,height),.25,2500),lookAt(camera,target));
+  const p=project(vp,-4.5+(game.pendingShot?.contactOffsetMm||0)/1000,2.5,-4.7,width,height);
+  if(p){const r=Math.min(width,height)*(.065+age*.55);
+   ctx.save();ctx.globalAlpha=burst*.82;ctx.fillStyle='#fff5cb';
+   for(let i=0;i<12;i++){
+    const a=i*Math.PI/6+.09,ux=Math.cos(a),uy=Math.sin(a),len=r*(1.4+hash(i,7)*1.2);
+    ctx.beginPath();ctx.moveTo(p.x+ux*r*.32-uy*2,p.y+uy*r*.32+ux*2);
+    ctx.lineTo(p.x+ux*len,p.y+uy*len);
+    ctx.lineTo(p.x+ux*r*.32+uy*2,p.y+uy*r*.32-ux*2);ctx.closePath();ctx.fill();
+   }
+   ctx.globalAlpha=burst*.7;ctx.beginPath();ctx.arc(p.x,p.y,r*.29,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+ }
+ if(wind>.015){
+  ctx.save();ctx.strokeStyle='#f2fbff';ctx.lineCap='round';
+  // 16 bounded streaks, phased continuously rather than flickering randomly.
+  for(let i=0;i<16;i++){
+   const a=(i+.35)*Math.PI/8,dx=Math.cos(a),dy=Math.sin(a);
+   const phase=(age*(1.8+wind)+hash(i,19))%1,edge=.72+phase*.37;
+   const alpha=Math.sin(Math.PI*phase)*wind*.32;
+   const x=width*.5+dx*width*.58*edge,y=height*.5+dy*height*.56*edge;
+   const len=.10+.12*wind;
+   ctx.globalAlpha=alpha;ctx.lineWidth=1+hash(i,21)*1.5;
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-dx*width*len,y-dy*height*len);ctx.stroke();
+  }
+  ctx.restore();
+ }
+}
 export class ImpactEffects{
  constructor(){this.particles=[];this.rings=[];this.seed=1;this.solarClock=0;this.glassShards=[];this.glassChimeCooldown=0}
  clear(){this.particles.length=0;this.rings.length=0;this.solarClock=0;this.glassShards.length=0;this.glassChimeCooldown=0}

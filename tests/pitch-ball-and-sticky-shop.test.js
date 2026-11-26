@@ -75,7 +75,7 @@ test('la misma función de dibujo sirve para lanzamiento y batazo',()=>{
  assert.equal(ctx.last[3],28);
  const src=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
  assert.match(src,/this\.drawEquippedBall\(ctx,game,size,null,camera,target\)/);
- assert.match(src,/this\.drawEquippedBall\(ctx,game,size,b\.spin,camera,target\)/);
+ assert.match(src,/this\.drawEquippedBall\(ctx,game,departureSize,b\.spin,camera,target\)/);
 });
 
 test('cabecera de tienda, botón X, saldo y pestañas permanecen fuera del scroll de los artículos',()=>{

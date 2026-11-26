@@ -95,8 +95,8 @@ test('tejado de goma disipa más energía que el tejado duro, sin finalizar por 
  for(let k=0;k<12&&game.ball.bounces===0;k++)game.simulateStep(1/60);
  assert.ok(game.ball.bounces>0);
  assert.equal(game.state,'flight');
- assert.ok(game.ball.vy>0&&game.ball.vy<5);
- assert.ok(game.ball.vz<9,'La goma debe frenar apreciablemente el avance');
+ assert.ok(game.ball.vy>8&&game.ball.vy<12,'La goma rebota, con menos energía que el tejado duro');
+ assert.ok(game.ball.vz>10&&game.ball.vz<13,'La goma frena sin atrapar la pelota');
 });
 test('pantano y charco frenan casi en seco y se representan en el terreno',()=>{
  const {groundAt,wetAreaAt}=worldAPI();

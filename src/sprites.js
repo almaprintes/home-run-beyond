@@ -1,9 +1,10 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.60';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.60';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.60';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.60';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.60';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.60';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.61';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.61';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.61';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.61';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.61';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.61';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.61';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -438,6 +439,7 @@ export class BatterSprites{
     ctx.restore();
    }
   }
+  drawCinematicAccents(ctx,game,camera,target,width,height,zoom);
   const pose=selectBatterPose({...game,swingElapsed:game.visualSwingElapsed??game.swingElapsed});
   const sprite=this.getStyledPose(pose,game.save);
   if(this.ready&&sprite){

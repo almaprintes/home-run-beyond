@@ -144,7 +144,8 @@ test('orange uses a continuous rigid sphere with a rotating calyx, not a flat sp
  }
  assert.deepEqual(paint({...spin,angle:7},[0,24,40]),first);
  const top=paint(spin,[0,40,.1]),mid=(48*n+48)*4;
- assert.ok(top[mid+1]>top[mid],'green stem visible from above');
+ assert.ok(top[mid]>top[mid+1],'brown central stem');
+ const calyx=(48*n+55)*4;assert.ok(top[calyx+1]>top[calyx],'green calyx around the stem');
 });
 
 test('rainbow sphere uses object-space bands and never rotates the flat billboard',()=>{

@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.60';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.60';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.60';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.60';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.60';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.60';
-import {GameAudio} from './audio.js?v=0.77.60';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.60';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.60';
-import {BatterSprites} from './sprites.js?v=0.77.60';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.60';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.60';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.60';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.60';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.60';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.60';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.61';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.61';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.61';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.61';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.61';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.61';
+import {GameAudio} from './audio.js?v=0.77.61';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.61';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.61';
+import {BatterSprites} from './sprites.js?v=0.77.61';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.61';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.61';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.61';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.61';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.61';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.61';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -24,6 +24,17 @@ export function groundRollRetention(type,dt){
 // Keep the launch composition while the ball departs in real simulation time.
 export const LAUNCH_VIEW_SECONDS=.65;
 export function flightTimeScale(speed,launchView=false){return launchView?1:clamp(speed/58,1,22)}
+// A low tracking shot is purely camera-side. Don't descend through a roof,
+ // facade or other solid object: fall back to the original flight framing.
+export function groundTrackingPose(ball,heading,clearance,weight,blocked=()=>false){
+ const speed=Math.hypot(ball.vx||0,ball.vz||0);
+ const hx=speed>1?ball.vx/speed:heading[0],hz=speed>1?ball.vz/speed:heading[1];
+ const radius=16+Math.min(8,speed*.12);
+ const cam=[ball.x-hx*radius+hz*5,ball.y+4.5,ball.z-hz*radius-hx*5];
+ const target=[ball.x+hx*3,ball.y+.8,ball.z+hz*3];
+ if(clearance>8||weight<=0||blocked(cam))return null;
+ return {camera:cam,target,zoom:62,heading:[hx,hz]};
+}
 export const SHOT_ORBIT_SECONDS=4;
 export function createShotOrbit(ball,camera,target){
  const angle=Math.atan2(camera[0]-ball.x,camera[2]-ball.z);
@@ -156,12 +167,12 @@ export class BaseballGame{
   }
  });
  document.addEventListener('keyup',e=>{if((e.code==='Space'||e.code==='Enter')&&this.state==='aiming'&&this.activePointer===null){e.preventDefault();this.swingBat(false,e.timeStamp)}});
- document.addEventListener('visibilitychange',()=>{this.last=0;this.stopped=document.hidden});
+ document.addEventListener('visibilitychange',()=>{this.last=0;this.stopped=document.hidden;if(document.hidden)this.audio?.stopFlightWind?.()});
  document.addEventListener('contextmenu',e=>e.preventDefault());
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
-  this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.audio?.stopFlightWind?.();this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.closeDiscovery();this.clearTransientToast();this.clearEncounterReward?.();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
@@ -441,7 +452,7 @@ export class BaseballGame{
  onAction(time){if(!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false,time);}
 
  startPitch(){
-  this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.audio?.stopFlightWind?.();this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.brokenWindows=new Set();this.gullHits??=new Map();
   this.clearEncounterReward?.();this.renderEncounterRewards?.();
   this.clearTransientToast();
@@ -543,7 +554,7 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.launchView=true;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.groundCameraBlend=0;this.groundHeading=[0,1];this.launchView=true;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  showEncounterReward(kind,count){
   if(typeof document==='undefined')return;
@@ -778,7 +789,7 @@ export class BaseballGame{
    }
   }else b.restTime=0;
  }
- finishShot(){if(this.state!=='flight')return;this.launchView=false;this.launchCamera=null;this.clearTransientToast();this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('pitch-surface').hidden=true;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
+ finishShot(){if(this.state!=='flight')return;this.clearTransientToast();this.audio?.stopFlightWind?.();this.launchView=false;this.launchCamera=null;this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('pitch-surface').hidden=true;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
  const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
@@ -862,6 +873,7 @@ export class BaseballGame{
     if(this.save?.equippedBall==='sol'&&!this.save?.reducedEffects)this.impactFX?.spawnSolarTrail(this.ball,dt);
    }
    this.launchView=this.state==='flight'&&!!this.launchCamera&&this.liveSeconds<LAUNCH_VIEW_SECONDS;
+   if(this.state==='flight')this.audio?.flightWind?.(Math.hypot(this.ball.vx,this.ball.vy,this.ball.vz),this.launchView||this.save?.reducedEffects?0:1);
    this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
    // The display clock is telemetry only; simulateStep decides physical rest.
  }
@@ -874,7 +886,20 @@ export class BaseballGame{
   if(this.state==='orbit')this.shotOrbit.elapsed=Math.min(SHOT_ORBIT_SECONDS,this.shotOrbit.elapsed+dt);
   const pose=shotOrbitPose(this.shotOrbit,this.shotOrbit.elapsed);desiredCam=pose.camera;desiredTarget=pose.target;zoom=pose.zoom;
   if(this.state==='orbit'&&this.shotOrbit.elapsed>=SHOT_ORBIT_SECONDS)this.completeShotOrbit();
- }else if(flight&&this.ball){const b=this.ball;const speed=Math.hypot(b.vz,b.vx);desiredCam=[b.x+clamp(b.y*.035,9,50),b.y+Math.min(120,16+b.y*.18),b.z-clamp(18+speed*.42,32,310)];desiredTarget=[b.x,b.y*.54,b.z+clamp(speed*.14,14,65)];zoom=58}
+ }else if(flight&&this.ball){const b=this.ball;const speed=Math.hypot(b.vz,b.vx);desiredCam=[b.x+clamp(b.y*.035,9,50),b.y+Math.min(120,16+b.y*.18),b.z-clamp(18+speed*.42,32,310)];desiredTarget=[b.x,b.y*.54,b.z+clamp(speed*.14,14,65)];zoom=58;
+  if(this.state==='flight'&&this.save?.cinematicCamera!==false&&!this.save?.reducedEffects){
+   const floor=surfaceBelowBall(b),clearance=Math.max(0,b.y-1.45-floor.y);
+   const near=b.spin?.groundEngaged&&clearance<6&&speed<65;
+   const wanted=near?Math.min(1,(6-clearance)/4):0;
+   this.groundCameraBlend=lerp(this.groundCameraBlend||0,wanted,1-Math.exp(-dt*2.8));
+   const blocked=cam=>surfaceBelowBall({x:cam[0],y:1e6,z:cam[2]}).y+2>cam[1]||!!traceBuildingCollision(b,{x:cam[0],y:cam[1],z:cam[2]},.5,this.brokenWindows)||!!traceStadiumContainerCollision(b,{x:cam[0],y:cam[1],z:cam[2]},.5)||!!traceFountainCollision(b,{x:cam[0],y:cam[1],z:cam[2]},.5);
+   const low=groundTrackingPose(b,this.groundHeading||[0,1],clearance,this.groundCameraBlend,blocked);
+   if(low){this.groundHeading=low.heading;const w=this.groundCameraBlend;
+    const mixed=desiredCam.map((v,i)=>lerp(v,low.camera[i],w));
+    if(!blocked(mixed)){desiredCam=mixed;desiredTarget=desiredTarget.map((v,i)=>lerp(v,low.target[i],w));zoom=lerp(58,low.zoom,w);}
+   }
+  }
+ }
  else{
   const bob=Math.sin(this.clock*.4)*.10;
   if(this.state==='aiming'){
