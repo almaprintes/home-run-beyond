@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.36';
-import {drawGulls} from './gulls.js?v=0.77.36';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.36';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.36';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.36';
+import {lerp} from './engine.js?v=0.77.37';
+import {drawGulls} from './gulls.js?v=0.77.37';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.37';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.37';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.37';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -35,7 +35,49 @@ export function wetAreaAt(x,z){
  }
  return null;
 }
+export const FOUNTAIN=Object.freeze({x:90,z:1110,width:24,depth:20,waterY:.10});
+export function fountainWaterAt(x,z){
+ return Math.abs(x-FOUNTAIN.x)<10&&Math.abs(z-FOUNTAIN.z)<8;
+}
+const FOUNTAIN_PARTS=Object.freeze([
+ {x:90,z:1101,y:.95,w:24,h:1.9,d:2},
+ {x:90,z:1119,y:.95,w:24,h:1.9,d:2},
+ {x:79,z:1110,y:.95,w:2,h:1.9,d:16},
+ {x:101,z:1110,y:.95,w:2,h:1.9,d:16},
+ {x:90,z:1110,y:1.65,w:4,h:3.3,d:4}
+].map(p=>Object.freeze({...p,kind:'fountain-stone',material:'concrete'})));
+export function fountainParts(){return FOUNTAIN_PARTS}
+export function traceFountainCollision(from,to,radius=1.45){
+ if(!from||!to||Math.min(from.y,to.y)>3.3+radius)return null;
+ if(Math.min(from.x,to.x)>102+radius||Math.max(from.x,to.x)<78-radius||Math.min(from.z,to.z)>1120+radius||Math.max(from.z,to.z)<1100-radius)return null;
+ let nearest=null;
+ for(const p of FOUNTAIN_PARTS){
+  const hit=sweptSphereBox(from,to,radius,{kind:p.kind,material:p.material,min:[p.x-p.w/2,p.y-p.h/2,p.z-p.d/2],max:[p.x+p.w/2,p.y+p.h/2,p.z+p.d/2]});
+  if(!hit)continue;
+  const n=hit.normal;
+  if((to.x-from.x)*n.x+(to.y-from.y)*n.y+(to.z-from.z)*n.z>=0)continue;
+  if(!nearest||hit.t<nearest.t)nearest=hit;
+ }return nearest;
+}
+export function drawFountain(r,time=0){
+ const {x,z,waterY}=FOUNTAIN;
+ r.setMaterial?.('water');r.field(x,waterY,z,20,16,'#4baecb',0,'water');
+ r.setMaterial?.('concrete');
+ for(const p of FOUNTAIN_PARTS){
+  r.box(p.x,p.y,p.z,p.w,p.h,p.d,'#c6c2b1');
+ }
+ r.setMaterial?.('plain');
+ // Animated jets are decorative, not hidden solid obstacles.
+ for(let k=0;k<6;k++)for(let i=0;i<7;i++){
+  const t=(time*.65+i/7)%1,a=k*Math.PI/3;
+  const rad=.7+6*t;
+  r.ball(x+Math.cos(a)*rad,3.3+Math.sin(Math.PI*t)*4.2-t*3.15,z+Math.sin(a)*rad,.19,'#bdefff');
+ }
+ for(let i=0;i<3;i++)r.ball(x,3.45+((time*3+i*.8)%3.5),z,.22,'#e1faff');
+ r.setMaterial?.('plain');
+}
 export function groundAt(x,z){
+ if(fountainWaterAt(x,z))return {y:FOUNTAIN.waterY,type:'water'};
  if(riverAt(z,x))return {y:0,type:'water'};
  const wet=wetAreaAt(x,z);
  if(wet)return {y:worldHeight(x,z),type:wet};
@@ -268,6 +310,10 @@ export function surfaceBelowBall(ball){
    const top=box.max[1];
    if(top<=y+1.5&&top>floor.y)floor={y:top,type:box.kind==='roof'?'roof':box.kind==='vent'?'concrete':'building'};
   }
+ }
+ for(const p of FOUNTAIN_PARTS){
+  const top=p.y+p.h/2;
+  if(Math.abs(x-p.x)<=p.w/2&&Math.abs(z-p.z)<=p.d/2&&top<=y+1.5&&top>floor.y)floor={y:top,type:'concrete'};
  }
  // Las cubiertas de estos contenedores reciben las sombras a su altura.
  if(z>-15&&z<155)for(const container of STADIUM_CONTAINERS){
@@ -587,6 +633,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
   if(focusBall&&treeObscuresBall(cam,focusBall,x,z,32))r.setLayer?.('ghost');
   r.cone(x,y+11,z,20,32,'#879a74');r.setLayer?.('opaque');
  }}}}
+ if(Math.abs(viewZ-FOUNTAIN.z)<coverage.detail+160)drawFountain(r,time);
  drawFarBiomeProps(r,viewZ,viewY,focusBall,drawTree);
  drawSideBoundaries(r,viewZ,viewY);
  // Una vista al horizonte no tiene por qué cargar el mundo completo.

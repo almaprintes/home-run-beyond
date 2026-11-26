@@ -23,7 +23,7 @@ test('una sola base opaca de 600 metros anclada al centro del bateador',()=>{
 });
 test('el cauce y sus orillas no se salen del ancho disponible',()=>{
  const {fields}=snapshot(704,50,0);
- const water=fields.filter(p=>p.material==='water');
+ const water=fields.filter(p=>p.material==='water'&&p.z!==1110);
  assert.ok(water.length>0);
  assert.ok(water.every(p=>p.w<=RIVER_HALF_WIDTH*2));
  assert.ok(water.every(p=>p.z>1600&&p.z<1750));

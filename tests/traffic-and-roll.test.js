@@ -25,7 +25,8 @@ test('seis coches procedimentales 3D, sin sprites ni vehículos de TDR',()=>{
  assert.match(world,/drawProceduralTraffic\(r,visibleRoadTraffic/);
 });
 test('dos sentidos, carriles rectos y rodadura física independiente de los FPS',()=>{
- assert.equal(ROAD_CENTERS.length,9);
+ assert.equal(ROAD_CENTERS.length,8);
+ assert.ok(!ROAD_CENTERS.includes(1665));
  assert.ok(TRAFFIC_HALF_SPAN>280,'los coches reaparecen fuera de la carretera');
  const wrap=(n,span)=>((n%span)+span)%span,span=TRAFFIC_HALF_SPAN*2;
  for(const z of ROAD_CENTERS){

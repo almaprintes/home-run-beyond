@@ -1,8 +1,8 @@
 
-import {Renderer} from './engine.js?v=0.77.36';
-import {drawWorld,buildingAt,buildingBoxes,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.36';
-import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.36';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.36';
+import {Renderer} from './engine.js?v=0.77.37';
+import {drawWorld,buildingAt,buildingBoxes,fountainParts,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.37';
+import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.37';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.37';
 
 export const STUDIO_HOLD_MS=7000;
 export const STUDIO_EXPORT={start:-100,end:2000,width:600,tileHeight:350,pixelsPerMeter:2};
@@ -152,6 +152,7 @@ class WorldStudio{
    for(const part of buildingBoxes(b).slice(0,2)){const [x,,z]=part.min,[xx,,zz]=part.max;path((x+xx)/2,(z+zz)/2,xx-x,zz-z)}
   }
   ctx.strokeStyle='#ff856b';
+  for(const p of fountainParts())path(p.x,p.z,p.w,p.d);
   if(view.z-view.height/2<155){
    for(const p of stadiumFenceParts())path(p.x,p.z,p.w,p.d,p.yaw);
    for(const c of stadiumContainers())for(const p of stadiumContainerParts())path(c.x,c.z,p.w,p.d,c.yaw);

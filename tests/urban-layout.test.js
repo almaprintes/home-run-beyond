@@ -19,7 +19,7 @@ test('every building has complete cobblestone perimeter and a grass setback from
 test('reserved park, civic plaza and vacant dirt lot have no buildings',()=>{
  for(const j of [8,9])for(const i of [-2,-1]){assert.equal(buildingAt(i,j),null);assert.equal(groundAt(i*60,270+j*60).type,'grass')}
  for(const i of [1,2])assert.equal(buildingAt(i,14),null);
- assert.equal(groundAt(90,1110).type,'paving');
+ assert.equal(groundAt(90,1094).type,'paving');
  assert.equal(buildingAt(3,5),null);assert.equal(groundAt(180,570).type,'grass');
  assert.ok(urbanGroundTiles(11).some(p=>p.material==='dirt'));
 });

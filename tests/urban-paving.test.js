@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {urbanGroundTiles,groundAt,drawTerrain,roadAt,riverAt,traceBuildingCollision,buildingAt,buildingParcel} from '../src/world.js';
+import {urbanGroundTiles,groundAt,drawTerrain,roadAt,riverAt,traceBuildingCollision,buildingAt,buildingParcel,fountainWaterAt} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 import {WORLD_WIDTH} from '../src/biomes.js';
 
@@ -23,7 +23,7 @@ test('urban ground has exactly one non-overlapping tile per point, including bui
     paved++;
     for(const fx of [.05,.5,.95])for(const fz of [.05,.5,.95]){
      const x=a.x0+a.w*fx,z=a.z0+a.d*fz;
-     assert.equal(groundAt(x,z).type,'paving');
+     assert.equal(groundAt(x,z).type,fountainWaterAt(x,z)?'water':'paving');
     }
    }
   }
