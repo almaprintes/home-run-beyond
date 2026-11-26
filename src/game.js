@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.30';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.30';
-import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.30';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.30';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.30';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.30';
-import {GameAudio} from './audio.js?v=0.77.30';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.30';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.30';
-import {BatterSprites} from './sprites.js?v=0.77.30';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.30';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.30';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.30';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.30';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.30';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.30';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.31';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.31';
+import {drawWorld,groundAt,areaAt,traceBuildingCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.31';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.31';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.31';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.31';
+import {GameAudio} from './audio.js?v=0.77.31';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.31';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.31';
+import {BatterSprites} from './sprites.js?v=0.77.31';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.31';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.31';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.31';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.31';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.31';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.31';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -396,7 +396,7 @@ export class BaseballGame{
 
  startPitch(){
   this.brokenWindows=new Set();this.gullHits??=new Map();
-  this.clearEncounterReward?.();this.renderEncounterRewards?.({});
+  this.clearEncounterReward?.();this.renderEncounterRewards?.();
   this.clearTransientToast();
   this.audio?.prepareGameEffects?.();
   this.audio?.prepareStrike?.();
@@ -516,7 +516,7 @@ export class BaseballGame{
   this.encounterTimer=0;
   if(typeof document!=='undefined'){const pop=el('encounter-pop');if(pop)pop.hidden=true}
  }
- renderEncounterRewards(reward){
+ renderEncounterRewards(reward={}){
   if(typeof document==='undefined')return;
   const box=el('encounter-rewards');if(!box)return;
   const cars=reward.carCount||0,gulls=reward.gullCount||0;

@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.30';
-import {drawGulls} from './gulls.js?v=0.77.30';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.30';
-import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.30';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.30';
+import {lerp} from './engine.js?v=0.77.31';
+import {drawGulls} from './gulls.js?v=0.77.31';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.31';
+import {visibleRoadTraffic,drawProceduralTraffic} from './traffic.js?v=0.77.31';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.31';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -580,10 +580,13 @@ function stadium(r){r.field(0,-.02,38,285,290,'#448e60');for(let i=0;i<11;i++){c
  line(r,0,0,29,25,.21,.35,'#f5f0d6');line(r,0,0,-29,25,.21,.35,'#f5f0d6');line(r,29,25,0,50,.21,.28,'#f5f0d6');line(r,-29,25,0,50,.21,.28,'#f5f0d6');
  for(const [x,z] of [[0,0],[29,25],[-29,25],[0,50]])r.box(x,.26,z,2,.11,2,'#f9faf4',PI/4);
  r.setMaterial?.('dirt');r.pole(0,.6,21,4,1.1,'#be865a');r.setMaterial?.('plain');r.field(0,.75,21,2.2,1,'#f6f3e8');
+ // Vallas siempre sólidas: nunca participan en la pasada de obstáculos fantasma.
+ r.setLayer?.('solid');
  for(const part of stadiumFenceParts()){
   if(part.kind==='stadium-fence-post')r.pole(part.x,part.y,part.z,part.w/2,part.h,part.color);
   else r.box(part.x,part.y,part.z,part.w,part.h,part.d,part.color,part.yaw);
  }
+ r.setLayer?.('opaque');
  // Contenedores: exactamente los mismos prismas en escena y colisiones.
  for(const container of stadiumContainers())for(const part of stadiumContainerParts()){
   r.setMaterial?.('plain');

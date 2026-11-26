@@ -143,7 +143,7 @@ export function drawProceduralTraffic(r,vehicles,cam=[0,15,0]){
   const kind=car.kind;
   // Sombra de contacto semitransparente, por debajo de neumáticos y chasis.
   r.setLayer?.('ghost');r.add('ball',x,.105,z,L*.86,.055,W*.86,'#11191d');
-  r.setLayer?.('opaque');
+  r.setLayer?.('solid');
   r.add('carBody_'+kind,x,1.18,z,L,2.1,W,car.color,yaw);
   r.add('carGlass_'+kind,x,1.95,z,L,kind==='suv'?1.35:1.12,W,'#203b4b',yaw);
   r.add('carRoof_'+kind,x,1.95,z,L,kind==='suv'?1.35:1.12,W,car.color,yaw);
@@ -186,6 +186,7 @@ export function drawProceduralTraffic(r,vehicles,cam=[0,15,0]){
   }
   drawn++;
  }
+ r.setLayer?.('opaque');
  return drawn;
 }
 

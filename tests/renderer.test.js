@@ -12,10 +12,13 @@ test('coches 3D procedimentales se incorporan al buffer WebGL instanciado',()=>{
   const renderer=new Renderer(canvas);
   const ball={x:0,y:25,z:265,vx:2,vy:4,vz:25,spin:{angle:0}};
   drawWorld(renderer,[0,22,245],{state:'flight',clock:3,ball,liveSeconds:3});
-  assert.ok(renderer.meshes.carTire.arr.length>=4*20,'neumáticos instanciados');
-  assert.ok(renderer.meshes.carRim.arr.length>=4*20,'llantas instanciadas');
-  const bodies=['hatch','sedan','suv','pickup'].reduce((n,k)=>n+renderer.meshes['carBody_'+k].arr.length,0);
-  assert.ok(bodies>0,'carrocerías tridimensionales en el motor');
+  assert.ok(renderer.meshes.carTire.solid.length>=4*20,'neumáticos instanciados');
+  assert.ok(renderer.meshes.carRim.solid.length>=4*20,'llantas instanciadas');
+  const bodies=['hatch','sedan','suv','pickup'].reduce((n,k)=>n+renderer.meshes['carBody_'+k].solid.length,0);
+  assert.ok(bodies>0,'carrocerías tridimensionales en la capa sólida');
+  assert.equal(renderer.meshes.carTire.ghost.length,0);
+  assert.equal(renderer.meshes.carRim.ghost.length,0);
+  assert.ok(['hatch','sedan','suv','pickup'].every(k=>renderer.meshes['carBody_'+k].ghost.length===0));
   renderer.render([0,22,245],[0,4,300],58);
   assert.ok(getDraws()>100);
  }finally{delete globalThis.window}

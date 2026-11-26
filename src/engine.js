@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.30';
+import {pitcherPose} from './pitcher.js?v=0.77.31';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -195,7 +195,7 @@ function matrix(x,y,z,sx,sy,sz,ry=0,rx=0,rz=0){
 export const MATERIAL_IDS=Object.freeze({plain:0,grass:1,brick:2,asphalt:3,roof:4,wood:5,concrete:6,water:7,dirt:8,plaster:9,metal:10,paving:11,rubber:12});
 export class Renderer{
  constructor(canvas){this.canvas=canvas;let gl=canvas.getContext('webgl2',{antialias:true,alpha:true,powerPreference:'high-performance',depth:true,stencil:false,desynchronized:true});if(!gl)throw Error('Este dispositivo no admite WebGL2');this.gl=gl;this.program=makeProgram(gl);this.uniforms={};for(let n of ['uViewProj','uCamPos','uFogDistance','uFogColor','uOpacity','uTextureReady','uMaterialArray'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
- this.meshes={};for(const [name,geom] of Object.entries({box:cube(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane(),carTire:wheelTire(),carRim:wheelAlloy(),carArch:wheelArch(),...Object.fromEntries(Object.keys(CAR_CABINS).flatMap(kind=>[['carBody_'+kind,carShell(kind)],['carGlass_'+kind,carCabin(kind,'glass')],['carRoof_'+kind,carCabin(kind,'roof')]]))})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],overlay:[]};}
+ this.meshes={};for(const [name,geom] of Object.entries({box:cube(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane(),carTire:wheelTire(),carRim:wheelAlloy(),carArch:wheelArch(),...Object.fromEntries(Object.keys(CAR_CABINS).flatMap(kind=>[['carBody_'+kind,carShell(kind)],['carGlass_'+kind,carCabin(kind,'glass')],['carRoof_'+kind,carCabin(kind,'roof')]]))})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],solid:[],overlay:[]};}
  gl.bindVertexArray(null);this.layer='opaque';this.materialId=0;
  this.materialTexture=null;this.textureReady=false;this.anisotropy=1;
  // WebGL2 texture array: materials have independent mipmaps so no tile shimmer/bleeding.
@@ -243,10 +243,10 @@ export class Renderer{
  }
  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);this.dpr=1.4;this.fogDistance=600;this.totalInstances=0;this.resize();}
  resize(){const dpr=Math.min(window.devicePixelRatio||1,this.dpr);const w=Math.max(1,Math.floor(this.canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(this.canvas.clientHeight*dpr));if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.aspect=w/h}
- begin(){for(const m of Object.values(this.meshes)){m.arr.length=0;m.ghost.length=0;m.overlay.length=0;}this.layer='opaque';this.materialId=0;this.totalInstances=0}
- setLayer(layer='opaque'){this.layer=layer==='ghost'||layer==='overlay'?layer:'opaque'}
+ begin(){for(const m of Object.values(this.meshes)){m.arr.length=0;m.ghost.length=0;m.solid.length=0;m.overlay.length=0;}this.layer='opaque';this.materialId=0;this.totalInstances=0}
+ setLayer(layer='opaque'){this.layer=layer==='ghost'||layer==='solid'||layer==='overlay'?layer:'opaque'}
  setMaterial(material='plain'){this.materialId=MATERIAL_IDS[material]??0}
- add(shape,x,y,z,sx,sy,sz,color,ry=0,rx=0,rz=0,material=null){let mesh=this.meshes[shape];if(!mesh)return;const id=material===null?this.materialId:(MATERIAL_IDS[material]??0);(this.layer==='ghost'?mesh.ghost:this.layer==='overlay'?mesh.overlay:mesh.arr).push(...matrix(x,y,z,sx,sy,sz,ry,rx,rz),...parseColor(color),id);this.totalInstances++}
+ add(shape,x,y,z,sx,sy,sz,color,ry=0,rx=0,rz=0,material=null){let mesh=this.meshes[shape];if(!mesh)return;const id=material===null?this.materialId:(MATERIAL_IDS[material]??0);(this.layer==='ghost'?mesh.ghost:this.layer==='solid'?mesh.solid:this.layer==='overlay'?mesh.overlay:mesh.arr).push(...matrix(x,y,z,sx,sy,sz,ry,rx,rz),...parseColor(color),id);this.totalInstances++}
  box(x,y,z,sx,sy,sz,col,ry=0,rx=0,rz=0,material=null){this.add('box',x,y,z,sx,sy,sz,col,ry,rx,rz,material)}
  ball(x,y,z,s,colour){this.add('ball',x,y,z,s,s,s,colour)}
  pole(x,y,z,r,h,col,ry=0,rx=0,rz=0){this.add('pole',x,y,z,r*2,h,r*2,col,ry,rx,rz)}
@@ -286,6 +286,9 @@ export class Renderer{
    draw('ghost');
    gl.depthMask(true);gl.disable(gl.BLEND);gl.uniform1f(this.uniforms.uOpacity,1);
   }
+  // Los vehículos y las vallas conservan color opaco aunque haya un edificio fantasma delante.
+  // Se conserva el depth buffer del mundo sólido: no aparecen a través de muros opacos.
+  draw('solid');
   if(Object.values(this.meshes).some(m=>m.overlay.length)){
    // Segunda pasada: solo se limpia profundidad, no el color del mundo.
    // La pelota y sus costuras pueden seguir ocultándose entre sí correctamente.

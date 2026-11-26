@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {segmentBlockedByBox,buildingObscuresBall,buildingAt,drawBaseball,drawWorld} from '../src/world.js';
+import {segmentBlockedByBox,buildingObscuresBall,buildingAt,drawBaseball,drawWorld,stadiumFenceParts} from '../src/world.js';
 import {Renderer} from '../src/engine.js';
 import {readFileSync} from 'node:fs';
 
@@ -38,7 +38,7 @@ test('pelota tridimensional blanca con costuras curvas y puntadas rojas en capa 
 test('el mundo etiqueta obstáculos oclusores como fantasma y la pelota como overlay',()=>{
  const b=buildingAt(0,1);assert.ok(b);
  const cam=[b.x,b.h*.5,b.z],ball={x:b.x,y:b.h*.5,z:b.z+12,vx:1,vy:1,vz:2};
- const seen={opaque:0,ghost:0,overlay:0};
+ const seen={opaque:0,ghost:0,solid:0,overlay:0};
  const r={layer:'opaque',fogDistance:500,begin(){},setLayer(layer){this.layer=layer},
   add(){seen[this.layer]++},
   box(){seen[this.layer]++},field(){seen[this.layer]++},
@@ -57,3 +57,20 @@ test('renderer soporta mezcla, limpieza de profundidad y transparencia por capas
  assert.match(js,/gl\.clear\(gl\.DEPTH_BUFFER_BIT\)/);
  assert.match(js,/baseball:sphere\(14,24\)/);
 });
+
+ test('coches y vallas permanecen en capa sólida delante o detrás de la pelota',()=>{
+ const frames=[];
+ for(const z of [65,155,295]){
+  const calls=[];const r={layer:'opaque',begin(){},setLayer(v){this.layer=v},setMaterial(){},field(){},ball(){},cone(){},add(...a){calls.push([this.layer,'add',...a])},pole(...a){calls.push([this.layer,'pole',...a])},box(...a){calls.push([this.layer,'box',...a])}};
+  drawWorld(r,[0,15,50],{state:'flight',clock:3,ball:{x:0,y:3,z},sprites:{ballLoaded:true}});
+  const fence=calls.filter(c=>c[1]==='pole'&&c[7]==='#2a6572'||c[1]==='box'&&['#ff9b52','#285d67'].includes(c[8]));
+  assert.equal(fence.length,stadiumFenceParts().length);assert.ok(fence.every(c=>c[0]==='solid'));
+  const cars=calls.filter(c=>c[1]==='add'&&c[2].startsWith('car'));
+  assert.ok(cars.length>0);assert.ok(cars.every(c=>c[0]==='solid'));frames.push([fence.length,cars.length]);
+  assert.equal(r.layer,'opaque');
+ }
+ assert.deepEqual(frames[0],frames[1]);assert.deepEqual(frames[1],frames[2]);
+ const js=readFileSync(new URL('../src/engine.js',import.meta.url),'utf8');
+ assert.ok(js.indexOf("draw('solid')")>js.indexOf("draw('ghost')"));
+ assert.ok(js.indexOf("draw('solid')")<js.indexOf("gl.clear(gl.DEPTH_BUFFER_BIT)"));
+ });
