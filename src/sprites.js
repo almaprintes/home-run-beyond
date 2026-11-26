@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.53';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.53';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.53';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY} from './ball-visuals.js?v=0.77.53';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.53';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.53';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.54';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.54';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.54';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY} from './ball-visuals.js?v=0.77.54';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.54';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.54';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -151,6 +151,39 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
  return output;
 }
 
+// Inflatable beach ball: six longitude panels meet at two white valve caps.
+ // No photograph, mirrored back, baked highlights, or fabric texture on the
+ // rotating material. The screen-space normal determines light and silhouette.
+ const BEACH_PANELS=[[246,84,93],[246,213,81],[78,181,222],[95,206,133],[245,245,240],[154,102,205]];
+ export function shadeBeachSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){
+ const view=lookAt(camera,target),q=spin?.visualOrientation||spin?.orientation||[0,0,0,1];
+ const qx=-q[0],qy=-q[1],qz=-q[2],qw=q[3];
+ const xr=view[0],yr=view[4],zr=view[8],xu=view[1],yu=view[5],zu=view[9],
+       xt=view[2],yt=view[6],zt=view[10];
+ const tau=2*Math.PI;
+ for(let row=0;row<size;row++){
+  const sy=1-2*(row+.5)/size;
+  for(let col=0;col<size;col++){
+   const sx=2*(col+.5)/size-1,rr=sx*sx+sy*sy,k=(row*size+col)*4;
+   if(rr>=1){output[k]=output[k+1]=output[k+2]=output[k+3]=0;continue}
+   const sz=Math.sqrt(1-rr);
+   const wx=xr*sx+xu*sy+xt*sz,wy=yr*sx+yu*sy+yt*sz,wz=zr*sx+zu*sy+zt*sz;
+   const cx=2*(qy*wz-qz*wy),cy=2*(qz*wx-qx*wz),cz=2*(qx*wy-qy*wx);
+   const ox=wx+qw*cx+qy*cz-qz*cy,oy=wy+qw*cy+qz*cx-qx*cz,oz=wz+qw*cz+qx*cy-qy*cx;
+   // Longitude is continuous around the full sphere. Small welded seams
+   // follow the meridians, independent of camera and highlight.
+   const u=((Math.atan2(oz,ox)/tau+1.0833333333333333)%1)*6;
+   const panel=BEACH_PANELS[Math.floor(u)%6],f=u-Math.floor(u);
+   const cap=Math.abs(oy)>.982,base=cap?[250,249,233]:panel;
+   const seam=cap?1:1-.10*Math.exp(-Math.pow(Math.min(f,1-f)*Math.sqrt(Math.max(.02,1-oy*oy))*90,2));
+   const diffuse=.58+.42*Math.max(0,-.40*sx+.55*sy+.73*sz);
+   const gloss=.29*Math.pow(Math.max(0,-.28*sx+.37*sy+.885*sz),30);
+   for(let i=0;i<3;i++)output[k+i]=Math.min(255,base[i]*seam*diffuse+255*gloss);
+   output[k+3]=255*Math.min(1,(1-Math.sqrt(rr))*size*.5);
+  }
+ }
+ return output;
+}
 export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null,cache=null){
  const radius=size*.5;
  if(spin?.orientation&&camera&&target&&cache&&typeof document!=='undefined'&&
@@ -165,14 +198,15 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
     const outCtx=outCanvas.getContext('2d');
     cache.image=image;cache.loadedMode=cache.mode;
-    const sourceImage=srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
-    cache.source={width:sourceImage.width,height:sourceImage.height,
+    const sourceImage=cache.mode==='beach'?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.source=cache.mode==='beach'?null:{width:sourceImage.width,height:sourceImage.height,
      data:cache.leatherColor?neutralizeBaseballLighting(sourceImage.data,sourceImage.width,sourceImage.height,cache.leatherColor):opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
     cache.canvas=outCanvas;cache.context=outCtx;
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
-   shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
-    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47,cache.mode==='beach');
+   if(cache.mode==='beach')shadeBeachSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
+   else shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
+    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47);
    cache.context.putImageData(cache.frame,0,0);
    ctx.drawImage(cache.canvas,-radius,-radius,size,size);
    return;
@@ -293,14 +327,14 @@ export class BatterSprites{
    drawSpinningBaseball(ctx,image,size*.72,spin,camera,target,this.ballSurfaceCache);
    return;
   }
-  if(item.id==='playa'&&spin?.orientation&&camera&&target){
+  if(item.id==='playa'&&camera&&target){
    // Use the approved panel art on a spherical surface rather than rotating
    // the entire billboard about the camera axis. Preserve the same visual
    // quaternion and backspin-to-topspin transition as the standard ball.
    this.ballSurfaceCache.mode='beach';
    this.ballSurfaceCache.leatherColor=null;
    this.ballSurfaceCache.textureRadius=.47;
-   drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
+   drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
    return;
   }
   if(item.design==='baseball'&&spin?.orientation&&camera&&target){

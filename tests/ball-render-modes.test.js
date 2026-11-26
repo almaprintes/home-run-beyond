@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
 import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
-import {BatterSprites,shadeRollingSurface} from '../src/sprites.js';
+import {BatterSprites,shadeRollingSurface,shadeBeachSphere} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
  const baseball=BALL_CATALOG.filter(item=>ballRenderMode(item)==='baseball');
@@ -67,7 +67,7 @@ test('misma imagen equipada sale del pitcher y llega al bate',()=>{
   assert.equal(painted.at(-1)[3],32,id);
  }
  assert.equal(painted.length,26);
- assert.equal(rotations.length,17,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
+ assert.equal(rotations.length,16,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
 });
 
 test('dorada es oro pulido con costuras metálicas, no otra pelota amarilla',()=>{
@@ -102,4 +102,24 @@ test('beach ball uses smooth world-axis spherical roll and keeps its original ar
  const first=paint(spin);spin.angle=3;assert.deepEqual(paint(spin),first);
  spin.visualOrientation=[Math.sin(.4),0,0,Math.cos(.4)];
  assert.notDeepEqual(paint(spin),first);
+});
+
+test('beach sphere stays circular through a complete camera orbit, with stationary light',()=>{
+ const n=96,spin={orientation:[0,0,0,1],visualOrientation:[.2,0,0,Math.sqrt(.96)]};
+ const frame=new Uint8ClampedArray(n*n*4),alpha=f=>Array.from(f.filter((_,i)=>i%4===3));
+ let silhouette=null,first=null;
+ for(let i=0;i<=24;i++){
+  const angle=i*Math.PI/12;
+  shadeBeachSphere(spin,[40*Math.sin(angle),24,40*Math.cos(angle)],[0,0,0],frame,n);
+  if(!silhouette){silhouette=alpha(frame);first=frame.slice()}
+  else assert.deepEqual(alpha(frame),silhouette);
+  assert.equal(frame[(48*n+48)*4+3],255);
+  assert.equal(frame[3],0);
+  for(let j=0;j<n;j++)assert.equal(frame[(48*n+j)*4+3],frame[(j*n+48)*4+3]);
+  if(i===6)assert.notDeepEqual(frame,first);
+ }
+ assert.deepEqual(frame,first);
+ const before=frame.slice();
+ spin.visualOrientation=[0,0,0,1];shadeBeachSphere(spin,[0,24,40],[0,0,0],frame,n);
+ assert.deepEqual(alpha(frame),silhouette);assert.notDeepEqual(frame,before);
 });
