@@ -300,8 +300,8 @@ test('Guardameta boots are grounded in every frame and the equipped bat follows 
  assert.equal(batterOriginY(700,384,null),316);
 });
 
-test('Fútbol blanco total has five approved independent sprites, interchangeable bats and grounded soles',()=>{
- const item=OUTFIT_CATALOG.find(x=>x.id==='futbol_blanco');assert.equal(item.price,2600);
+test('Fútbol Merengue has five approved independent sprites, interchangeable bats and grounded soles',()=>{
+ const item=OUTFIT_CATALOG.find(x=>x.id==='futbol_blanco');assert.equal(item.name,'Fútbol Merengue');assert.equal(item.price,2600);
  const anchors=JSON.parse(readFileSync(new URL('../assets/approved/outfits/futbol_blanco/anchors.json',import.meta.url),'utf8'));
  assert.deepEqual(OUTFIT_WEAPON_POSES.futbol_blanco,anchors);
  for(const pose of OUTFIT_POSES){
