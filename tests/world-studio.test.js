@@ -33,7 +33,7 @@ test('full PNG stitches the actual world from stadium rear through 2 km without 
  assert.match(src,/drawWorld\(this.renderer,cam,/);assert.match(src,/out\.toBlob/);
  assert.match(src,/game\.stopped=true/);
  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
- assert.match(sw,/world-studio\.js\?v=0\.77\.55/);
+ assert.match(sw,/world-studio\.js\?v=0\.77\.56/);
 });
 
 test('iPhone native touch long press survives duplicate pointer cancellation',()=>{

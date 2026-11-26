@@ -6,6 +6,12 @@ export function ballSpriteDiameter(projectedRadiusPx,screenWidth=390){
  const value=18+26*(1-Math.exp(-px/18));
  return Math.max(16,Math.min(46,value*scale));
 }
+// Visual compliance only. Solid objects and unclassified future skins are rigid.
+const BALL_COMPLIANCE=Object.freeze({playa:1,sol:1,futbol:.55,tenis:.4,ojo:.45,donut:.35,nieve:.25});
+export function ballBounceCompression(id,bounce,state='flight'){
+ if(state==='rest'||state==='orbit'||!Number.isFinite(bounce))return 0;
+ return Math.max(0,Math.min(1,bounce))*(Object.hasOwn(BALL_COMPLIANCE,id)?BALL_COMPLIANCE[id]:0);
+}
 export function ballShadowOpacity(altitude){
  const h=Math.max(0,Number.isFinite(altitude)?altitude:1e4);
  return Math.max(.014,Math.min(.26,.26*Math.exp(-h/18)));

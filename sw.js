@@ -1,16 +1,16 @@
-const CACHE='hrb-v77-20261125-baguette-art-approved-sports-55';
+const CACHE='hrb-v77-20261125-baguette-art-approved-sports-56';
 const ASSETS=['./','./index.html','./style.css','./manifest.webmanifest','./src/main.js','./src/world-studio.js','./src/gulls.js','./src/pitcher.js','./src/engine.js','./src/world.js','./src/biomes.js','./src/game.js','./src/logic.js','./src/audio.js','./src/rewarded.js','./src/aiming.js','./src/sprites.js','./src/traffic.js','./src/discoveries.js','./src/cosmetic-render.js','./src/cosmetic-catalog.js','./src/cosmetic-art.js','./src/baked-assets.js','./assets/baked/manifest.json','./src/impact-fx.js','./src/ball-visuals.js','./src/ball-spin.js','./assets/materials-atlas-v2.png',
- './assets/environment/gull-flight.webp?v=0.77.55','./assets/strike.mp3','./assets/audio/bat-cgeffex.wav','./assets/baseball.webp',
+ './assets/environment/gull-flight.webp?v=0.77.56','./assets/strike.mp3','./assets/audio/bat-cgeffex.wav','./assets/baseball.webp',
  './assets/bat.webp','./assets/hit-spark.webp','./assets/swing-trail.webp',
  './assets/batter/ready.webp','./assets/batter/watch.webp','./assets/batter/loaded.webp',
  
  './assets/batter/contact.webp','./assets/batter/follow.webp',
  './icons/icon-32.png','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png',
  './icons/icon-32.png?v=0.77.0','./icons/icon-180.png?v=0.77.0','./icons/icon-192.png?v=0.77.0','./icons/icon-512.png?v=0.77.0',
- './manifest.webmanifest?v=0.77.0','./style.css?v=0.77.55','./src/main.js?v=0.77.55','./src/world-studio.js?v=0.77.55','./src/game.js?v=0.77.55',
- './src/gulls.js?v=0.77.55','./src/pitcher.js?v=0.77.55','./src/world.js?v=0.77.55','./src/biomes.js?v=0.77.55','./src/engine.js?v=0.77.55','./src/logic.js?v=0.77.55',
- './src/audio.js?v=0.77.55','./src/rewarded.js?v=0.77.55','./src/aiming.js?v=0.77.55',
- './src/sprites.js?v=0.77.55','./src/traffic.js?v=0.77.55','./src/discoveries.js?v=0.77.55','./src/cosmetic-render.js?v=0.77.55','./src/cosmetic-catalog.js?v=0.77.55','./src/cosmetic-art.js?v=0.77.55','./src/baked-assets.js?v=0.77.55','./src/impact-fx.js?v=0.77.55','./src/ball-visuals.js?v=0.77.55','./src/ball-spin.js?v=0.77.55','./assets/materials-atlas-v2.png?v=0.77.0','./assets/strike.mp3?v=0.77.0','./assets/audio/bat-cgeffex.wav?v=0.77.0'];
+ './manifest.webmanifest?v=0.77.0','./style.css?v=0.77.56','./src/main.js?v=0.77.56','./src/world-studio.js?v=0.77.56','./src/game.js?v=0.77.56',
+ './src/gulls.js?v=0.77.56','./src/pitcher.js?v=0.77.56','./src/world.js?v=0.77.56','./src/biomes.js?v=0.77.56','./src/engine.js?v=0.77.56','./src/logic.js?v=0.77.56',
+ './src/audio.js?v=0.77.56','./src/rewarded.js?v=0.77.56','./src/aiming.js?v=0.77.56',
+ './src/sprites.js?v=0.77.56','./src/traffic.js?v=0.77.56','./src/discoveries.js?v=0.77.56','./src/cosmetic-render.js?v=0.77.56','./src/cosmetic-catalog.js?v=0.77.56','./src/cosmetic-art.js?v=0.77.56','./src/baked-assets.js?v=0.77.56','./src/impact-fx.js?v=0.77.56','./src/ball-visuals.js?v=0.77.56','./src/ball-spin.js?v=0.77.56','./assets/materials-atlas-v2.png?v=0.77.0','./assets/strike.mp3?v=0.77.0','./assets/audio/bat-cgeffex.wav?v=0.77.0'];
 const OPTIONAL_AUDIO=[
  './assets/audio/bat-cgeffex.mp3?v=0.77.0',
  './assets/audio/asphalt-ball.mp3?v=0.77.0',

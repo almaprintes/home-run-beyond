@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.55';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.55';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.55';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY} from './ball-visuals.js?v=0.77.55';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.55';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.55';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.56';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.56';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.56';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.56';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.56';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.56';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -456,9 +456,9 @@ export class BatterSprites{
     const size=ballSpriteDiameter(radiusPx,width);
     // Sombra proyectada sobre la superficie física: hierba, asfalto, tejado o agua.
     const surface=surfaceBelowBall(b);
-    const bounce=['rest','orbit'].includes(game.state)?0:Math.max(0,Math.min(1,b.bounceVisual||0));
     const clearance=b.y-1.45-surface.y;
     const item=BALL_STYLES.find(ball=>ball.id===game.save?.equippedBall)||BALL_STYLES[0];
+    const bounce=ballBounceCompression(item.id,b.bounceVisual||0,game.state);
     // The special-ball artwork has a slight transparent rim; the projected
     // baseball sphere fills its canvas. Correct only near actual support.
     const visibleRadius=item.design==='baseball'||item.id==='playa'?.5:.47;

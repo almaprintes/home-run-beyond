@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity,ballShadowGeometry,ballGroundedScreenY} from '../src/ball-visuals.js';
+import {ballSpriteDiameter,ballShadowOpacity,ballImpactOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from '../src/ball-visuals.js';
 import {buildingAt,surfaceBelowBall,groundAt} from '../src/world.js';
 import {readFileSync} from 'node:fs';
 
@@ -72,4 +72,21 @@ test('contact uses the visible lower edge at every sprite size and compression',
  const code=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
  assert.match(code,/const visualY=support\?ballGroundedScreenY/);
  assert.match(code,/ctx\.translate\(p\.x,visualY\)/);
+});
+
+test('only compliant balls squash on impact; all rigid balls remain undeformed',()=>{
+ for(const id of ['classic','sky','sun','mint','lilac','negra','dorada','rosa','arcoiris','luna','tierra','marte','saturno','billar8','golf','sandia','naranja','meteorito','disco','bomba','calabaza','bolos','dado','caramelo','cristal','future_skin']){
+  for(const b of [0,.1,.5,1,2])assert.equal(ballBounceCompression(id,b),0,id);
+ }
+ for(const id of ['playa','sol'])assert.equal(ballBounceCompression(id,1),1);
+ for(const id of ['futbol','tenis','ojo','donut','nieve']){
+  const b=ballBounceCompression(id,1);assert.ok(b>0&&b<1,id);
+  assert.equal(ballBounceCompression(id,.5),b*.5);
+ }
+ for(const id of ['playa','sol','futbol'])for(const state of ['rest','orbit'])assert.equal(ballBounceCompression(id,1,state),0);
+ assert.equal(ballBounceCompression('playa',NaN),0);
+ const code=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
+ assert.match(code,/const bounce=ballBounceCompression\(item.id,b.bounceVisual\|\|0,game.state\)/);
+ assert.match(code,/ballGroundedScreenY\(p.y,support.y,size,clearance,bounce,visibleRadius\)/);
+ assert.match(code,/if\(bounce\)ctx.scale\(1\+\.08\*bounce,1-\.11\*bounce\)/);
 });
