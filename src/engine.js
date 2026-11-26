@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.33';
+import {pitcherPose} from './pitcher.js?v=0.77.34';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -59,6 +59,11 @@ void main(){
 `;
 export function lerp(a,b,t){return a+(b-a)*t}
 export function perspective(fov,aspect,near,far){const out=new Float32Array(16),f=1/Math.tan(fov/2);out[0]=f/aspect;out[5]=f;out[10]=(far+near)/(near-far);out[11]=-1;out[14]=(2*far*near)/(near-far);return out}
+export function orthographic(width,height,near=.25,far=2500){
+ const out=new Float32Array(16);
+ out[0]=2/width;out[5]=2/height;out[10]=-2/(far-near);out[14]=-(far+near)/(far-near);out[15]=1;
+ return out;
+}
 function norm(v){let d=Math.hypot(...v)||1;return v.map(a=>a/d)}
 function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]}
 export function lookAt(eye,target,up=[0,1,0]){const z=norm(eye.map((v,i)=>v-target[i])),x=norm(cross(up,z)),y=cross(z,x);return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-x.reduce((a,v,i)=>a+v*eye[i],0),-y.reduce((a,v,i)=>a+v*eye[i],0),-z.reduce((a,v,i)=>a+v*eye[i],0),1])}
@@ -252,13 +257,20 @@ export class Renderer{
  pole(x,y,z,r,h,col,ry=0,rx=0,rz=0){this.add('pole',x,y,z,r*2,h,r*2,col,ry,rx,rz)}
  cone(x,y,z,r,h,col){this.add('cone',x,y,z,r*2,h,r*2,col)}
  field(x,y,z,sx,sz,col,ry=0,material='grass'){this.add('field',x,y,z,sx,1,sz,col,ry,0,0,material)}
- render(cam,target,zoom=60){
-  const gl=this.gl;this.resize();gl.clearColor(0.48,.76,.84,1);
+ render(cam,target,zoom=60,map=null){
+  const gl=this.gl;this.resize();
+  if(map?.pixelWidth&&map?.pixelHeight){
+   this.canvas.width=map.pixelWidth;this.canvas.height=map.pixelHeight;
+   this.aspect=map.pixelWidth/map.pixelHeight;gl.viewport(0,0,map.pixelWidth,map.pixelHeight);
+  }
+  gl.clearColor(0.48,.76,.84,1);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
-  const view=lookAt(cam,target),p=perspective(zoom*Math.PI/180,this.aspect,.25,Math.max(2500,this.fogDistance*5)),vp=mul4(p,view);
+  const view=lookAt(cam,target,map?[0,0,1]:[0,1,0]);
+  const p=map?orthographic(map.heightMeters*this.aspect,map.heightMeters):perspective(zoom*Math.PI/180,this.aspect,.25,Math.max(2500,this.fogDistance*5));
+  const vp=mul4(p,view);
   gl.uniformMatrix4fv(this.uniforms.uViewProj,false,vp);
   gl.uniform3f(this.uniforms.uCamPos,...cam);
-  gl.uniform1f(this.uniforms.uFogDistance,this.fogDistance);
+  gl.uniform1f(this.uniforms.uFogDistance,map?1000000:this.fogDistance);
   gl.uniform3f(this.uniforms.uFogColor,.69,.84,.86);
   const useAtlas=this.textureReady&&!!this.materialTexture;
   gl.uniform1f(this.uniforms.uTextureReady,useAtlas?1:0);
