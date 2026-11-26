@@ -1,6 +1,6 @@
 // Real continuous air traffic, independent of ball, player input and randomness.
 export const GULL_RANGE=2000;
-export const GULL_ATLAS='./assets/environment/gull-flight.webp?v=0.77.57';
+export const GULL_ATLAS='./assets/environment/gull-flight.webp?v=0.77.58';
 export const GULL_CELL=192;
 export const RECOVERY_SECONDS=1.8;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));

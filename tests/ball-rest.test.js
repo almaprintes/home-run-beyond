@@ -68,3 +68,30 @@ test('a near-stationary ball at the top of its arc is still in flight',()=>{
  const g=testFlight({x:0,y:25,z:80,vx:0,vy:0,vz:0,restTime:.44,wetTime:4});
  g.simulateStep(.02);assert.equal(g.state,'flight');assert.equal(g.ball.restTime,0);assert.ok(g.ball.vy<0);
 });
+
+import {buildingAt} from '../src/world.js';
+function roofOf(material){
+ for(let j=0;j<=24;j++)for(let i=-5;i<=5;i++){
+  const b=buildingAt(i,j);if(b?.roofMaterial===material&&b.w>=16&&b.d>=16)return b;
+ }
+ throw Error('no roof '+material);
+}
+test('rubber and solid roofs rebound instead of absorbing the first landing',()=>{
+ for(const material of ['rubber','solid']){
+  const b=roofOf(material),y=b.h+1.4+1.45;
+  const g=testFlight({x:b.x+b.w*.36,y:y+.20,z:b.z+b.d*.30,vx:0,vy:-12,vz:2});
+  g.save={reducedEffects:true};g.brokenWindows=new Set();g.emitCollision=()=>{};
+  g.simulateStep(.025);
+  assert.ok(g.ball.vy>6,material);assert.ok(g.ball.vz>1.6);assert.equal(g.ball.bounces,1);assert.equal(g.state,'flight');
+  const firstY=g.ball.y;g.simulateStep(.025);assert.ok(g.ball.y>firstY);
+ }
+});
+test('slow roof contact advances horizontally with continuous friction instead of losing half its velocity per step',()=>{
+ for(const material of ['rubber','solid']){
+  const b=roofOf(material),y=b.h+1.4+1.45,z=b.z+b.d*.30;
+  const g=testFlight({x:b.x+b.w*.36,y:y+.0001,z,vx:0,vy:0,vz:2});
+  g.save={reducedEffects:true};g.brokenWindows=new Set();g.emitCollision=()=>{};
+  for(let i=0;i<20;i++)g.simulateStep(.02);
+  assert.equal(g.state,'flight');assert.ok(g.ball.z-z>.45,material);assert.ok(g.ball.vz>.9,material);assert.equal(g.ball.bounces,0);
+ }
+});
