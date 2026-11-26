@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pitcherPose,pitcherReactionPlan,pitcherCutActive,pitcherCamera} from '../src/pitcher.js';
+import {pitcherPose,pitcherReactionPlan} from '../src/pitcher.js';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {selectPitcherFrame,PITCHER_ATLAS,PITCHER_FRAMES} from '../src/sprites.js';
@@ -30,19 +30,7 @@ test('el mundo sigue dibujando al pitcher tras el golpe',()=>{
  assert.ok(calls.some(a=>a[0]==='ball'&&a[3]>19&&a[3]<23&&a.at(-1)==='#94582e'));
 });
 
-test('personalized face and conditional camera never mutate the ball',()=>{
- const plan=pitcherReactionPlan({vx:6,vy:16,vz:36});
- const ball=Object.freeze({x:1,y:20,z:100,vx:6,vy:16,vz:36});
- const g={state:'flight',liveSeconds:.8,pitcherReaction:plan,save:{cinematicCamera:true},ball};
- assert.equal(pitcherCutActive(g),true);
- assert.equal(pitcherCutActive({...g,liveSeconds:.5}),false);
- assert.equal(pitcherCutActive({...g,liveSeconds:1.1}),false);
- assert.equal(pitcherCutActive({...g,save:{cinematicCamera:false}}),false);
- assert.equal(pitcherCutActive({...g,save:{cinematicCamera:true,reducedEffects:true}}),false);
- assert.equal(pitcherCutActive({...g,pitcherReaction:{jump:false}}),false);
- assert.ok(pitcherCamera(g).camera.every(Number.isFinite));
- assert.equal(pitcherPose({...g,pitcherCut:true}).phase,'jump');
- assert.equal(ball.z,100);
+test('personalized face remains available without a separate camera',()=>{
  const calls=[],r={add(...a){calls.push(a)},pole(){},box(){},ball(){}};
  drawPitcher(r,pitcherPose({state:'ready'}));
  assert.ok(calls.some(a=>a.includes('#1464a1')));
@@ -58,22 +46,15 @@ test('six approved sprite frames are loaded from the verified transparent WebP',
  assert.equal(selectPitcherFrame({state:'ready'}),0);
  assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.02,pitchDuration:1.52}),1);
  assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.2,pitchDuration:1.52}),2);
- assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.66}),4);
- assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.8}),4);
- assert.equal(selectPitcherFrame({state:'flight',pitcherCut:true,liveSeconds:.849}),4);
  assert.equal(selectPitcherFrame({state:'orbit'}),null);
 });
 
-test('cinematic insert holds peak extension for 200 ms without replay or landing',()=>{
+test('pitcher reacts only in the normal scene and cannot interrupt the finish',()=>{
  const plan=pitcherReactionPlan({vx:6,vy:16,vz:36});
  const g={state:'flight',pitcherReaction:plan,save:{cinematicCamera:true},ball:Object.freeze({x:0,y:10,z:30})};
- const start={...g,liveSeconds:.65},end={...g,liveSeconds:.849};
- assert.equal(pitcherCutActive({...g,liveSeconds:.649}),false);
- assert.equal(pitcherCutActive(start),true);
- assert.equal(pitcherCutActive(end),true);
- assert.equal(pitcherCutActive({...g,liveSeconds:.85}),false);
- assert.deepEqual(pitcherCamera(start),pitcherCamera(end));
- const pose=pitcherCamera(start).pose;
- assert.equal(pose.phase,'jump');assert.ok(pose.lift>2);assert.equal(pose.reach,1);
- for(const t of [.65,.7,.8,.849])assert.equal(selectPitcherFrame({...g,pitcherCut:true,liveSeconds:t}),4);
+ assert.equal(selectPitcherFrame({...g,liveSeconds:plan.start+.4}),4);
+ assert.equal(selectPitcherFrame({...g,liveSeconds:plan.start+1}),5);
+ const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
+ assert.doesNotMatch(game,/pitcherCut|pitcherCamera/);
+ assert.match(game,/const cutToFlight=this.state==='flight'&&!departure&&!!this.launchCamera/);
 });

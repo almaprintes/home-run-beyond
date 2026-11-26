@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.66';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.66';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.66';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.66';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.66';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.66';
-import {GameAudio} from './audio.js?v=0.77.66';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.66';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.66';
-import {BatterSprites} from './sprites.js?v=0.77.66';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.66';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.66';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.66';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.66';
-import {pitcherReactionPlan,pitcherCutActive,pitcherCamera} from './pitcher.js?v=0.77.66';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.66';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.67';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.67';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.67';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.67';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.67';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.67';
+import {GameAudio} from './audio.js?v=0.77.67';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.67';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.67';
+import {BatterSprites} from './sprites.js?v=0.77.67';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.67';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.67';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.67';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.67';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.67';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.67';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -164,7 +164,7 @@ export class BaseballGame{
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
-  this.audio?.stopFlightWind?.();this.launchView=false;this.launchCamera=null;this.pitcherCut=false;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.audio?.stopFlightWind?.();this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.closeDiscovery();this.clearTransientToast();this.clearEncounterReward?.();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
@@ -872,13 +872,9 @@ export class BaseballGame{
  }
  const flight=this.state==='flight'||this.state==='rest'||this.state==='orbit';let desiredCam,desiredTarget,zoom;
  const departure=this.state==='flight'&&this.launchView&&!!this.launchCamera;
- const wasPitcherCut=!!this.pitcherCut;
- this.pitcherCut=!!this.sprites?.images?.pitcher&&!(this.renderer instanceof CanvasRenderer)&&!departure&&pitcherCutActive(this);
- const cutToFlight=this.state==='flight'&&!departure&&!this.pitcherCut&&(!!this.launchCamera||wasPitcherCut);
+ const cutToFlight=this.state==='flight'&&!departure&&!!this.launchCamera;
  if(departure){
   desiredCam=this.launchCamera.camera;desiredTarget=this.launchCamera.target;zoom=62;
- }else if(this.pitcherCut){
-  const pose=pitcherCamera(this);desiredCam=pose.camera;desiredTarget=pose.target;zoom=pose.zoom;
  }else if(this.shotOrbit&&['orbit','rest'].includes(this.state)){
   if(this.state==='orbit')this.shotOrbit.elapsed=Math.min(SHOT_ORBIT_SECONDS,this.shotOrbit.elapsed+dt);
   const pose=shotOrbitPose(this.shotOrbit,this.shotOrbit.elapsed);desiredCam=pose.camera;desiredTarget=pose.target;zoom=pose.zoom;
@@ -893,7 +889,7 @@ export class BaseballGame{
    desiredCam=[-6.7,7.5+bob,-20.5];desiredTarget=[-.8,3.5,12];zoom=62;
   }
  }
- const smooth=departure||cutToFlight||this.pitcherCut||this.shotOrbit&&['orbit','rest'].includes(this.state)?1:1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
+ const smooth=departure||cutToFlight||this.shotOrbit&&['orbit','rest'].includes(this.state)?1:1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
  if(cutToFlight)this.launchCamera=null;
  this.renderer.fogDistance=flight&&this.camera[1]>350?1700:580;
  const cameraFrame=[...this.camera];
