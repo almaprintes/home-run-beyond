@@ -1,9 +1,9 @@
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.59';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.59';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.59';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.59';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.59';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.59';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.60';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.60';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.60';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.60';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.60';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.60';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -20,7 +20,8 @@ export const BATTER_ASSETS=Object.freeze({
  gull:GULL_ATLAS
 });
 
-export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null}={}){
+export function selectBatterPose({state,pitch=0,aimAngle=0,swingElapsed=0,ball=null,launchView=false}={}){
+ if(state==='flight'&&launchView)return swingElapsed<.073?'contact':'follow';
  if(state==='menu'||state==='ready'||state==='rest'&&!ball)return 'ready';
  if(state==='pitching')return pitch>.72?'loaded':pitch>.12?'watch':'ready';
  if(state==='aiming')return 'loaded'; // La flecha se renderiza aparte, con pivote fijo y giro continuo.
@@ -506,6 +507,10 @@ export class BatterSprites{
     const edge=projectToScreen(camera,target,[b.x+1.45,b.y,b.z],width,height,zoom);
     const radiusPx=edge?Math.hypot(edge.x-p.x,edge.y-p.y):15;
     const size=ballSpriteDiameter(radiusPx,width);
+    const departureSize=game.launchView&&game.state==='flight'?Math.max(2,Math.min(36,radiusPx*2)):size;
+    // The departure shot uses natural perspective, not the follow camera's
+    // minimum cinematic size, so the ball visibly recedes from the batter.
+
     // Sombra proyectada sobre la superficie física: hierba, asfalto, tejado o agua.
     const surface=surfaceBelowBall(b);
     const clearance=b.y-1.45-surface.y;
@@ -517,13 +522,14 @@ export class BatterSprites{
     const support=clearance>=-.18&&clearance<2.9
      ?projectToScreen(camera,target,[b.x,Math.max(surface.y,b.y-1.45),b.z],width,height,zoom):null;
     const visualY=support?ballGroundedScreenY(p.y,support.y,size,clearance,bounce,visibleRadius):p.y;
+    const drawnY=departureSize===size?visualY:(support?ballGroundedScreenY(p.y,support.y,departureSize,clearance,bounce,visibleRadius):p.y);
     const shadow=projectToScreen(camera,target,[b.x,surface.y+.08,b.z],width,height,zoom);
     if(shadow&&shadow.x>-80&&shadow.x<width+80&&shadow.y>-80&&shadow.y<height+80){
      const altitude=Math.max(0,b.y-surface.y);
      ctx.save();
      ctx.globalAlpha=ballShadowOpacity(altitude);
      ctx.fillStyle=surface.type==='water'||surface.type==='swamp'||surface.type==='puddle'?'#d4f4e7':'#071820';
-     const shape=ballShadowGeometry(size,altitude);
+     const shape=departureSize===size?ballShadowGeometry(size,altitude):ballShadowGeometry(departureSize,altitude);
      ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=shape.blur;
      ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,shape.rx,shape.ry,0,0,Math.PI*2);ctx.fill();
      ctx.restore();
@@ -531,15 +537,16 @@ export class BatterSprites{
     if(game.save?.equippedBall==='sol'&&game.state==='flight'&&!game.save?.reducedEffects&&ctx.createRadialGradient){
      const speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
      if(speed>.35){
-      const glow=ctx.createRadialGradient(p.x,visualY,size*.30,p.x,visualY,size*.86);
+      const glow=ctx.createRadialGradient(p.x,drawnY,departureSize*.30,p.x,drawnY,departureSize*.86);
       glow.addColorStop(0,'rgba(255,184,42,.25)');glow.addColorStop(1,'rgba(255,102,20,0)');
       ctx.save();ctx.globalAlpha=Math.min(1,speed/8);ctx.fillStyle=glow;
-      ctx.beginPath();ctx.arc(p.x,visualY,size*.86,0,Math.PI*2);ctx.fill();ctx.restore();
+      ctx.beginPath();ctx.arc(p.x,drawnY,departureSize*.86,0,Math.PI*2);ctx.fill();ctx.restore();
      }
     }
     ctx.save();ctx.translate(p.x,visualY);
+    if(drawnY!==visualY)ctx.translate(0,drawnY-visualY);
     if(bounce)ctx.scale(1+.08*bounce,1-.11*bounce);
-    this.drawEquippedBall(ctx,game,size,b.spin,camera,target);
+    this.drawEquippedBall(ctx,game,departureSize,b.spin,camera,target);
     ctx.restore();
 
    }

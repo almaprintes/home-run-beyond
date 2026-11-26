@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.59';
-import {drawGulls} from './gulls.js?v=0.77.59';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.59';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.59';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.59';
+import {lerp} from './engine.js?v=0.77.60';
+import {drawGulls} from './gulls.js?v=0.77.60';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.60';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.60';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.60';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -828,7 +828,8 @@ export function drawWorld(r,cam,game){
  drawTerrain(r,z,x,game.worldStudio?200:cam[1],game.clock||0,(['flight','landing','rest'].includes(game.state)||game.state==='orbit')?game.ball:null,game.brokenWindows);
  if(!game.worldStudio&&!game.save?.reducedEffects)game.impactFX?.drawGlassShards?.(r,cam);
  // Tráfico volumétrico: misma matriz, misma profundidad, 4 ruedas por coche.
- if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&(game.worldStudio||cam[1]<340)){stadium(r);if(!game.worldStudio){if(game.state!=='flight'&&game.state!=='landing'&&game.state!=='orbit'&&!(game.state==='rest'&&game.ball))drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
+ if(game.state!=='menu')drawProceduralTraffic(r,visibleRoadTraffic(z,game.clock||0,410),cam);if(z<460&&(game.worldStudio||cam[1]<340)){stadium(r);if(!game.worldStudio){if(game.state==='flight'&&game.launchView)drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,true,game.ballStyleColor||'#fffefa',pitcherPose(game));
+ else if(game.state!=='flight'&&game.state!=='landing'&&game.state!=='orbit'&&!(game.state==='rest'&&game.ball))drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
   !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa',pitcherPose(game));
  else drawPitcher(r,pitcherPose(game));}
  // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.

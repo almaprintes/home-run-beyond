@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.59';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.59';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.59';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.59';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.59';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.59';
-import {GameAudio} from './audio.js?v=0.77.59';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.59';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.59';
-import {BatterSprites} from './sprites.js?v=0.77.59';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.59';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.59';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.59';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.59';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.59';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.59';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.60';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.60';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.60';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.60';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.60';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.60';
+import {GameAudio} from './audio.js?v=0.77.60';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.60';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.60';
+import {BatterSprites} from './sprites.js?v=0.77.60';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.60';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.60';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.60';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.60';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.60';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.60';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -21,6 +21,9 @@ export function groundRollRetention(type,dt){
  const friction=type==='road'?1.05:type==='paving'?1.25:2.05;
  return Math.exp(-friction*Math.max(0,Number(dt)||0));
 }
+// Keep the launch composition while the ball departs in real simulation time.
+export const LAUNCH_VIEW_SECONDS=.65;
+export function flightTimeScale(speed,launchView=false){return launchView?1:clamp(speed/58,1,22)}
 export const SHOT_ORBIT_SECONDS=4;
 export function createShotOrbit(ball,camera,target){
  const angle=Math.atan2(camera[0]-ball.x,camera[2]-ball.z);
@@ -158,7 +161,7 @@ export class BaseballGame{
  this.debug=new URLSearchParams(location.search).has('debug');if(this.debug)el('quality').classList.remove('low');
  }
  showMenu(){
-  this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.closeDiscovery();this.clearTransientToast();this.clearEncounterReward?.();
   this.state='menu';this.activePointer=null;this.ball=null;this.pendingShot=null;
   this.impactFX?.clear();this.shake=0;this.camera=[-6.7,7.5,-20.5];this.target=[-.8,3.5,12];
@@ -438,7 +441,7 @@ export class BaseballGame{
  onAction(time){if(!el('welcome').hidden||!el('shop').hidden||!el('settings').hidden||!el('main-menu').hidden)return;this.audio.init();if(this.state==='ready')this.startPitch();else if(this.state==='pitching')this.freezeSwing(false,time);}
 
  startPitch(){
-  this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
+  this.launchView=false;this.launchCamera=null;this.shotOrbit=null;this.pendingResult=null;if(el('orbit-skip'))el('orbit-skip').hidden=true;
   this.brokenWindows=new Set();this.gullHits??=new Map();
   this.clearEncounterReward?.();this.renderEncounterRewards?.();
   this.clearTransientToast();
@@ -540,7 +543,7 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.launchView=true;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  showEncounterReward(kind,count){
   if(typeof document==='undefined')return;
@@ -775,7 +778,7 @@ export class BaseballGame{
    }
   }else b.restTime=0;
  }
- finishShot(){if(this.state!=='flight')return;this.clearTransientToast();this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('pitch-surface').hidden=true;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
+ finishShot(){if(this.state!=='flight')return;this.launchView=false;this.launchCamera=null;this.clearTransientToast();this.clearEncounterReward?.();const b=this.ball;freezeBallSpin(b);this.state='rest';el('pitch-surface').hidden=true;const reward=settleShot(this.save,forwardDistance(b),{gull:b.encounters?.gull===true,gulls:b.hitGulls?.size||0,cars:b.hitCars?.size||0});
  const newly=recordDiscoveryShot(this.save,{quality:this.pendingShot?.quality,record:reward.record,
   peakZ:b.maxZ||0,road:!!b.encounters?.road,roof:!!b.encounters?.roof,
   water:!!b.encounters?.water,swamp:!!b.encounters?.swamp});
@@ -841,8 +844,14 @@ export class BaseballGame{
    if(this.swingElapsed>=.09)this.resolveSwing();
  }
  if(this.state==='flight'){
+   const departure=!!this.launchCamera&&this.liveSeconds<LAUNCH_VIEW_SECONDS;
    this.liveSeconds+=dt;
-   const speed=Math.hypot(this.ball.vx,this.ball.vz);const mult=clamp(speed/58,1,22);const total=dt*mult;const substeps=Math.ceil(total/.026);
+   if(departure){
+    this.swingElapsed+=dt;
+    this.visualSwingElapsed=Math.max(.05,this.swingElapsed-(this.contactHold||0));
+    this.swing=.42+.58*clamp(this.visualSwingElapsed/.17,0,1);
+   }
+   const speed=Math.hypot(this.ball.vx,this.ball.vz);const mult=flightTimeScale(speed,departure);const total=dt*mult;const substeps=Math.ceil(total/.026);
    for(let i=0;i<substeps&&this.state==='flight';i++)this.simulateStep(total/substeps,this.clock-dt+dt*i/substeps,this.clock-dt+dt*(i+1)/substeps);
    if(this.ball)this.ball.bounceVisual=Math.max(0,(this.ball.bounceVisual||0)-dt*5.5);
    // Always present spin at real display frame rate, not accelerated physics time.
@@ -852,11 +861,16 @@ export class BaseballGame{
     advanceVisualSpin(this.ball,dt);
     if(this.save?.equippedBall==='sol'&&!this.save?.reducedEffects)this.impactFX?.spawnSolarTrail(this.ball,dt);
    }
+   this.launchView=this.state==='flight'&&!!this.launchCamera&&this.liveSeconds<LAUNCH_VIEW_SECONDS;
    this.distance=forwardDistance(this.ball);el('distance').textContent=formatInt(this.distance);el('region').textContent=areaAt(this.distance)+' · '+(this.distance/1000).toFixed(2)+' KM';
    // The display clock is telemetry only; simulateStep decides physical rest.
  }
  const flight=this.state==='flight'||this.state==='rest'||this.state==='orbit';let desiredCam,desiredTarget,zoom;
- if(this.shotOrbit&&['orbit','rest'].includes(this.state)){
+ const departure=this.state==='flight'&&this.launchView&&!!this.launchCamera;
+ const cutToFlight=this.state==='flight'&&!departure&&!!this.launchCamera;
+ if(departure){
+  desiredCam=this.launchCamera.camera;desiredTarget=this.launchCamera.target;zoom=62;
+ }else if(this.shotOrbit&&['orbit','rest'].includes(this.state)){
   if(this.state==='orbit')this.shotOrbit.elapsed=Math.min(SHOT_ORBIT_SECONDS,this.shotOrbit.elapsed+dt);
   const pose=shotOrbitPose(this.shotOrbit,this.shotOrbit.elapsed);desiredCam=pose.camera;desiredTarget=pose.target;zoom=pose.zoom;
   if(this.state==='orbit'&&this.shotOrbit.elapsed>=SHOT_ORBIT_SECONDS)this.completeShotOrbit();
@@ -869,7 +883,8 @@ export class BaseballGame{
    desiredCam=[-6.7,7.5+bob,-20.5];desiredTarget=[-.8,3.5,12];zoom=62;
   }
  }
- const smooth=this.shotOrbit&&['orbit','rest'].includes(this.state)?1:1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
+ const smooth=departure||cutToFlight||this.shotOrbit&&['orbit','rest'].includes(this.state)?1:1-Math.exp(-dt*(flight?3.6:this.state==='aiming'?7.5:2.8));for(let i=0;i<3;i++){this.camera[i]=lerp(this.camera[i],desiredCam[i],smooth);this.target[i]=lerp(this.target[i],desiredTarget[i],smooth)}
+ if(cutToFlight)this.launchCamera=null;
  this.renderer.fogDistance=flight&&this.camera[1]>350?1700:580;
  const cameraFrame=[...this.camera];
  if(this.shake>0){
