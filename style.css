@@ -435,3 +435,8 @@
 .ws-primary{background:#ffca70;color:#392711;border-color:#ffe5aa}
 .ws-status{font-size:10px;color:#a8d0dd;min-height:13px}
 @media(max-height:500px){.ws-head{padding:4px 12px}.ws-controls{gap:3px;padding:4px 8px}.ws-button{padding:5px 8px}.ws-head strong{font-size:15px}}
+
+/* A discreet hold indicator appears only while pressing a logo. */
+#hud .brand,.menu-brand,.menu-title h1{position:relative;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.ws-holding::after{content:"";position:absolute;left:0;bottom:-6px;width:100%;height:3px;border-radius:4px;background:#ffc66f;box-shadow:0 0 7px #ffc66f;transform:scaleX(0);transform-origin:left center;animation:ws-hold-progress 7s linear forwards;pointer-events:none}
+@keyframes ws-hold-progress{to{transform:scaleX(1)}}

@@ -1,8 +1,8 @@
 
-import {Renderer} from './engine.js?v=0.77.34';
-import {drawWorld,buildingAt,buildingBoxes,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.34';
-import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.34';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.34';
+import {Renderer} from './engine.js?v=0.77.35';
+import {drawWorld,buildingAt,buildingBoxes,stadiumFenceParts,stadiumContainers,stadiumContainerParts,areaAt} from './world.js?v=0.77.35';
+import {visibleRoadTraffic,trafficCollisionParts} from './traffic.js?v=0.77.35';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.35';
 
 export const STUDIO_HOLD_MS=7000;
 export const STUDIO_EXPORT={start:-100,end:2000,width:600,tileHeight:350,pixelsPerMeter:2};
@@ -18,26 +18,51 @@ export function exportTiles(){
 // No authentication claim: a seven-second gesture deliberately hides the tool in the public PWA.
 export function bindStudioHold(node,open,clock=globalThis){
  let timer=null,active=null;
- const cancel=()=>{if(timer!==null)clock.clearTimeout(timer);timer=null;active=null};
+ const clear=()=>{if(timer!==null)clock.clearTimeout(timer);timer=null;active=null;node.classList?.remove('ws-holding')};
+ const begin=(kind,id,x,y)=>{
+  if(active)return;
+  active={kind,id,x,y};node.classList?.add('ws-holding');
+  timer=clock.setTimeout(()=>{clear();open()},STUDIO_HOLD_MS);
+ };
+ const move=(kind,id,x,y)=>{
+  if(active?.kind===kind&&active.id===id&&Math.hypot(x-active.x,y-active.y)>(kind==='touch'?30:12))clear();
+ };
+ node.addEventListener('touchstart',e=>{
+  if(e.cancelable!==false)e.preventDefault();
+  if(e.touches.length!==1){clear();return}
+  const t=e.touches[0];begin('touch',t.identifier,t.clientX,t.clientY);
+ },{passive:false});
+ node.addEventListener('touchmove',e=>{
+  if(e.cancelable!==false)e.preventDefault();
+  if(active?.kind!=='touch')return;
+  if(e.touches.length!==1){clear();return}
+  const t=Array.from(e.touches).find(t=>t.identifier===active.id);
+  if(!t){clear();return}
+  move('touch',t.identifier,t.clientX,t.clientY);
+ },{passive:false});
+ for(const type of ['touchend','touchcancel'])node.addEventListener(type,e=>{
+  if(e.cancelable!==false)e.preventDefault();
+  if(active?.kind==='touch'&&(!Array.from(e.touches||[]).some(t=>t.identifier===active.id)||type==='touchcancel'))clear();
+ },{passive:false});
  node.addEventListener('pointerdown',e=>{
-  if(e.button!==0||active)return;
-  e.preventDefault();active={id:e.pointerId,x:e.clientX,y:e.clientY};
+  if(e.pointerType==='touch'||e.button!==0||active)return;
+  e.preventDefault();begin('pointer',e.pointerId,e.clientX,e.clientY);
   try{node.setPointerCapture?.(e.pointerId)}catch{}
-  timer=clock.setTimeout(()=>{timer=null;active=null;open()},STUDIO_HOLD_MS);
  });
- node.addEventListener('pointermove',e=>{
-  if(active&&active.id===e.pointerId&&Math.hypot(e.clientX-active.x,e.clientY-active.y)>12)cancel();
+ node.addEventListener('pointermove',e=>move('pointer',e.pointerId,e.clientX,e.clientY));
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])node.addEventListener(type,e=>{
+  if(active?.kind==='pointer'&&active.id===e.pointerId)clear();
  });
- for(const type of ['pointerup','pointercancel','lostpointercapture'])node.addEventListener(type,e=>{if(active?.id===e.pointerId)cancel()});
- node.addEventListener('contextmenu',e=>e.preventDefault());
- return cancel;
+ for(const type of ['contextmenu','dragstart','selectstart'])node.addEventListener(type,e=>e.preventDefault());
+ return clear;
 }
 
 export function installWorldStudio(game){
  let studio=null;
  const open=()=>{if(!['menu','ready','rest'].includes(game.state))return;studio??=new WorldStudio(game);studio.open()};
- const cancels=[...document.querySelectorAll('#hud .brand,.menu-brand')].map(node=>bindStudioHold(node,open));
+ const cancels=[...document.querySelectorAll('#hud .brand,.menu-brand,.menu-title h1')].map(node=>bindStudioHold(node,open));
  window.addEventListener('blur',()=>cancels.forEach(cancel=>cancel()));
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancels.forEach(cancel=>cancel())});
 }
 
 class WorldStudio{
