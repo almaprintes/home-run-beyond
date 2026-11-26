@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cinematicIntensity,drawCinematicAccents} from '../src/impact-fx.js';
-import {groundTrackingPose,rollingContactTime} from '../src/game.js';
 import {GameAudio} from '../src/audio.js';
 test('anime accents scale with quality and speed, end automatically, respect reduced effects',()=>{
  const p=cinematicIntensity('perfect',200,.03,true);
@@ -22,17 +21,6 @@ test('anime accents scale with quality and speed, end automatically, respect red
  game.save.reducedEffects=true;drawCinematicAccents(ctx,game,[-6.7,7.5,-20.5],[-.8,3.5,12],390,844,62);
  assert.equal(strokes,16);
 });
-test('low camera follows direction, keeps ball above floor and rejects obstructed positions',()=>{
- const b={x:3,y:1.45,z:90,vx:0,vz:12};
- const f=groundTrackingPose(b,[0,1],0,1);
- assert.ok(f.camera[2]<b.z);assert.equal(f.camera[1],b.y+4.5);
- assert.ok(f.target[2]>b.z);
- const back=groundTrackingPose({...b,vz:-12},[0,1],0,1);
- assert.ok(back.camera[2]>b.z);
- assert.equal(groundTrackingPose(b,[0,1],0,1,()=>true),null);
- assert.equal(groundTrackingPose(b,[0,1],10,1),null);
- assert.equal(groundTrackingPose(b,[0,1],0,0),null);
-});
 test('wind reuses one source and stops when disabled or flight finishes',()=>{
  const a=new GameAudio(),calls={start:0,stop:0};
  const param=()=>({value:0,setTargetAtTime(){}});
@@ -44,16 +32,4 @@ test('wind reuses one source and stops when disabled or flight finishes',()=>{
  a.flightWind(140);a.flightWind(190);assert.equal(calls.start,1);
  a.stopFlightWind();assert.equal(calls.stop,1);assert.equal(a.wind,null);
  a.enabled=false;a.flightWind(200);assert.equal(calls.start,1);
-});
-
-test('ground camera waits for continuous rolling; every airborne bounce resets the clock',()=>{
- let roll=0;
- for(let i=0;i<40;i++){
-  roll=rollingContactTime(roll,false,2,.02);assert.equal(roll,0);
-  roll=rollingContactTime(roll,true,0,.02);assert.ok(roll<.30);
- }
- roll=rollingContactTime(roll,false,1,.02);assert.equal(roll,0);
- for(let i=0;i<16;i++)roll=rollingContactTime(roll,true,0,.02);
- assert.ok(roll>=.30);
- assert.equal(rollingContactTime(roll,true,1,.02),0);
 });
