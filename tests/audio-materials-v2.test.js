@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {GameAudio,synthImpulse,soundProfile,contactProfile} from '../src/audio.js';
 import {readFileSync} from 'node:fs';
+import {buildingAt,buildingBoxes,drawWorld} from '../src/world.js';
 
 test('samples de impactos poseen ataques, decaimiento y perfiles acústicos diferentes',()=>{
  const names=['swing','concrete','brick','metal','roof','rubber','grass','dirt','asphalt','water','puddle','swamp'];
@@ -50,7 +51,20 @@ test('mundo sin z-fighting de césped superpuesto y con las nuevas superficies',
  assert.match(world,/r\.field\(0,\.15,z,285,11/);
  assert.match(world,/setMaterial\?\.\('metal'\)/);
  assert.match(world,/setMaterial\?\.\(rand\(idx\*17,row\*13\)<\.60\?'plaster':'brick'\)/);
- assert.match(world,/setMaterial\?\.\(b\.roofMaterial==='rubber'\?'rubber':'roof'\)/);
+ // Check actual renderer output for every roof volume, including the new stepped buildings.
+ let material;const calls=[];
+ const r={begin(){},setLayer(){},setMaterial(m){material=m},box(...a){calls.push({material,a})},field(){},ball(){},pole(){},cone(){},add(){}};
+ for(const z of [330,630,930,1230,1530])drawWorld(r,[0,20,z],{state:'ready',clock:0});
+ let count=0;const seen=new Set();
+ for(let j=0;j<=24;j++)for(let i=-4;i<=4;i++){
+  const b=buildingAt(i,j);if(!b)continue;
+  for(const p of buildingBoxes(b).filter(p=>p.kind==='roof')){
+   const [a,c,d]=p.min,[e,g,h]=p.max,expected=p.material==='rubber'?'rubber':'roof';
+   assert.ok(calls.some(q=>q.material===expected&&Math.abs(q.a[0]-(a+e)/2)<1e-6&&Math.abs(q.a[1]-(c+g)/2)<1e-6&&Math.abs(q.a[2]-(d+h)/2)<1e-6&&Math.abs(q.a[3]-(e-a))<1e-6&&Math.abs(q.a[4]-(g-c))<1e-6&&Math.abs(q.a[5]-(h-d))<1e-6),b.i+':'+b.j+' '+expected);
+   count++;seen.add(expected);
+  }
+ }
+ assert.ok(count>92);assert.equal(seen.size,2);
  assert.match(world,/'paving'/);
 });
 
