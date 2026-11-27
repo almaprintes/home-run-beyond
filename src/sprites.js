@@ -1,11 +1,11 @@
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.69';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.69';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.69';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.69';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.69';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.69';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.69';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.69';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.70';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.70';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.70';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.70';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.70';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.70';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.70';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.70';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -24,7 +24,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.69';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.70';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -266,7 +266,7 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
    else if(cache.mode==='orange')shadeOrangeSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else if(cache.mode==='rainbow')shadeRainbowSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
-    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47);
+    spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47,cache.mode==='snow');
    cache.context.putImageData(cache.frame,0,0);
    ctx.drawImage(cache.canvas,-radius,-radius,size,size);
    return;
@@ -403,6 +403,15 @@ export class BatterSprites{
    drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
    return;
   }
+  if(item.id==='nieve'&&camera&&target){
+   // Keep the original snow texture, strip baked shading and rotate its
+   // spherical surface about the world axis, including after the first bounce.
+   this.ballSurfaceCache.mode='snow';
+   this.ballSurfaceCache.leatherColor='#eff8ff';
+   this.ballSurfaceCache.textureRadius=.46;
+   drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
+   return;
+  }
   if(item.id==='playa'&&camera&&target){
    // Use the approved panel art on a spherical surface rather than rotating
    // the entire billboard about the camera axis. Preserve the same visual
@@ -423,7 +432,7 @@ export class BatterSprites{
   }
   // Only the pre-hit pitch has no accumulated spin.
   // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
-  if(item.design!=='baseball')ctx.rotate(spin?.angle||0);
+  if(item.design!=='baseball'&&item.id!=='nieve')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
  }
  resize(){

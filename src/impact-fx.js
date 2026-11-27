@@ -1,5 +1,5 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.69';
-import {groundAt} from './world.js?v=0.77.69';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.70';
+import {groundAt} from './world.js?v=0.77.70';
 export const MAX_GLASS_SHARDS=84;
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
@@ -82,10 +82,11 @@ export function drawCinematicAccents(ctx,game,camera,target,width,height,zoom){
  }
 }
 export class ImpactEffects{
- constructor(){this.particles=[];this.rings=[];this.seed=1;this.solarClock=0;this.glassShards=[];this.glassChimeCooldown=0}
- clear(){this.particles.length=0;this.rings.length=0;this.solarClock=0;this.glassShards.length=0;this.glassChimeCooldown=0}
+ constructor(){this.particles=[];this.rings=[];this.seed=1;this.solarClock=0;this.snowClock=0;this.glassShards=[];this.glassChimeCooldown=0}
+ clear(){this.particles.length=0;this.rings.length=0;this.solarClock=0;this.snowClock=0;this.glassShards.length=0;this.glassChimeCooldown=0}
  spawn({x=0,y=0,z=0,material='concrete',strength=20,normal={x:0,y:1,z:0},ballId=null}={}){
   const style=materialEffect(material),scale=fxStrength(strength);
+  if(ballId==='nieve'&&scale>=.07)this.spawnSnowBurst({x,y,z,strength,normal});
   if(ballId==='sol'){
    if(scale>=.07)this.spawnSolarBurst({x,y,z,strength,normal});
    return;
@@ -200,6 +201,44 @@ export class ImpactEffects{
    this.addSolarParticle(ball.x-ux*1.35+Math.cos(a)*spread,ball.y-uy*.7,ball.z-uz*1.35+Math.sin(a)*spread,-ux*3+Math.cos(a),1.5-uy*2,-uz*3+Math.sin(a),.16+hash(i+9,seed)*.18,1.1+hash(i+13,seed)*1.3,seed,i,!ball.spinContact||i%2===0&&seed%3===0);
   }
  }
+ addSnowParticle({x,y,z,vx=0,vy=0,vz=0,life=.45,size=1.5,puff=false,index=0}){
+  this.particles.push({x,y,z,vx,vy,vz,age:0,life,gravity:puff?.3:4.5,
+   kind:puff?'snowPuff':'snow',color:index%3===0?'#ccecff':'#fffefd',size,material:'snow'});
+  if(this.particles.length>90)this.particles.splice(0,this.particles.length-90);
+ }
+ spawnSnowBurst({x,y,z,strength,normal={x:0,y:1,z:0}}){
+  const power=fxStrength(strength),seed=this.seed++;
+  const nx=normal.x||0,ny=normal.y||0,nz=normal.z||0;
+  const count=Math.round(7+9*power);
+  for(let i=0;i<count;i++){
+   const a=hash(i+5,seed)*Math.PI*2,spread=(2+7*power)*(.4+hash(i+37,seed));
+   this.addSnowParticle({x:x-nx*.8,y:y-ny*.8,z:z-nz*.8,
+    vx:Math.cos(a)*spread+nx*2,vy:1.5+hash(i+17,seed)*spread*.8+Math.max(0,ny)*2,
+    vz:Math.sin(a)*spread+nz*2,life:.35+hash(i+23,seed)*.35,
+    size:1.3+hash(i+47,seed)*2.2,puff:i<3,index:i});
+  }
+ }
+ spawnSnowTrail(ball,dt){
+  const speed=Math.hypot(ball?.vx||0,ball?.vy||0,ball?.vz||0);
+  if(!ball||speed<.35||ball.spin?.frozen){this.snowClock=0;return}
+  const rolling=!!ball.spinContact,step=Math.max(0,Math.min(.05,Number(dt)||0));
+  this.snowClock+=step;
+  const interval=rolling?.065:.035;
+  if(this.snowClock<interval)return;
+  this.snowClock%=interval;
+  const ux=(ball.vx||0)/speed,uy=(ball.vy||0)/speed,uz=(ball.vz||0)/speed;
+  const seed=this.seed++,n=rolling?2:3+Math.round(fxStrength(speed)*2);
+  for(let i=0;i<n;i++){
+   const a=hash(i+4,seed)*Math.PI*2,spread=.35+hash(i+9,seed)*.8;
+   const back=1.1+i*(rolling?.65:1.8)+Math.min(3,speed*.02);
+   this.addSnowParticle({x:ball.x-ux*back+Math.cos(a)*spread,
+    y:ball.y-(rolling?.8:uy*back)+Math.sin(a)*spread*.5,
+    z:ball.z-uz*back+Math.sin(a)*spread,
+    vx:-ux*2+Math.cos(a)*.9,vy:rolling?.7:.35-uy*1.1,vz:-uz*2+Math.sin(a)*.9,
+    life:.28+hash(i+18,seed)*.29,size:1.1+hash(i+32,seed)*1.6,
+    puff:i===0&&!rolling,index:i});
+  }
+ }
  spawnBat({x=-4.5,y=2.5,z=-4.7,quality='good'}={}){
   const strength=quality==='perfect'?100:quality==='excellent'?73:quality==='good'?42:18;
   this.spawn({x,y,z,material:'bat',strength,normal:{x:0,y:1,z:1}});
@@ -235,7 +274,19 @@ export class ImpactEffects{
    const t=f.age/f.life,r=Math.max(.8,Math.min(5,f.size*(1-t)*Math.min(1.4,24/Math.sqrt(p.depth))));
    ctx.save();ctx.globalAlpha=Math.max(0,(1-t)*(f.kind==='soft'?.33:.76));
    ctx.fillStyle=f.color;ctx.beginPath();
-   if(f.kind==='shard'){const angle=f.age*11+f.vx;ctx.moveTo(p.x+Math.cos(angle)*r*1.7,p.y+Math.sin(angle)*r*1.7);ctx.lineTo(p.x+Math.cos(angle+2.1)*r,p.y+Math.sin(angle+2.1)*r);ctx.lineTo(p.x+Math.cos(angle+4.2)*r*1.3,p.y+Math.sin(angle+4.2)*r*1.3);ctx.closePath();}
+   if(f.kind==='snowPuff'){
+    const radius=Math.max(2,Math.min(13,f.size*(2.4+3*t)*Math.min(1.4,24/Math.sqrt(p.depth))));
+    ctx.globalAlpha=(1-t)*.30;
+    if(ctx.createRadialGradient){
+     const fog=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);
+     fog.addColorStop(0,'rgba(255,255,255,.88)');fog.addColorStop(1,'rgba(221,244,255,0)');
+     ctx.fillStyle=fog;
+    }
+    ctx.arc(p.x,p.y,radius,0,Math.PI*2);
+   }else if(f.kind==='snow'){
+    ctx.globalAlpha=(1-t)*.88;
+    ctx.arc(p.x,p.y,Math.max(.8,r),0,Math.PI*2);
+   }else if(f.kind==='shard'){const angle=f.age*11+f.vx;ctx.moveTo(p.x+Math.cos(angle)*r*1.7,p.y+Math.sin(angle)*r*1.7);ctx.lineTo(p.x+Math.cos(angle+2.1)*r,p.y+Math.sin(angle+2.1)*r);ctx.lineTo(p.x+Math.cos(angle+4.2)*r*1.3,p.y+Math.sin(angle+4.2)*r*1.3);ctx.closePath();}
    else if(f.kind==='flame'){
     const tipX=p.x+Math.sin(f.age*16+f.vx)*r*.6;
     ctx.moveTo(tipX,p.y-r*2.5);ctx.quadraticCurveTo(p.x+r*1.6,p.y,p.x+r*.65,p.y+r);
