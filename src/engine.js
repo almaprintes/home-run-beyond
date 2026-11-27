@@ -1,4 +1,4 @@
-import {pitcherPose} from './pitcher.js?v=0.77.70';
+import {pitcherPose} from './pitcher.js?v=0.77.71';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -102,6 +102,16 @@ function meshFromTriangles(tris){let arr=[];for(const [a,b,c] of tris){const ab=
 function glassShard(){const a=[-.48,0,-.37],b=[.5,0,-.16],c=[-.13,0,.53];return meshFromTriangles([[a,c,b],[a,b,c]])}
 function cube(){let T=[],v=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];for(const [a,b,c,d] of [[4,5,6,7],[1,0,3,2],[0,4,7,3],[5,1,2,6],[3,7,6,2],[0,1,5,4]]){T.push([v[a],v[b],v[c]],[v[a],v[c],v[d]])}return meshFromTriangles(T)}
 function prism(sides=10,topRadius=0.5,bottomRadius=0.5){const T=[];for(let i=0;i<sides;i++){let a=i*2*Math.PI/sides,b=(i+1)*2*Math.PI/sides,ca=Math.cos(a),cb=Math.cos(b),sa=Math.sin(a),sb=Math.sin(b);let p0=[ca*bottomRadius,-.5,sa*bottomRadius],p1=[cb*bottomRadius,-.5,sb*bottomRadius],p2=[cb*topRadius,.5,sb*topRadius],p3=[ca*topRadius,.5,sa*topRadius];if(topRadius>0)T.push([p0,p2,p1],[p0,p3,p2]);else T.push([p0,p3,p1]);T.push([[0,-.5,0],p1,p0]);if(topRadius>0)T.push([[0,.5,0],p3,p2]);}return meshFromTriangles(T)}
+// Open, beveled stone basin: a continuous 16-sided lathe with an inner cup.
+function fountainBowl(){
+ const T=[],n=16,profile=[[.14,-.5],[.28,-.38],[.43,-.13],[.5,.17],[.5,.39],[.47,.5],[.41,.5],[.38,.32],[.20,.02],[0,-.02]];
+ for(let j=0;j<profile.length-1;j++)for(let i=0;i<n;i++){
+  const a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;
+  const p=(k,t)=>[profile[k][0]*Math.cos(t),profile[k][1],profile[k][0]*Math.sin(t)];
+  T.push([p(j,a),p(j,b),p(j+1,b)],[p(j,a),p(j+1,b),p(j+1,a)]);
+ }
+ return meshFromTriangles(T);
+}
 function sphere(lat=6,lng=10){const T=[];for(let j=0;j<lat;j++){const t0=-Math.PI/2+j*Math.PI/lat,t1=-Math.PI/2+(j+1)*Math.PI/lat;for(let i=0;i<lng;i++){const p0=i*Math.PI*2/lng,p1=(i+1)*Math.PI*2/lng;const point=(t,p)=>[.5*Math.cos(t)*Math.cos(p),.5*Math.sin(t),.5*Math.cos(t)*Math.sin(p)];const a=point(t0,p0),b=point(t0,p1),c=point(t1,p1),d=point(t1,p0);if(j>0)T.push([a,b,c]);if(j<lat-1)T.push([a,c,d]);}}return meshFromTriangles(T)}
 function plane(){return meshFromTriangles([[[-.5,0,-.5],[.5,0,.5],[.5,0,-.5]],[[-.5,0,-.5],[-.5,0,.5],[.5,0,.5]]])}
 
@@ -241,7 +251,7 @@ export function sortGlassInstances(data,view){
 }
 export class Renderer{
  constructor(canvas){this.canvas=canvas;let gl=canvas.getContext('webgl2',{antialias:true,alpha:true,powerPreference:'high-performance',depth:true,stencil:false,desynchronized:true});if(!gl)throw Error('Este dispositivo no admite WebGL2');this.gl=gl;this.program=makeProgram(gl);this.uniforms={};for(let n of ['uViewProj','uCamPos','uFogDistance','uFogColor','uOpacity','uTextureReady','uMaterialArray'])this.uniforms[n]=gl.getUniformLocation(this.program,n);
- this.meshes={};for(const [name,geom] of Object.entries({box:cube(),glassShard:glassShard(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane(),carTire:wheelTire(),carRim:wheelAlloy(),carArch:wheelArch(),...Object.fromEntries(Object.keys(CAR_CABINS).flatMap(kind=>[['carBody_'+kind,carShell(kind)],['carGlass_'+kind,carCabin(kind,'glass')],['carRoof_'+kind,carCabin(kind,'roof')]]))})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],solid:[],glass:[],overlay:[]};}
+ this.meshes={};for(const [name,geom] of Object.entries({box:cube(),fountainBowl:fountainBowl(),glassShard:glassShard(),ball:sphere(),baseball:sphere(14,24),pole:prism(10),cone:prism(9,0,.5),hex:prism(6),field:plane(),carTire:wheelTire(),carRim:wheelAlloy(),carArch:wheelArch(),...Object.fromEntries(Object.keys(CAR_CABINS).flatMap(kind=>[['carBody_'+kind,carShell(kind)],['carGlass_'+kind,carCabin(kind,'glass')],['carRoof_'+kind,carCabin(kind,'roof')]]))})){const vao=gl.createVertexArray();gl.bindVertexArray(vao);const vbo=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vbo);gl.bufferData(gl.ARRAY_BUFFER,geom,gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);const instances=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,instances);gl.bufferData(gl.ARRAY_BUFFER,80*256,gl.DYNAMIC_DRAW);for(let i=0;i<4;i++){gl.enableVertexAttribArray(2+i);gl.vertexAttribPointer(2+i,4,gl.FLOAT,false,80,i*16);gl.vertexAttribDivisor(2+i,1)}gl.enableVertexAttribArray(6);gl.vertexAttribPointer(6,3,gl.FLOAT,false,80,64);gl.vertexAttribDivisor(6,1);gl.enableVertexAttribArray(7);gl.vertexAttribPointer(7,1,gl.FLOAT,false,80,76);gl.vertexAttribDivisor(7,1);this.meshes[name]={vao,instances,count:geom.length/6,arr:[],ghost:[],solid:[],glass:[],overlay:[]};}
  gl.bindVertexArray(null);this.layer='opaque';this.materialId=0;
  this.materialTexture=null;this.textureReady=false;this.anisotropy=1;
  // WebGL2 texture array: materials have independent mipmaps so no tile shimmer/bleeding.
@@ -320,7 +330,7 @@ export class Renderer{
    gl.bindTexture(gl.TEXTURE_2D_ARRAY,this.materialTexture);
    gl.uniform1i(this.uniforms.uMaterialArray,0);
   }
-  const order=['field','box','glassShard','hex','cone','ball','baseball','pole','carBody_hatch','carBody_sedan','carBody_suv','carBody_pickup','carGlass_hatch','carGlass_sedan','carGlass_suv','carGlass_pickup','carRoof_hatch','carRoof_sedan','carRoof_suv','carRoof_pickup','carTire','carRim','carArch'];
+  const order=['field','box','fountainBowl','glassShard','hex','cone','ball','baseball','pole','carBody_hatch','carBody_sedan','carBody_suv','carBody_pickup','carGlass_hatch','carGlass_sedan','carGlass_suv','carGlass_pickup','carRoof_hatch','carRoof_sedan','carRoof_suv','carRoof_pickup','carTire','carRim','carArch'];
   const draw=(layer)=>{
    for(const name of order){
     const m=this.meshes[name],data=m[layer];

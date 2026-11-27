@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.70';
-import {drawGulls} from './gulls.js?v=0.77.70';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.70';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.70';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.70';
+import {lerp} from './engine.js?v=0.77.71';
+import {drawGulls} from './gulls.js?v=0.77.71';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.71';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.71';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.71';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -39,16 +39,44 @@ export const FOUNTAIN=Object.freeze({x:90,z:1110,width:24,depth:20,waterY:.10});
 export function fountainWaterAt(x,z){
  return Math.abs(x-FOUNTAIN.x)<10&&Math.abs(z-FOUNTAIN.z)<8;
 }
-const FOUNTAIN_PARTS=Object.freeze([
+// Two elevated basins and a baseball finial, all within the original plaza.
+export const FOUNTAIN_TIERS=Object.freeze([
+ Object.freeze({y:6.8,d:8.8,h:1.6}),
+ Object.freeze({y:12.0,d:5.8,h:1.35})
+]);
+const FOUNTAIN_RIM=[
  {x:90,z:1101,y:.95,w:24,h:1.9,d:2},
  {x:90,z:1119,y:.95,w:24,h:1.9,d:2},
  {x:79,z:1110,y:.95,w:2,h:1.9,d:16},
- {x:101,z:1110,y:.95,w:2,h:1.9,d:16},
- {x:90,z:1110,y:1.65,w:4,h:3.3,d:4}
+ {x:101,z:1110,y:.95,w:2,h:1.9,d:16}
+];
+// Collision strips approximate the round bowl cross-section, rather than
+// using a single oversized invisible square around the entire fountain.
+function fountainRoundParts(x,z,y,w,h){
+ const r=w/2,parts=[];
+ for(let j=0;j<9;j++){
+  const a=-r+j*2*r/9,b=-r+(j+1)*2*r/9,mid=(a+b)/2;
+  const half=Math.sqrt(Math.max(0,r*r-mid*mid));
+  parts.push({x,z:z+mid,y,w:2*half,h,d:b-a});
+ }
+ return parts;
+}
+const FOUNTAIN_PARTS=Object.freeze([
+ ...FOUNTAIN_RIM,
+ {x:90,z:1110,y:.65,w:3.8,h:1.3,d:3.8},
+ {x:90,z:1110,y:3.7,w:2.65,h:4.8,d:2.65},
+ ...FOUNTAIN_TIERS.flatMap(t=>[
+  ...fountainRoundParts(90,1110,t.y-t.h*.22,t.d*.65,t.h*.56),
+  ...fountainRoundParts(90,1110,t.y+t.h*.28,t.d,t.h*.44)
+ ]),
+ {x:90,z:1110,y:9.4,w:2.0,h:4.1,d:2.0},
+ {x:90,z:1110,y:13.7,w:1.7,h:2.3,d:1.7},
+ ...fountainRoundParts(90,1110,15.45,2.6,2.6)
 ].map(p=>Object.freeze({...p,kind:'fountain-stone',material:'concrete'})));
+export const FOUNTAIN_SOLID_TOP=Math.max(...FOUNTAIN_PARTS.map(p=>p.y+p.h/2));
 export function fountainParts(){return FOUNTAIN_PARTS}
 export function traceFountainCollision(from,to,radius=1.45){
- if(!from||!to||Math.min(from.y,to.y)>3.3+radius)return null;
+ if(!from||!to||Math.min(from.y,to.y)>FOUNTAIN_SOLID_TOP+radius)return null;
  if(Math.min(from.x,to.x)>102+radius||Math.max(from.x,to.x)<78-radius||Math.min(from.z,to.z)>1120+radius||Math.max(from.z,to.z)<1100-radius)return null;
  let nearest=null;
  for(const p of FOUNTAIN_PARTS){
@@ -59,21 +87,78 @@ export function traceFountainCollision(from,to,radius=1.45){
   if(!nearest||hit.t<nearest.t)nearest=hit;
  }return nearest;
 }
+// Water is visual only: it cannot deflect the ball in mid-air.
+function fountainStream(r,a,b,radius,color){
+ const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2],len=Math.hypot(dx,dy,dz);
+ if(len<.001)return;
+ r.pole((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,radius,len,color,0,
+  Math.atan2(dz,dy),-Math.asin(Math.max(-1,Math.min(1,dx/len))));
+}
 export function drawFountain(r,time=0){
- const {x,z,waterY}=FOUNTAIN;
- r.setMaterial?.('water');r.field(x,waterY,z,20,16,'#4baecb',0,'water');
- r.setMaterial?.('concrete');
- for(const p of FOUNTAIN_PARTS){
-  r.box(p.x,p.y,p.z,p.w,p.h,p.d,'#c6c2b1');
- }
+ const {x,z,waterY}=FOUNTAIN,stone='#e1d6bd',gold='#e9ad35',navy='#395875';
+ r.setMaterial?.('water');r.field(x,waterY,z,20,16,'#45b6d4',0,'water');
  r.setMaterial?.('plain');
- // Animated jets are decorative, not hidden solid obstacles.
- for(let k=0;k<6;k++)for(let i=0;i<7;i++){
-  const t=(time*.65+i/7)%1,a=k*Math.PI/3;
-  const rad=.7+6*t;
-  r.ball(x+Math.cos(a)*rad,3.3+Math.sin(Math.PI*t)*4.2-t*3.15,z+Math.sin(a)*rad,.19,'#bdefff');
+ for(const p of FOUNTAIN_RIM){
+  r.box(p.x,.70,p.z,p.w,1.4,p.d,'#b8b0a2');
+  r.box(p.x,1.65,p.z,p.w,.5,p.d,stone);
+  r.box(p.x,.43,p.z,p.w,.13,p.d,gold);
  }
- for(let i=0;i<3;i++)r.ball(x,3.45+((time*3+i*.8)%3.5),z,.22,'#e1faff');
+ // Stone and gold pedestal, with inset blue decorative panels.
+ r.box(x,.65,z,3.8,1.3,3.8,stone);
+ r.box(x,1.16,z,3.8,.24,3.8,gold);
+ for(const [y,w,h] of [[3.7,2.65,4.8],[9.4,2,4.1],[13.7,1.7,2.3]]){
+  r.box(x,y,z,w,h,w,stone);
+  for(const sign of [-1,1]){
+   r.box(x+sign*(w/2-.025),y,z,.05,h*.76,w*.48,navy);
+   r.box(x,y,z+sign*(w/2-.025),w*.48,h*.76,.05,navy);
+  }
+  r.box(x,y-h*.40,z,w,.18,w,gold);
+ }
+ for(const t of FOUNTAIN_TIERS){
+  r.add('fountainBowl',x,t.y,z,t.d,t.h,t.d,stone);
+  r.add('fountainBowl',x,t.y-t.h*.18,z,t.d*.83,t.h*.68,t.d*.83,gold);
+  r.add('ball',x,t.y+t.h*.36,z,t.d*.79,.065,t.d*.79,'#37aaca');
+ }
+ // Baseball sculpture with visible red stitching, not the moving gameplay ball.
+ const crownY=15.45;
+ r.add('baseball',x,crownY,z,2.6,2.6,2.6,'#fff3d9');
+ for(const side of [-1,1]){
+  for(let j=0;j<14;j++){
+   const a=j*Math.PI*2/14,yy=crownY+1.18*Math.sin(a),zz=z+1.18*Math.cos(a);
+   const xx=x+side*(.48+.16*Math.cos(a*2));
+   r.ball(xx,yy,zz,.115,'#b63c40');
+  }
+ }
+ // Broad, flowing ribbons from each rim to the next pool. Moving highlights
+ // and droplets travel down the stream; a stationary slab is never used as water.
+ for(let tier=0;tier<FOUNTAIN_TIERS.length;tier++){
+  const t=FOUNTAIN_TIERS[tier],startY=t.y+t.h*.43,endY=tier===0?waterY+.10:FOUNTAIN_TIERS[0].y+FOUNTAIN_TIERS[0].h*.43;
+  for(let k=0;k<4;k++){
+   const a=(k+.5)*Math.PI/2,ux=Math.cos(a),uz=Math.sin(a),rad=t.d*.45;
+   const path=u=>[x+ux*(rad+u*(tier===0?2.1:1.25)),startY+.55*Math.sin(Math.PI*u)-(startY-endY)*u*u,z+uz*(rad+u*(tier===0?2.1:1.25))];
+   for(let j=0;j<7;j++){
+    const u=j/7,rr=(tier===0?.24:.19)*(1+.13*Math.sin(time*7-u*12+k));
+    fountainStream(r,path(u),path((j+1)/7),rr,'#63cde6');
+   }
+   for(let j=0;j<5;j++){
+    const u=(time*.88+j/5+k*.11)%1,p=path(u);
+    r.ball(...p,.23+j*.025,'#d2f7ff');
+   }
+   const p=path(1);
+   for(let j=0;j<3;j++){const a2=time*2+j*2.094,rr=.22+((time*.7+j/3)%1)*.52;
+    r.ball(p[0]+Math.cos(a2)*rr,p[1]+.14,p[2]+Math.sin(a2)*rr,.26,'#e5fbff');}
+  }
+ }
+ // Central jet and four outward parabolic jets above the baseball.
+ const top=crownY+1.25;
+ for(let i=0;i<8;i++){
+  const u=(time*.85+i/8)%1;
+  r.ball(x+.08*Math.sin(time*4+i),top+3.8*Math.sin(Math.PI*u),z,.22+(1-u)*.10,'#a9ecff');
+ }
+ for(let k=0;k<4;k++)for(let i=0;i<7;i++){
+  const u=(time*.72+i/7+k*.12)%1,a=k*Math.PI/2,rad=.18+2.3*u;
+  r.ball(x+Math.cos(a)*rad,top+2.9*Math.sin(Math.PI*u)-(top-12.7)*u*u,z+Math.sin(a)*rad,.18,'#d5f9ff');
+ }
  r.setMaterial?.('plain');
 }
 export function groundAt(x,z){

@@ -1,18 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FOUNTAIN,fountainParts,drawFountain,groundAt,traceFountainCollision,surfaceBelowBall} from '../src/world.js';
+import {FOUNTAIN,FOUNTAIN_TIERS,FOUNTAIN_SOLID_TOP,fountainParts,drawFountain,groundAt,traceFountainCollision,surfaceBelowBall} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 test('plaza fountain water, stone rim and jets use shared coordinates',()=>{
  const {x,z,waterY}=FOUNTAIN;
  assert.equal(groundAt(x+6,z).type,'water');
  assert.equal(groundAt(x+6,z).y,waterY);
  assert.equal(groundAt(x+15,z).type,'paving');
- const parts=[],jets=[],water=[];
- drawFountain({setMaterial(){},box(...p){parts.push(p)},ball(...p){jets.push(p)},field(...p){water.push(p)}},0.2);
- assert.equal(parts.length,fountainParts().length);assert.ok(jets.length>20);assert.equal(water.length,1);
+ const capture=t=>{const parts=[],jets=[],water=[],streams=[],meshes=[];
+  drawFountain({setMaterial(){},box(...p){parts.push(p)},ball(...p){jets.push(p)},field(...p){water.push(p)},pole(...p){streams.push(p)},add(...p){meshes.push(p)}},t);
+  return {parts,jets,water,streams,meshes};
+ };
+ const first=capture(.2),later=capture(.7);
+ assert.equal(FOUNTAIN_TIERS.length,2);assert.ok(first.jets.length>20);assert.equal(first.water.length,1);
+ assert.ok(first.streams.length>=56);assert.ok(first.meshes.some(p=>p[0]==='baseball'));
+ assert.notDeepEqual(first.jets,later.jets);assert.notDeepEqual(first.streams,later.streams);
+ assert.ok(FOUNTAIN_SOLID_TOP>16);
+ assert.ok(fountainParts().length>20);
  const hit=traceFountainCollision({x,y:1.5,z:z-20},{x,y:1.5,z:z-4});
  assert.ok(hit);assert.equal(hit.kind,'fountain-stone');assert.equal(hit.normal.z,-1);
- assert.equal(surfaceBelowBall({x,y:5,z}).y,3.3);
+ assert.ok(surfaceBelowBall({x,y:20,z}).y>16);
+ const upper=traceFountainCollision({x,y:20,z},{x,y:13,z});assert.ok(upper);assert.equal(upper.kind,'fountain-stone');assert.equal(upper.normal.y,1);
+ assert.equal(traceFountainCollision({x,y:22,z:z-20},{x,y:22,z:z+20}),null);
+ assert.equal(surfaceBelowBall({x:x+6,y:4,z}).type,'water');
 });
 test('ball landing in fountain water loses speed and does not earn a roof discovery',()=>{
  const g=Object.create(BaseballGame.prototype);g.state='flight';g.simElapsed=0;g.audio={land(){}};g.finishShot=()=>{};
