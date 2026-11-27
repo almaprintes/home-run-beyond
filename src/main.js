@@ -1,5 +1,5 @@
-import {BaseballGame} from './game.js?v=0.77.70';
-import {installWorldStudio} from './world-studio.js?v=0.77.70';
+import {BaseballGame} from './game.js?v=0.77.71';
+import {installWorldStudio} from './world-studio.js?v=0.77.71';
 const game=new BaseballGame();
 installWorldStudio(game);
 // Exponer diagnóstico en ?debug=1 para pruebas, sin contaminar el modo jugador.
