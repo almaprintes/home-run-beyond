@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {pitcherBallPosition,drawActors} from '../src/world.js';
 import {BatterSprites} from '../src/sprites.js';
+import {pitchBallSpin} from '../src/ball-spin.js';
 import {initialSave} from '../src/logic.js';
 
 test('pelota del pitcher comparte posición 3D entre el mundo y el overlay equipado',()=>{
@@ -74,7 +75,7 @@ test('la misma función de dibujo sirve para lanzamiento y batazo',()=>{
  sprites.drawEquippedBall(ctx,game,28,{angle:.4},[0,0,0],[0,0,1]);
  assert.equal(ctx.last[3],28);
  const src=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
- assert.match(src,/this\.drawEquippedBall\(ctx,game,size,null,camera,target\)/);
+ assert.match(src,/this\.drawEquippedBall\(ctx,game,size,pitchBallSpin\(game\.pitchElapsed\),camera,target\)/);
  assert.match(src,/this\.drawEquippedBall\(ctx,game,departureSize,b\.spin,camera,target\)/);
 });
 
@@ -98,4 +99,17 @@ test('cabecera de tienda, botón X, saldo y pestañas permanecen fuera del scrol
  assert.match(css,/overscroll-behavior-y:contain/);
  assert.match(game,/el\('shop-scroll'\)\.scrollTop=0/);
  assert.match(game,/const container=el\('shop-items'\);container\.replaceChildren\(\)/);
+});
+
+test('pitch overlay sends the actual moving spherical orientation and freezes it on hold',()=>{
+ const old=globalThis.window;globalThis.window={devicePixelRatio:1,innerWidth:430,innerHeight:930};
+ try{
+  const ctx={setTransform(){},clearRect(){},save(){},restore(){},translate(){},rotate(){},drawImage(){}};
+  const sprites=new BatterSprites({clientWidth:430,clientHeight:930,getContext(){return ctx}});
+  sprites.ballLoaded=true;sprites.ready=false;const spins=[];sprites.drawEquippedBall=(ctx,g,size,spin)=>spins.push(spin);
+  const g={state:'pitching',pitchElapsed:.4,pitchDuration:1.52,camera:[-6.7,7.5,-20.5],target:[-.8,3.5,12],save:initialSave(),ball:null};
+  sprites.draw(g,62);g.pitchElapsed=.6;sprites.draw(g,62);g.state='aiming';sprites.draw(g,62);g.state='swinging';sprites.draw(g,62);
+  assert.equal(spins.length,4);assert.notDeepEqual(spins[0].orientation,spins[1].orientation);
+  assert.deepEqual(spins[1],pitchBallSpin(.6));assert.deepEqual(spins[1],spins[2]);assert.deepEqual(spins[2],spins[3]);
+ }finally{if(old===undefined)delete globalThis.window;else globalThis.window=old}
 });

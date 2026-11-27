@@ -1,12 +1,13 @@
-import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.77';
-import {drawPerfectFocus} from './perfect-focus.js?v=0.77.77';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.77';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.77';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.77';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.77';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.77';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.77';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.77';
+import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.78';
+import {pitchBallSpin} from './ball-spin.js?v=0.77.78';
+import {drawPerfectFocus} from './perfect-focus.js?v=0.77.78';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.78';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.78';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.78';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.78';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.78';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.78';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.78';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -25,7 +26,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.77';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.78';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -465,7 +466,7 @@ export class BatterSprites{
    drawSpinningBaseball(ctx,image,size,spin,camera,target,this.ballSurfaceCache);
    return;
   }
-  // Only the pre-hit pitch has no accumulated spin.
+  // Other themed balls use their existing sprite rotation fallback.
   // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
   if(item.design!=='baseball'&&item.id!=='nieve'&&item.id!=='billar8')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
@@ -583,7 +584,7 @@ export class BatterSprites{
     const projected=edge?Math.hypot(edge.x-p.x,edge.y-p.y):12;
     const size=Math.max(11,Math.min(36,ballSpriteDiameter(projected,width)*.78));
     ctx.save();ctx.translate(p.x,p.y);
-    this.drawEquippedBall(ctx,game,size,null,camera,target);
+    this.drawEquippedBall(ctx,game,size,pitchBallSpin(game.pitchElapsed),camera,target);
     ctx.restore();
     drawPerfectFocus(ctx,p.x,p.y,size,game);
    }

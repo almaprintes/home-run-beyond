@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {spinTarget,initBallSpin,onSpinImpact,advanceBallSpin} from '../src/ball-spin.js';
+import {pitchBallSpin,PITCH_SPIN_RATE,rotateQuaternion,spinTarget,initBallSpin,onSpinImpact,advanceBallSpin} from '../src/ball-spin.js';
 import {BatterSprites} from '../src/sprites.js';
 
 const ball=(vz=100,vx=0)=>({x:0,y:4,z:70,vx,vy:12,vz});
@@ -91,4 +91,13 @@ test('el juego actualiza el giro una vez por fotograma, y la alternativa 3D tamb
  assert.match(game,/onSpinImpact\(b,n,mat\)/);
  assert.match(game,/integratePhysicalSpin\(b,prev,dt,touching/);
  assert.match(world,/drawBaseball\(r,b\.x,b\.y,b\.z,b\.spin\?\.angle\|\|0\)/);
+});
+
+test('inbound pitch spins on a tilted world axis, independent of FPS and paused when the pitch clock stops',()=>{
+ const a=pitchBallSpin(.3),b=pitchBallSpin(.6),c=pitchBallSpin(.6);
+ assert.notDeepEqual(a.orientation,b.orientation);assert.deepEqual(b,c);
+ assert.ok(Math.abs(Math.hypot(...b.orientation)-1)<1e-12);
+ assert.deepEqual(pitchBallSpin(-.6).orientation,[0,0,0,1]);
+ assert.ok(Math.abs(rotateQuaternion(a.orientation,[0,1,0])[2])>.01);
+ assert.ok(PITCH_SPIN_RATE*1.52/(2*Math.PI)>2);
 });

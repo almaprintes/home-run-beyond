@@ -153,3 +153,13 @@ export function advanceVisualSpin(ball,frameDt){
  spin.visualOrientation=holder.orientation;
  return spin;
 }
+
+// A deterministic tilted-axis pitch spin, sampled from the same clock as
+// the inbound ball position. Perfect Focus slows both; holding freezes both.
+export const PITCH_SPIN_RATE=11.8;
+export function pitchBallSpin(elapsed=0){
+ const t=Math.max(0,Number.isFinite(elapsed)?elapsed:0),angle=t*PITCH_SPIN_RATE;
+ const spin={angle:angle%TAU,orientation:[0,0,0,1],rate:PITCH_SPIN_RATE};
+ spinQuaternion(spin,[.92,.34,-.19],angle);
+ return spin;
+}

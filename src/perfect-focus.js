@@ -1,5 +1,5 @@
-import {pitchTimingDeltaMs,timingQuality,batSpeedMs,clamp} from './logic.js?v=0.77.77';
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.77';
+import {pitchTimingDeltaMs,timingQuality,batSpeedMs,clamp} from './logic.js?v=0.77.78';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.78';
 
 // One clock for rendering, timing assistance and event-time sampling.
 export const FOCUS_RATE=.55;

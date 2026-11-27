@@ -1,20 +1,20 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.77';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.77';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.77';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.77';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.77';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.77';
-import {GameAudio} from './audio.js?v=0.77.77';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.77';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.77';
-import {BatterSprites} from './sprites.js?v=0.77.77';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.77';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.77';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.77';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.77';
-import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.77';
-import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.77';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.77';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.78';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.78';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.78';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.78';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.78';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.78';
+import {GameAudio} from './audio.js?v=0.77.78';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.78';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.78';
+import {BatterSprites} from './sprites.js?v=0.77.78';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.78';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.78';
+import {pitchBallSpin,initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.78';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.78';
+import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.78';
+import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.78';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.78';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -553,7 +553,7 @@ export class BaseballGame{
   el('reward-note').textContent='SIN CONTACTO · SIN MONEDAS';
   this.showDiscoveries([]);this.drawUI();
  }
- launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.launchView=true;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
+ launch(){const hit=this.pendingShot;this.pitcherReaction=pitcherReactionPlan(hit);this.pitcherReactionStartedAt=this.clock||0;this.state='flight';this.launchView=true;this.launchCamera={camera:[...(this.camera||[-6.7,7.5,-20.5])],target:[...(this.target||[-.8,3.5,12])]};el('run-info').hidden=false;this.simElapsed=0;this.liveSeconds=0;this.shake=this.save?.reducedEffects?0:hit.quality==='perfect'?.32:hit.quality==='excellent'?.18:.08;const b={x:-4.5+(hit.contactOffsetMm||0)/1000,y:2.5,z:-4.7,vx:hit.vx,vy:hit.vy,vz:hit.vz,bounces:0,freeze:0,lastCollision:'',impactAge:99,impactMaterial:'grass',maxZ:0,encounters:{road:false,roof:false,water:false,swamp:false}};this.ball=b;initBallSpin(b);const incomingSpin=pitchBallSpin(this.pitchElapsed);b.spin.orientation=incomingSpin.orientation.slice();b.spin.visualOrientation=incomingSpin.orientation.slice();b.spin.angle=incomingSpin.angle;this.gullHits??=new Map();this.distance=0;this.audio.hit(hit.quality);el('impact').textContent=qualityNames[hit.quality];el('impact').style.color=hit.quality==='perfect'?'#ffe38c':'#ffffff';if(this.save?.vibration!==false&&typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(hit.quality==='perfect'?[30,20,50]:25);}
 
  showEncounterReward(kind,count){
   if(typeof document==='undefined')return;
