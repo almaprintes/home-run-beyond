@@ -338,11 +338,11 @@ test('Fútbol árbitro has five approved helmet-free referee sprites and grounde
  assert.equal(hashes.size,5);
 });
 
-test('llave inglesa, sartén y guitarra conservan el arte gráfico real en ambos catálogos',()=>{
- const hashes={llave:'99ab2e8698d9646829b361b0cebbec957cd0590c',sarten:'b2e707ccfd6de2de47506cf98c7559d4f7b794a4',guitarra:'5cae050b7ae7459c5b7aa8c4cddc947a3978a13e'};
+test('llave inglesa, sartén, guitarra y micrófono conservan el arte gráfico real en ambos catálogos',()=>{
+ const hashes={llave:'99ab2e8698d9646829b361b0cebbec957cd0590c',sarten:'b2e707ccfd6de2de47506cf98c7559d4f7b794a4',guitarra:'5cae050b7ae7459c5b7aa8c4cddc947a3978a13e',microfono:'ade2945f71f38f961e3c1a704e9a64f9d76688a5'};
  for(const [id,hash] of Object.entries(hashes)){
   const uri=bakedAssetUrl('bat',id);
-  assert.ok(uri.endsWith('?v=0.77.76'));
+  assert.ok(uri.endsWith('?v=0.77.77'));
   const bytes=readFileSync(abs(uri.split('?')[0]));
   assert.ok(bytes.length>9000);
   assert.deepEqual(bytes,readFileSync(abs('./assets/approved/bats/'+id+'.webp')));
@@ -351,7 +351,7 @@ test('llave inglesa, sartén y guitarra conservan el arte gráfico real en ambos
 });
 
 test('epic weapons grow around the same grip in every batting pose',()=>{
- const factors={llave:1.22,sarten:1.28,guitarra:1.32};
+ const factors={llave:1.22,sarten:1.28,guitarra:1.32,microfono:1.28};
  for(const outfit of OUTFIT_CATALOG)for(const pose of OUTFIT_POSES){
   const base=weaponPlacement(pose,100,200,300,400,outfit.id);
   for(const [id,factor] of Object.entries(factors)){
