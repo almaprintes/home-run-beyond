@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.75';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.75';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.76';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.76';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -102,7 +102,8 @@ export function batSpeedMs(){return 165}
 // El indicador y la calidad consultan exactamente el mismo reloj de contacto.
 export function pitchTimingDeltaMs(elapsed,duration){return (elapsed+batSpeedMs()/1000-.91*duration)*1000}
 export function pitchTimingGuide(elapsed,duration,precision=0){
- const deltaMs=pitchTimingDeltaMs(elapsed,duration),quality=timingQuality(deltaMs);
+ precision=clamp(precision||0,0,.25);
+ const deltaMs=pitchTimingDeltaMs(elapsed,duration),quality=timingQuality(deltaMs,{precision});
  const center=.91*duration-batSpeedMs()/1000;
  return {deltaMs,quality,phase:quality==='perfect'?'perfect':deltaMs>0?'late':quality==='excellent'?'ready':'wait',progress:clamp(elapsed/duration,0,1),start:clamp((center-.048*(1+precision))/duration,0,1),end:clamp((center+.048*(1+precision))/duration,0,1)};
 }

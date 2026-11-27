@@ -1,19 +1,20 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.75';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.75';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.75';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.75';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.75';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.75';
-import {GameAudio} from './audio.js?v=0.77.75';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.75';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.75';
-import {BatterSprites} from './sprites.js?v=0.77.75';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.75';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.75';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.75';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.75';
-import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.75';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.75';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.76';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.76';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.76';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.76';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.76';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.76';
+import {GameAudio} from './audio.js?v=0.77.76';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.76';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.76';
+import {BatterSprites} from './sprites.js?v=0.77.76';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.76';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.76';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.76';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.76';
+import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.76';
+import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.76';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.76';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -455,7 +456,7 @@ export class BaseballGame{
   el('app').classList.remove('resting','aiming');el('again').hidden=true;
   el('pitch-surface').hidden=false;el('aim-feedback').hidden=true;
   el('pitch-touch-label').textContent='MANTÉN PULSADO PARA BATEAR';
-  el('region').hidden=false;this.pitch=0;this.swing=0;this.pitchElapsed=-PITCH_WINDUP_SECONDS;
+  el('region').hidden=false;this.pitch=0;this.swing=0;this.pitchElapsed=-PITCH_WINDUP_SECONDS;this.focusSoundPlayed=false;
   this.ball=null;this.distance=0;this.pendingShot=null;
   this.updatePitchGuide();
   el('result').hidden=true;el('record-badge').hidden=true;
@@ -479,12 +480,13 @@ export class BaseballGame{
   const guide=pitchTimingGuide(this.pitchElapsed,this.pitchDuration,equipmentBonuses(this.save).precision);
   label.textContent=this.pitchElapsed<0?'ESPERA · PREPARANDO LANZAMIENTO':{wait:'ESPERA · OBSERVA LA PELOTA',ready:'¡PREPÁRATE!',perfect:'¡AHORA! MANTÉN PULSADO',late:'¡BATEA!'}[guide.phase];
   label.setAttribute?.('data-timing',guide.phase);
-  for(const [key,value] of [['--pitch-progress',guide.progress],['--pitch-perfect-start',guide.start],['--pitch-perfect-end',guide.end]])label.style?.setProperty?.(key,(value*100).toFixed(3)+'%');
  }
  freezeSwing(auto=false,time){
   if(this.state!=='pitching'||this.strikeCalled||this.pitchElapsed<0)return;
   const extra=this.inputRemainder(time);
-  const deltaMs=pitchTimingDeltaMs(this.pitchElapsed+extra,this.pitchDuration);
+  const sampled=advanceFocusTime(this.pitchElapsed,extra,this.pitchDuration,equipmentBonuses(this.save).precision,focusSlowEnabled(this));
+  this.pitchElapsed=sampled;this.pitch=clamp(sampled/this.pitchDuration,0,1);
+  const deltaMs=pitchTimingDeltaMs(sampled,this.pitchDuration);
   this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs,equipmentBonuses(this.save));
   this.pendingShot.deltaMs=deltaMs;
   this.state='aiming';this.aimElapsed=-extra;this.aimAngle=preciseAim(0,this.save.levels.swing,this.save.levels.power,deltaMs,equipmentBonuses(this.save).precision);this.swing=.42;
@@ -521,7 +523,12 @@ export class BaseballGame{
  // La bola sin contacto cruza el home y continúa detrás del bateador.
  advancePitch(dt){
   if(this.state!=='pitching'&&this.state!=='whiff')return;
-  this.pitchElapsed+=Math.max(0,dt);
+  const prev=this.pitchElapsed,precision=equipmentBonuses(this.save).precision;
+  this.pitchElapsed=advanceFocusTime(prev,dt,this.pitchDuration,precision,this.state==='pitching'&&focusSlowEnabled(this));
+  const {start}=focusWindow(this.pitchDuration,precision);
+  if(this.state==='pitching'&&focusEnabled(this)&&!this.focusSoundPlayed&&prev<start&&this.pitchElapsed>=start){
+   this.focusSoundPlayed=true;this.audio?.tone?.(1050,.055,'sine',.035,0,-180);
+  }
   const progress=this.pitchElapsed/this.pitchDuration;
   this.pitch=clamp(progress,0,1);
   if(progress>=1.08&&!this.strikeCalled){

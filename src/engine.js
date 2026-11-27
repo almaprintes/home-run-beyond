@@ -1,4 +1,5 @@
-import {pitcherPose} from './pitcher.js?v=0.77.75';
+import {drawPerfectFocus} from './perfect-focus.js?v=0.77.76';
+import {pitcherPose} from './pitcher.js?v=0.77.76';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;
@@ -405,7 +406,7 @@ export class CanvasRenderer{
  c.strokeStyle='#fff4da';c.lineWidth=2.5;c.beginPath();c.moveTo(w*.5,h*.75);c.lineTo(w*.73,h*.62);c.moveTo(w*.5,h*.75);c.lineTo(w*.27,h*.62);c.stroke();
  c.fillStyle='#f8ead9';c.beginPath();c.ellipse(w*.5,h*.6,w*.055,h*.016,0,0,Math.PI*2);c.fill();
  if(!(g?.sprites?.images?.pitcher&&g?.sprites?.ctx))this.person(w*.50,h*.585,.39,false,g?.pitch||0,pitcherPose(g));this.person(w*.74,h*.82,.71,true,g?.swing||0);
- if(g?.state==='pitching'&&!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){let p=g.pitch||0,ballx=lerp(w*.50,w*.72,p),bally=lerp(h*.48,h*.72,p);c.fillStyle=g.ballStyleColor||'#fff';c.beginPath();c.arc(ballx,bally,Math.max(5,p*9),0,Math.PI*2);c.fill();}
+ if(g?.state==='pitching'&&g.pitchElapsed>0&&!(g?.sprites?.ballLoaded&&g?.sprites?.ctx)){let p=g.pitch||0,ballx=lerp(w*.50,w*.72,p),bally=lerp(h*.48,h*.72,p),r=Math.max(5,p*9);c.fillStyle=g.ballStyleColor||'#fff';c.beginPath();c.arc(ballx,bally,r,0,Math.PI*2);c.fill();drawPerfectFocus(c,ballx,bally,r*2,g);}
  }
  flightScene(c,w,h,g){const b=g.ball||{z:0,x:0,y:0};const ratio=b.z/1300;
  this.poly([[0,h*.42],[w,h*.42],[w,h],[0,h]],'#6aaf84');
