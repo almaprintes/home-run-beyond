@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {advanceFocusTime,focusWindow,focusCue,focusSlowEnabled,drawPerfectFocus,FOCUS_RATE} from '../src/perfect-focus.js';
-import {pitchTimingDeltaMs,timingQuality,initialSave} from '../src/logic.js';
+import {pitchTimingDeltaMs,timingQuality,initialSave,calculateShot,perfectHalfMs,pitchTimingGuide} from '../src/logic.js';
 import {BaseballGame} from '../src/game.js';
 test('slow motion crosses boundaries exactly, is independent of FPS and never freezes the pitch',()=>{
  for(const precision of [0,.15,.25]){
@@ -48,4 +48,22 @@ test('input sampling uses the same slowed clock as the visible ball; whole scree
  assert.match(css,/\.pitch-surface\{[^}]*inset:0;[^}]*pointer-events:auto/);
  assert.match(css,/\.pitch-touch-label\[data-timing\]\{display:none;\}/);
  assert.doesNotMatch(css,/--pitch-progress/);
+});
+
+test('Swing and outfit precision widen exactly the same timing window in scoring, cue and slowed clock',()=>{
+ for(const level of [1,2,10,50,100,1000,10000]){
+  const save=initialSave();save.levels.swing=level;
+  for(const precision of [0,.25]){
+   if(precision){save.ownedOutfits.push('robot');save.equippedOutfit='robot'}
+   const w=focusWindow(1.52,precision,level);
+   assert.ok(Math.abs(w.half*1000-perfectHalfMs(level,precision))<1e-9);
+   for(let ms=-160;ms<=160;ms++){
+    const t=w.center+ms/1000,g={state:'pitching',pitchElapsed:t,pitchDuration:1.52,save};
+    const q=calculateShot(save.levels,pitchTimingDeltaMs(t,1.52),{precision}).quality;
+    assert.equal(!!focusCue(g)?.perfect,q==='perfect');
+    assert.equal(pitchTimingGuide(t,1.52,precision,level).quality,q);
+   }
+   assert.ok(Math.abs(advanceFocusTime(w.start,2*w.half/FOCUS_RATE,1.52,precision,true,level)-w.end)<1e-9);
+  }
+ }
 });

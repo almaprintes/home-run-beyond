@@ -1,28 +1,28 @@
-import {pitchTimingDeltaMs,timingQuality,batSpeedMs,clamp} from './logic.js?v=0.77.79';
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.79';
+import {pitchTimingDeltaMs,timingQuality,batSpeedMs,clamp,perfectHalfMs} from './logic.js?v=0.77.80';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.80';
 
 // One clock for rendering, timing assistance and event-time sampling.
 export const FOCUS_RATE=.55;
-export function focusWindow(duration=1.52,precision=0){
- const center=.91*duration-batSpeedMs()/1000,half=.048*(1+clamp(precision||0,0,.25));
+export function focusWindow(duration=1.52,precision=0,swingLevel=1){
+ const center=.91*duration-batSpeedMs()/1000,half=perfectHalfMs(swingLevel,precision)/1000;
  return {center,half,start:center-half,end:center+half};
 }
 export function focusEnabled(game){return game?.save?.showHints!==false}
 export function focusSlowEnabled(game){return focusEnabled(game)&&!game?.save?.reducedEffects}
-export function advanceFocusTime(elapsed,dt,duration=1.52,precision=0,slow=true){
+export function advanceFocusTime(elapsed,dt,duration=1.52,precision=0,slow=true,swingLevel=1){
  let t=elapsed,remaining=Math.max(0,dt);
  if(!slow)return t+remaining;
- const {start,end}=focusWindow(duration,precision);
+ const {start,end}=focusWindow(duration,precision,swingLevel);
  if(t<start){const step=Math.min(remaining,start-t);t+=step;remaining-=step;}
  if(t<end&&remaining>0){const step=Math.min(remaining,(end-t)/FOCUS_RATE);t+=step*FOCUS_RATE;remaining-=step;}
  return t+remaining;
 }
 export function focusCue(game){
  if(game?.state!=='pitching'||game.strikeCalled||!focusEnabled(game)||!(game.pitchElapsed>0))return null;
- const duration=game.pitchDuration||1.52,precision=equipmentBonuses(game.save).precision;
- const {start,end,half}=focusWindow(duration,precision),t=game.pitchElapsed;
+ const duration=game.pitchDuration||1.52,precision=equipmentBonuses(game.save).precision,swingLevel=game.save?.levels?.swing||1;
+ const {start,end,half}=focusWindow(duration,precision,swingLevel),t=game.pitchElapsed;
  if(t<start-.38||t>end)return null;
- const quality=timingQuality(pitchTimingDeltaMs(t,duration),{precision});
+ const quality=timingQuality(pitchTimingDeltaMs(t,duration),{precision,swingLevel});
  const perfect=quality==='perfect',approach=clamp((t-(start-.38))/.38,0,1);
  return {perfect,approach,phase:perfect?clamp((t-start)/(2*half),0,1):0};
 }

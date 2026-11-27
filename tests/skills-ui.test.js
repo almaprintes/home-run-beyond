@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BaseballGame} from '../src/game.js';
-import {initialSave,upgradeCost,formatInt} from '../src/logic.js';
+import {initialSave,upgradeCost,formatInt,swingPerfectHalfMs} from '../src/logic.js';
 
 test('las tres habilidades se pueden comprar durante el resultado',()=>{
   for (const key of ['power','swing','multiplier']) {
@@ -142,4 +142,17 @@ test('Multiplicador ×3 muestra máximo y nunca cobra ni ofrece anuncio',()=>{
   if(previous===undefined)delete globalThis.document;else globalThis.document=previous;
   if(prevWindow===undefined)delete globalThis.window;else globalThis.window=prevWindow;
  }
+});
+
+test('Swing card displays the base perfect window and next level, preserving purchased levels',()=>{
+ const previous=globalThis.document,nodes=new Map();
+ globalThis.document={getElementById(id){if(!nodes.has(id))nodes.set(id,{textContent:'',classList:{toggle(){}},setAttribute(k,v){this[k]=v}});return nodes.get(id)}};
+ try{
+  const g=Object.create(BaseballGame.prototype);g.save=initialSave();g.save.levels.swing=10;g.save.coins=100000;
+  const display=n=>(2*swingPerfectHalfMs(n)).toFixed(1).replace('.',',')+' ms';
+  g.drawUI();
+  assert.equal(nodes.get('swing-current').textContent,display(10));
+  assert.equal(nodes.get('swing-next').textContent,'SIG. '+display(11));
+  assert.match(nodes.get('up-swing')['aria-label'],/ciclo de brújula/);
+ }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous}
 });

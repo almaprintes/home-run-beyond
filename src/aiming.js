@@ -1,5 +1,5 @@
 export const SWEEP_MAX_RAD=52*Math.PI/180;
-export function aimSweepPeriod(swingLevel=1){return 2.1+Math.min(1.1,Math.log2(Math.max(1,swingLevel))*.13)}
+export function aimSweepPeriod(swingLevel=1){return 2.1+Math.min(1.1,Math.log2(Math.max(1,Number(swingLevel)||1))*.13)}
 export function aimBarPosition(elapsedSeconds,swingLevel=1){
  if(!Number.isFinite(elapsedSeconds))return -1;
  const phase=((elapsedSeconds/aimSweepPeriod(swingLevel))%1+1)%1;

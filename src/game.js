@@ -1,20 +1,20 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.79';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.79';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.79';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.79';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.79';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.79';
-import {GameAudio} from './audio.js?v=0.77.79';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.79';
-import {preciseAim,redirectShot,aimDegrees,aimCompassRotation,aimDirection} from './aiming.js?v=0.77.79';
-import {BatterSprites} from './sprites.js?v=0.77.79';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.79';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.79';
-import {pitchBallSpin,initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.79';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.79';
-import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.79';
-import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.79';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.79';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.80';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.80';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.80';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.80';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,swingPerfectHalfMs,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.80';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.80';
+import {GameAudio} from './audio.js?v=0.77.80';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.80';
+import {preciseAim,redirectShot,aimDegrees,aimCompassRotation,aimDirection,aimSweepPeriod} from './aiming.js?v=0.77.80';
+import {BatterSprites} from './sprites.js?v=0.77.80';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.80';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.80';
+import {pitchBallSpin,initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.80';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.80';
+import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.80';
+import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.80';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.80';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -375,7 +375,7 @@ export class BaseballGame{
   if(upgrade(this.save,key)){
    this.audio.cash();this.persist();this.drawUI();
    if(bonusCredits(this.save)>0)this.toast('🎁 ¡BONUS EXTRA DESBLOQUEADO!');
-   else this.toast({power:'¡MÁS POTENCIA!',swing:'¡MÁS CONTROL DE DIRECCIÓN!',multiplier:'¡MÁS MONEDAS POR METRO!'}[key]);
+   else this.toast({power:'¡MÁS POTENCIA!',swing:'¡MÁS PRECISIÓN Y CONTROL!',multiplier:'¡MÁS MONEDAS POR METRO!'}[key]);
   }else this.toast('TE FALTAN MONEDAS');
  }
  applyBonus(key){if(claimBonus(this.save,key)){this.audio.cash();this.persist();this.drawUI();this.toast('🎁 NIVEL EXTRA POR ANUNCIO')}}
@@ -401,6 +401,12 @@ export class BaseballGame{
    const lvl=this.save.levels[key],maxed=lvl>=skillMaxLevel(key),cost=upgradeCost(lvl,key),affordable=!maxed&&cost<=this.save.coins;
    const button=el('up-'+key),free=!maxed&&bonus&&hasAds&&!this.rewardPending;
    el('level-'+key).textContent='NIV. '+formatInt(lvl);
+   if(key==='swing'){
+    const current=2*swingPerfectHalfMs(lvl),next=2*swingPerfectHalfMs(Math.min(lvl+1,skillMaxLevel(key)));
+    const display=n=>n.toFixed(1).replace('.',',')+' ms';
+    if(el('swing-current'))el('swing-current').textContent=display(current);
+    if(el('swing-next'))el('swing-next').textContent=maxed?'MÁXIMO':'SIG. '+display(next);
+   }
    if(key==='multiplier'){
     // Mismo cálculo que se utiliza al pagar monedas tras el batazo.
     const current=coinMultiplier(lvl),upcoming=coinMultiplier(lvl+1);
@@ -415,7 +421,8 @@ export class BaseballGame{
    button.classList.toggle('is-locked',maxed||(!free&&!affordable));
    button.disabled=maxed||this.rewardPending||(!free&&!affordable);
    const multiplierInfo=key==='multiplier'?', multiplicador actual por '+coinMultiplier(lvl).toFixed(2)+(maxed?', máximo alcanzado':', siguiente por '+coinMultiplier(lvl+1).toFixed(2)):'';
-   button.setAttribute('aria-label',key+' nivel '+lvl+multiplierInfo+', '+(maxed?'máximo alcanzado':free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
+   const swingInfo=key==='swing'?', ventana perfecta base '+(2*swingPerfectHalfMs(lvl)).toFixed(1)+' ms, ciclo de brújula '+aimSweepPeriod(lvl).toFixed(2)+' s':'';
+   button.setAttribute('aria-label',key+' nivel '+lvl+multiplierInfo+swingInfo+', '+(maxed?'máximo alcanzado':free?'mejora extra con anuncio':affordable?'mejorar por '+cost+' monedas':'faltan monedas'));
   }
  }
  clearTransientToast(){
@@ -477,14 +484,14 @@ export class BaseballGame{
    if(this.state==='pitching')label.textContent=this.strikeCalled?'¡STRIKE!':'MANTÉN PULSADO PARA BATEAR';
    return;
   }
-  const guide=pitchTimingGuide(this.pitchElapsed,this.pitchDuration,equipmentBonuses(this.save).precision);
+  const guide=pitchTimingGuide(this.pitchElapsed,this.pitchDuration,equipmentBonuses(this.save).precision,this.save?.levels?.swing||1);
   label.textContent=this.pitchElapsed<0?'ESPERA · PREPARANDO LANZAMIENTO':{wait:'ESPERA · OBSERVA LA PELOTA',ready:'¡PREPÁRATE!',perfect:'¡AHORA! MANTÉN PULSADO',late:'¡BATEA!'}[guide.phase];
   label.setAttribute?.('data-timing',guide.phase);
  }
  freezeSwing(auto=false,time){
   if(this.state!=='pitching'||this.strikeCalled||this.pitchElapsed<0)return;
   const extra=this.inputRemainder(time);
-  const sampled=advanceFocusTime(this.pitchElapsed,extra,this.pitchDuration,equipmentBonuses(this.save).precision,focusSlowEnabled(this));
+  const sampled=advanceFocusTime(this.pitchElapsed,extra,this.pitchDuration,equipmentBonuses(this.save).precision,focusSlowEnabled(this),this.save?.levels?.swing||1);
   this.pitchElapsed=sampled;this.pitch=clamp(sampled/this.pitchDuration,0,1);
   const deltaMs=pitchTimingDeltaMs(sampled,this.pitchDuration);
   this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs,equipmentBonuses(this.save));
@@ -526,9 +533,9 @@ export class BaseballGame{
  // La bola sin contacto cruza el home y continúa detrás del bateador.
  advancePitch(dt){
   if(this.state!=='pitching'&&this.state!=='whiff')return;
-  const prev=this.pitchElapsed,precision=equipmentBonuses(this.save).precision;
-  this.pitchElapsed=advanceFocusTime(prev,dt,this.pitchDuration,precision,this.state==='pitching'&&focusSlowEnabled(this));
-  const {start}=focusWindow(this.pitchDuration,precision);
+  const prev=this.pitchElapsed,precision=equipmentBonuses(this.save).precision,swingLevel=this.save?.levels?.swing||1;
+  this.pitchElapsed=advanceFocusTime(prev,dt,this.pitchDuration,precision,this.state==='pitching'&&focusSlowEnabled(this),swingLevel);
+  const {start}=focusWindow(this.pitchDuration,precision,swingLevel);
   if(this.state==='pitching'&&focusEnabled(this)&&!this.focusSoundPlayed&&prev<start&&this.pitchElapsed>=start){
    this.focusSoundPlayed=true;this.audio?.tone?.(1050,.055,'sine',.035,0,-180);
   }

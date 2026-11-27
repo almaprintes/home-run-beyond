@@ -20,9 +20,9 @@ test('la aguja recorre todo el sector angular a velocidad constante',()=>{
  assert.equal(aimDegrees(0),'0°');
 });
 
-test('Swing slows the compass without granting a privileged direction',()=>{
+test('Swing slows the compass uniformly without privileging any heading',()=>{
  assert.ok(aimSweepPeriod(14)>aimSweepPeriod(1));
- assert.ok(aimSweepPeriod(10000)<=3.2);
+ assert.equal(aimSweepPeriod(10000),3.2);
  for(const level of [1,14,10000]){
   const period=aimSweepPeriod(level);
   for(let i=0;i<=104;i++){

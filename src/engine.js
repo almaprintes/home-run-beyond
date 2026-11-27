@@ -1,6 +1,6 @@
-import {pitchBallSpin} from './ball-spin.js?v=0.77.79';
-import {drawPerfectFocus} from './perfect-focus.js?v=0.77.79';
-import {pitcherPose} from './pitcher.js?v=0.77.79';
+import {pitchBallSpin} from './ball-spin.js?v=0.77.80';
+import {drawPerfectFocus} from './perfect-focus.js?v=0.77.80';
+import {pitcherPose} from './pitcher.js?v=0.77.80';
 // Motor 3D propio WebGL2: sin modelos, texturas, fuentes externas ni dependencias.
 const VERT=`#version 300 es
 precision highp float;

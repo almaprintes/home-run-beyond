@@ -1,5 +1,5 @@
-import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.79';
-import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.79';
+import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,equipmentBonuses} from './cosmetic-catalog.js?v=0.77.80';
+import {STARTER_DISCOVERIES,INITIAL_DISCOVERY_STATS,sanitizeDiscovery,isDiscovered} from './discoveries.js?v=0.77.80';
 export const SAVE_KEY='hrb-v1-progress';
 export const MAX_LEVEL=10000;
 export const MULTIPLIER_MAX_LEVEL=51;
@@ -88,8 +88,17 @@ export function claimBonus(save,key){
  if(!(key in save.levels)||save.levels[key]>=skillMaxLevel(key)||bonusCredits(save)<1)return false;
  save.levels[key]++;if(save.pendingLegacyBonuses>0)save.pendingLegacyBonuses--;else save.bonusClaims=(save.bonusClaims||0)+1;return true;
 }
+// Swing improves the perfect contact window, with diminishing returns.
+// Level 1 is identical to the previous timing; no changes to max shot power.
+export function swingPerfectHalfMs(level=1){
+ const n=clamp(Number(level)||1,1,MAX_LEVEL);
+ return 48*(1+.09*Math.log2(n));
+}
+export function perfectHalfMs(level=1,precision=0){
+ return swingPerfectHalfMs(level)*(1+clamp(Number(precision)||0,0,.25));
+}
 export function timingQuality(deltaMs,options={}){
- const ms=Math.abs(deltaMs)/(1+Math.max(0,Math.min(.25,options?.precision||0))),perfect=48,excellent=132,good=280;
+ const ms=Math.abs(deltaMs)/(1+Math.max(0,Math.min(.25,options?.precision||0))),perfect=swingPerfectHalfMs(options?.swingLevel),excellent=132,good=280;
  if(ms<=perfect)return 'perfect';
  if(ms<=excellent)return 'excellent';
  if(ms<=good)return 'good';
@@ -101,18 +110,19 @@ export const qualityFactor={perfect:1.24,excellent:1.06,good:.87,weak:.61,miss:.
 export function batSpeedMs(){return 165}
 // El indicador y la calidad consultan exactamente el mismo reloj de contacto.
 export function pitchTimingDeltaMs(elapsed,duration){return (elapsed+batSpeedMs()/1000-.91*duration)*1000}
-export function pitchTimingGuide(elapsed,duration,precision=0){
+export function pitchTimingGuide(elapsed,duration,precision=0,swingLevel=1){
  precision=clamp(precision||0,0,.25);
- const deltaMs=pitchTimingDeltaMs(elapsed,duration),quality=timingQuality(deltaMs,{precision});
- const center=.91*duration-batSpeedMs()/1000;
- return {deltaMs,quality,phase:quality==='perfect'?'perfect':deltaMs>0?'late':quality==='excellent'?'ready':'wait',progress:clamp(elapsed/duration,0,1),start:clamp((center-.048*(1+precision))/duration,0,1),end:clamp((center+.048*(1+precision))/duration,0,1)};
+ const deltaMs=pitchTimingDeltaMs(elapsed,duration),quality=timingQuality(deltaMs,{precision,swingLevel});
+ const center=.91*duration-batSpeedMs()/1000,half=perfectHalfMs(swingLevel,precision)/1000;
+ return {deltaMs,quality,phase:quality==='perfect'?'perfect':deltaMs>0?'late':quality==='excellent'?'ready':'wait',progress:clamp(elapsed/duration,0,1),start:clamp((center-half)/duration,0,1),end:clamp((center+half)/duration,0,1)};
 }
 export function speedForSkills(levels){return 24+3.5*Math.pow(levels.power,.68)}
 export function calculateShot(levels,timingMs,bonuses={}){
  const ms=Number.isFinite(timingMs)?timingMs:999;
  const precision=Math.max(0,Math.min(.25,bonuses.precision||0));
- const quality=timingQuality(ms,{precision}),factor=qualityFactor[quality],base=speedForSkills(levels)*(1+Math.max(0,Math.min(.10,bonuses.power||0)));
- const bounds={perfect:[0,48],excellent:[48,132],good:[132,280],weak:[280,490],miss:[490,999]};
+ const swingLevel=levels.swing||1,perfect=swingPerfectHalfMs(swingLevel);
+ const quality=timingQuality(ms,{precision,swingLevel}),factor=qualityFactor[quality],base=speedForSkills(levels)*(1+Math.max(0,Math.min(.10,bonuses.power||0)));
+ const bounds={perfect:[0,perfect],excellent:[perfect,132],good:[132,280],weak:[280,490],miss:[490,999]};
  const [lo,hi]=bounds[quality],error=clamp((Math.abs(ms)/(1+precision)-lo)/(hi-lo),0,1);
  const speed=base*factor*(1-.02*error*error);
  const angle=(34+(quality==='perfect'?5:quality==='excellent'?3:0)+1.8*clamp(ms/132,-1,1))*Math.PI/180;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {initialSave,sanitizeSave,upgradeCost,upgrade,settleShot,forwardDistance,timingQuality,calculateShot,batSpeedMs,claimBonus,rewardForMeters,coinMultiplier,coinRewardBreakdown} from '../src/logic.js';
+import {initialSave,sanitizeSave,upgradeCost,upgrade,settleShot,forwardDistance,swingPerfectHalfMs,timingQuality,calculateShot,batSpeedMs,claimBonus,rewardForMeters,coinMultiplier,coinRewardBreakdown} from '../src/logic.js';
 
 test('la partida migra reflejos a multiplicador conservando monedas, niveles, récords y cosméticos',()=>{
  const s=sanitizeSave({coins:2847,best:1730,shots:84,totalMeters:5000,levels:{power:49,swing:14,reflex:7},owned:['classic','nova'],equipped:'nova'});
@@ -23,11 +23,15 @@ test('los precios aumentan claramente a niveles altos y guardan saldo',()=>{
  assert.ok(upgradeCost(200,'power')>upgradeCost(150,'power'));
  assert.ok(upgradeCost(1,'multiplier')>upgradeCost(1,'swing'));
 });
-test('Swing no modifica fuerza, velocidad, retardo, calidad o pagos para un tiro idéntico',()=>{
+test('Swing widens perfect timing without raising maximum power or coin multiplier',()=>{
  const a={power:20,swing:1,multiplier:1},b={power:20,swing:1000,multiplier:1};
  assert.equal(batSpeedMs(1),batSpeedMs(100));
- assert.equal(timingQuality(95,1),timingQuality(95,100));
- assert.deepEqual(calculateShot(a,25),calculateShot(b,25));
+ assert.equal(swingPerfectHalfMs(1),48);
+ assert.equal(timingQuality(95,{swingLevel:1}),'excellent');
+ assert.equal(timingQuality(85,{swingLevel:1000}),'perfect');
+ assert.equal(calculateShot(a,70).quality,'excellent');
+ assert.equal(calculateShot(b,70).quality,'perfect');
+ assert.deepEqual(calculateShot(a,0),calculateShot(b,0));
  assert.equal(rewardForMeters(900,a),rewardForMeters(900,b));
 });
 test('Potencia es la única que modifica la física y el alcance del batazo',()=>{

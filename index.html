@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png?v=0.77.0"/>
 <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png?v=0.77.0"/>
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png?v=0.77.0"/>
-<link rel="stylesheet" href="./style.css?v=0.77.79"/>
+<link rel="stylesheet" href="./style.css?v=0.77.80"/>
 <title>Home Run Beyond ⚾</title>
 </head>
 <body>
@@ -42,7 +42,7 @@
         <div class="menu-stats"><span>RÉCORD <strong id="menu-best">0 m</strong></span><span>GOLPES <strong id="menu-shots">0</strong></span><span>REGIÓN <strong id="menu-region">ESTADIO</strong></span></div>
         <div class="menu-equipment" id="menu-equipment">🏏 Clásico · 👕 Rojo · ⚾ Blanca</div>
         <small>Sin registro · Partidas rápidas · Guardado local</small>
-        <small class="menu-version">VERSIÓN 0.77.79</small>
+        <small class="menu-version">VERSIÓN 0.77.80</small>
       </div>
     </div>
   </section>
@@ -74,7 +74,7 @@
       <circle class="compass-hub" cx="120" cy="92" r="7"/><circle class="compass-hub-core" cx="120" cy="92" r="3"/>
     </svg>
     <small>SUELTA EN EL RUMBO QUE QUIERAS</small>
-    <small class="aim-balance-hint">SWING · AGUJA MÁS LENTA</small>
+    <small class="aim-balance-hint">SWING · MÁS MARGEN DE PERFECTO Y AGUJA MÁS LENTA</small>
   </div>
 
   <div id="aim" class="layer aim" hidden><div class="aim-ring"><span>✦</span></div></div>
@@ -107,7 +107,7 @@
     <div class="upgrades-top"><div><strong>DESCANSO · MEJORA</strong><span id="upgrades-subtitle" aria-live="polite">Sube habilidades antes del siguiente batazo</span></div><button id="sound" aria-label="Activar o desactivar sonido" class="audio">♫</button></div>
     <div class="upgrade-grid">
       <button class="upgrade" id="up-power"><span class="upgrade-icon">💪</span><span class="upgrade-name">POTENCIA</span><span class="upgrade-level" id="level-power">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-power">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-power">80</span></span></span></button>
-      <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-swing">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-swing">85</span></span></span></button>
+      <button class="upgrade" id="up-swing"><span class="upgrade-icon">⚡</span><span class="upgrade-name">SWING</span><span class="upgrade-level" id="level-swing">NIV. 1</span><span class="upgrade-multiplier swing-window" aria-label="Swing: ventana perfecta base actual y siguiente nivel; también ralentiza la brújula"><strong id="swing-current">96,0 ms</strong><small id="swing-next">SIG. 104,6 ms</small></span><span class="upgrade-cost"><span class="upgrade-action" id="buy-label-swing">MEJORAR</span><span><span class="coin">✦</span> <span id="cost-swing">85</span></span></span></button>
       <button class="upgrade" id="up-multiplier"><span class="upgrade-icon">✦</span><span class="upgrade-name">MULTIPLICADOR</span><span class="upgrade-level" id="level-multiplier">NIV. 1</span>
       <span class="upgrade-multiplier" aria-label="Multiplicador actual y siguiente nivel">
         <strong id="multiplier-current">×1,00</strong><small id="multiplier-next">SIG. ×1,06</small>
@@ -194,7 +194,7 @@
         <button id="settings-reset" class="setting-action setting-danger">Restablecer todos los datos de este dispositivo</button>
         <p class="settings-explain">Sin registro. Monedas, mejoras y cosméticos solo en este dispositivo. Borrar datos es irreversible.</p>
       </div>
-      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.77.79</div>
+      <div class="foot-note">Home Run Beyond · CraftRace Studio · Versión 0.77.80</div>
     </div>
   </section>
   <section class="layer modal-shell" id="welcome" hidden>
@@ -210,6 +210,6 @@
   </section>
   <div id="quality" class="quality low"><span>CALIDAD</span> <strong id="fps">— FPS</strong></div>
 </div>
-<script type="module" src="./src/main.js?v=0.77.79"></script>
+<script type="module" src="./src/main.js?v=0.77.80"></script>
 </body>
 </html>
