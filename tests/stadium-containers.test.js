@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stadiumContainers,stadiumContainerParts,traceStadiumContainerCollision,
- surfaceBelowBall,drawWorld} from '../src/world.js';
+ surfaceBelowBall,drawWorld,stadiumContainersObscurePoint} from '../src/world.js';
 import {BaseballGame} from '../src/game.js';
 
 const R=1.45;
@@ -93,4 +93,33 @@ test('la pelota rebota de verdad en paredes y tapas, sin atravesar en un fotogra
   const outgoing={x:result.vx,y:result.vy,z:result.vz};
   assert.ok(dot(outgoing,velocity)<0,'la pelota no invirtió el movimiento: '+side);
  }
+});
+
+test('all 20 rotated containers occlude the ball and shadow only when actually between the camera and the point',()=>{
+ for(const c of stadiumContainers()){
+  for(const axis of ['x','z']){
+   const pt=(n,y)=>axis==='x'?fromLocal(c,n,y,0):fromLocal(c,0,y,n);
+   for(const sign of [-1,1]){
+    // Stay in the gap between neighbouring containers, not inside the next one.
+    const cam=pt(sign*10.3,4.2),behind=pt(-sign*12,4.2),front=pt(sign*10,4.2);
+    assert.equal(stadiumContainersObscurePoint(cam,behind),true,c.id+' '+axis+' '+sign);
+    assert.equal(stadiumContainersObscurePoint(cam,front),false,'front '+c.id);
+   }
+  }
+  assert.equal(stadiumContainersObscurePoint(fromLocal(c,0,25,0),fromLocal(c,0,12.1,0)),false);
+  assert.equal(stadiumContainersObscurePoint(fromLocal(c,0,25,0),fromLocal(c,0,4.2,0)),true);
+  assert.equal(stadiumContainersObscurePoint(fromLocal(c,-19,20,0),fromLocal(c,19,20,0)),false);
+ }
+ assert.equal(stadiumContainersObscurePoint([0,5,0],{x:0,y:5,z:30}),false);
+});
+test('opaque container parts draw in solid layer and fallback baseball is omitted behind them',()=>{
+ const c=stadiumContainers()[9],cam=fromLocal(c,0,4.2,-19),behind=fromLocal(c,0,4.2,12);
+ const calls=[],r={layer:'opaque',begin(){},setLayer(v){this.layer=v},setMaterial(){},field(){},ball(){},cone(){},pole(){},box(...args){calls.push([this.layer,'box',...args])},add(...args){calls.push([this.layer,'add',...args])}};
+ drawWorld(r,[cam.x,cam.y,cam.z],{state:'flight',clock:1,ball:behind});
+ const parts=calls.filter(a=>a[1]==='box'&&['#315b71','#e6a95c','#264259'].includes(a[8]));
+ assert.equal(parts.length,60);assert.ok(parts.every(a=>a[0]==='solid'));
+ assert.equal(calls.filter(a=>a[1]==='add'&&a[2]==='baseball'&&a[0]==='overlay').length,0);
+ calls.length=0;
+ drawWorld(r,[cam.x,cam.y,cam.z],{state:'flight',clock:1,ball:fromLocal(c,0,4.2,-10)});
+ assert.equal(calls.filter(a=>a[1]==='add'&&a[2]==='baseball'&&a[0]==='overlay').length,1);
 });

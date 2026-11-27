@@ -1,13 +1,13 @@
-import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.80';
-import {pitchBallSpin} from './ball-spin.js?v=0.77.80';
-import {drawPerfectFocus} from './perfect-focus.js?v=0.77.80';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.80';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.80';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.80';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.80';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.80';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.80';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.80';
+import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.81';
+import {pitchBallSpin} from './ball-spin.js?v=0.77.81';
+import {drawPerfectFocus} from './perfect-focus.js?v=0.77.81';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.81';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.81';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.81';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision,stadiumContainersObscurePoint} from './world.js?v=0.77.81';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.81';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.81';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.81';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -26,7 +26,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.80';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.81';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -613,7 +613,7 @@ export class BatterSprites{
     const visualY=support?ballGroundedScreenY(p.y,support.y,size,clearance,bounce,visibleRadius):p.y;
     const drawnY=departureSize===size?visualY:(support?ballGroundedScreenY(p.y,support.y,departureSize,clearance,bounce,visibleRadius):p.y);
     const shadow=projectToScreen(camera,target,[b.x,surface.y+.08,b.z],width,height,zoom);
-    if(shadow&&shadow.x>-80&&shadow.x<width+80&&shadow.y>-80&&shadow.y<height+80){
+    if(shadow&&!stadiumContainersObscurePoint(camera,{x:b.x,y:surface.y+.08,z:b.z})&&shadow.x>-80&&shadow.x<width+80&&shadow.y>-80&&shadow.y<height+80){
      const altitude=Math.max(0,b.y-surface.y);
      ctx.save();
      ctx.globalAlpha=ballShadowOpacity(altitude);
@@ -623,6 +623,8 @@ export class BatterSprites{
      ctx.beginPath();ctx.ellipse(shadow.x,shadow.y,shape.rx,shape.ry,0,0,Math.PI*2);ctx.fill();
      ctx.restore();
     }
+    // Containers remain opaque even though the tracked ball is a canvas overlay.
+    if(stadiumContainersObscurePoint(camera,b))return;
     if(game.save?.equippedBall==='sol'&&game.state==='flight'&&!game.save?.reducedEffects&&ctx.createRadialGradient){
      const speed=Math.hypot(b.vx||0,b.vy||0,b.vz||0);
      if(speed>.35){

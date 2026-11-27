@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.80';
-import {drawGulls} from './gulls.js?v=0.77.80';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.80';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.80';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.80';
+import {lerp} from './engine.js?v=0.77.81';
+import {drawGulls} from './gulls.js?v=0.77.81';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.81';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.81';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.81';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -347,6 +347,22 @@ function containerPartBox(part){
  return {kind:part.kind,material:part.material,
   min:[-part.w/2,part.y-part.h/2,-part.d/2],
   max:[part.w/2,part.y+part.h/2,part.d/2]};
+}
+// Visual line of sight uses the actual rotated opaque parts, not an
+// inflated physics radius or the collision normal of an incoming ball.
+export function stadiumContainersObscurePoint(camera,point){
+ if(!camera||!point)return false;
+ const from=Array.isArray(camera)?{x:camera[0],y:camera[1],z:camera[2]}:camera;
+ if(![from.x,from.y,from.z,point.x,point.y,point.z].every(Number.isFinite))return false;
+ if(Math.min(from.y,point.y)>10.65||Math.max(from.y,point.y)<.7)return false;
+ const xMin=Math.min(from.x,point.x),xMax=Math.max(from.x,point.x);
+ const zMin=Math.min(from.z,point.z),zMax=Math.max(from.z,point.z);
+ for(const c of STADIUM_CONTAINERS){
+  if(c.x+11<xMin||c.x-11>xMax||c.z+11<zMin||c.z-11>zMax)continue;
+  const a=containerLocal(from,c),b=containerLocal(point,c);
+  if(stadiumContainerParts().some(part=>segmentBlockedByBox(a,b,containerPartBox(part))))return true;
+ }
+ return false;
 }
 export function traceStadiumContainerCollision(from,to,radius=1.45){
  if(!from||!to)return null;
@@ -785,13 +801,13 @@ function stadium(r){r.field(0,-.02,38,285,290,'#448e60');for(let i=0;i<11;i++){c
   if(part.kind==='stadium-fence-post')r.pole(part.x,part.y,part.z,part.w/2,part.h,part.color);
   else r.box(part.x,part.y,part.z,part.w,part.h,part.d,part.color,part.yaw);
  }
- r.setLayer?.('opaque');
+ r.setLayer?.('solid');
  // Contenedores: exactamente los mismos prismas en escena y colisiones.
  for(const container of stadiumContainers())for(const part of stadiumContainerParts()){
   r.setMaterial?.('plain');
   r.box(container.x,part.y,container.z,part.w,part.h,part.d,part.color,container.yaw);
  }
- r.setMaterial?.('plain');
+ r.setLayer?.('opaque');r.setMaterial?.('plain');
  // Tribunas detrás del home plate.
  for(let k=0;k<7;k++){for(let s of [-1,1]){r.box(s*(18+k*8),4+k*.9,-32-k*5,7,7+k*1.8,15,'#31566d',s*-.28);r.box(s*(18+k*8),8.1+k*1.8,-34-k*5,8,.7,16,k%2?'#edb662':'#e9e6d3',s*-.28)}}
  // Marcador y focos.
@@ -971,6 +987,6 @@ export function drawWorld(r,cam,game){
  // El apuntado se dibuja en la brújula del HUD: no hay flechas en el estadio.
  }
  if(game.ball&&['flight','landing','rest'].includes(game.state)||game.ball&&game.state==='orbit'){const b=game.ball;
-  if(!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,b.spin?.angle||0);
+  if(!game.sprites?.ballLoaded&&!stadiumContainersObscurePoint(cam,b))drawBaseball(r,b.x,b.y,b.z,b.spin?.angle||0);
  }
 }
