@@ -342,10 +342,23 @@ test('llave inglesa, sartén y guitarra conservan el arte gráfico real en ambos
  const hashes={llave:'99ab2e8698d9646829b361b0cebbec957cd0590c',sarten:'b2e707ccfd6de2de47506cf98c7559d4f7b794a4',guitarra:'5cae050b7ae7459c5b7aa8c4cddc947a3978a13e'};
  for(const [id,hash] of Object.entries(hashes)){
   const uri=bakedAssetUrl('bat',id);
-  assert.ok(uri.endsWith('?v=0.77.68'));
+  assert.ok(uri.endsWith('?v=0.77.69'));
   const bytes=readFileSync(abs(uri.split('?')[0]));
   assert.ok(bytes.length>9000);
   assert.deepEqual(bytes,readFileSync(abs('./assets/approved/bats/'+id+'.webp')));
   assert.equal(createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex'),hash);
+ }
+});
+
+test('epic weapons grow around the same grip in every batting pose',()=>{
+ const factors={llave:1.22,sarten:1.28,guitarra:1.32};
+ for(const outfit of OUTFIT_CATALOG)for(const pose of OUTFIT_POSES){
+  const base=weaponPlacement(pose,100,200,300,400,outfit.id);
+  for(const [id,factor] of Object.entries(factors)){
+   const grown=weaponPlacement(pose,100,200,300,400,outfit.id,id);
+   assert.equal(grown.x,base.x);assert.equal(grown.y,base.y);assert.equal(grown.angle,base.angle);
+   assert.ok(Math.abs(grown.scale/base.scale-factor)<1e-9);
+  }
+  assert.deepEqual(weaponPlacement(pose,100,200,300,400,outfit.id,'gold'),base);
  }
 });

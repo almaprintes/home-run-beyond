@@ -91,7 +91,7 @@ test('las armas completas se renderizan fuera del recorte del personaje, sin per
  const weaponAt=render.indexOf('ctx.drawImage(weapon,-18,-58)');
  const bodyAt=render.indexOf('ctx.drawImage(sprite,originX,originY,widthPx,heightPx)');
  assert.ok(weaponAt>=0&&bodyAt>weaponAt,'el arma completa va detrás de manos y cuerpo');
- assert.ok(render.includes('weaponPlacement(pose,originX,originY,widthPx,heightPx,selectedOutfit.id)'));
+ assert.ok(render.includes('weaponPlacement(pose,originX,originY,widthPx,heightPx,selectedOutfit.id,selectedBat.id)'));
 });
 
 test('Athletic uses the supplied full poses and its own grip coordinates',()=>{

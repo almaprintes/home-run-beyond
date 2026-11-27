@@ -1,11 +1,11 @@
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.68';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.68';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.68';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.68';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.68';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.68';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.68';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.68';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.69';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.69';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.69';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.69';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.69';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.69';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.69';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.69';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -24,7 +24,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.68';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.69';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -282,12 +282,14 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
 // El plano se pinta detrás del personaje; los brazos tapan la empuñadura.
 // Register visible soles, rather than the transparent canvas edge.
 export function batterOriginY(groundY,heightPx,registration){return groundY-heightPx*(registration?.footY??1)}
-export function weaponPlacement(pose,originX,originY,width,height,outfitId){
+// Visual only: scale around the registered hand, not around the canvas center.
+export const WEAPON_HAND_SCALE=Object.freeze({llave:1.22,sarten:1.28,guitarra:1.32});
+export function weaponPlacement(pose,originX,originY,width,height,outfitId,batId){
  const anchor=OUTFIT_WEAPON_POSES[outfitId]?.[pose]||WEAPON_POSES[pose]||WEAPON_POSES.ready;
  const [gx,gy]=anchor.grip,[tx,ty]=anchor.tip;
  const dx=(tx-gx)*width,dy=(ty-gy)*height;
  return {x:originX+gx*width,y:originY+gy*height,
-  angle:Math.atan2(dy,dx),scale:Math.hypot(dx,dy)/292};
+  angle:Math.atan2(dy,dx),scale:Math.hypot(dx,dy)/292*(Object.hasOwn(WEAPON_HAND_SCALE,batId)?WEAPON_HAND_SCALE[batId]:1)};
 }
 
 export class BatterSprites{
@@ -508,7 +510,7 @@ export class BatterSprites{
      const weapon=this.bakedImages.get(bakedAssetUrl('bat',selectedBat.id));
      const withoutBat=this.bakedImages.get(bakedAssetUrl('outfit',selectedOutfit.id,pose,true));
      if(weapon&&withoutBat&&sprite===withoutBat){
-      const p=weaponPlacement(pose,originX,originY,widthPx,heightPx,selectedOutfit.id);
+      const p=weaponPlacement(pose,originX,originY,widthPx,heightPx,selectedOutfit.id,selectedBat.id);
       ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
       ctx.scale(p.scale,p.scale);
       ctx.drawImage(weapon,-18,-58);
