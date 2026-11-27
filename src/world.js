@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.78';
-import {drawGulls} from './gulls.js?v=0.77.78';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.78';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.78';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.78';
+import {lerp} from './engine.js?v=0.77.79';
+import {drawGulls} from './gulls.js?v=0.77.79';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.79';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.79';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.79';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -968,7 +968,7 @@ export function drawWorld(r,cam,game){
  else if(game.state!=='flight'&&game.state!=='landing'&&game.state!=='orbit'&&!(game.state==='rest'&&game.ball))drawActors(r,(game.pitchElapsed||0)/(game.pitchDuration||1.52),game.swing||0,game.batColor,!!game.spriteReady,
   !!(game.sprites?.ballLoaded&&game.sprites?.ctx),game.ballStyleColor||'#fffefa',pitcherPose(game),!!(game.sprites?.images?.pitcher&&game.sprites?.ctx));
  else if(!(game.sprites?.images?.pitcher&&game.sprites?.ctx))drawPitcher(r,pitcherPose(game));}
- // El apuntado se dibuja en el HUD horizontal: no hay flechas en el estadio.
+ // El apuntado se dibuja en la brújula del HUD: no hay flechas en el estadio.
  }
  if(game.ball&&['flight','landing','rest'].includes(game.state)||game.ball&&game.state==='orbit'){const b=game.ball;
   if(!game.sprites?.ballLoaded)drawBaseball(r,b.x,b.y,b.z,b.spin?.angle||0);

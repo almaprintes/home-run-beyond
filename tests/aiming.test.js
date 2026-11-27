@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {aimBarPosition,aimSweep,aimSweetHalf,aimSweepPeriod,redirectShot,aimDegrees,preciseAim,SWEEP_MAX_RAD} from '../src/aiming.js';
+import {aimBarPosition,aimSweep,aimSweepPeriod,redirectShot,aimDegrees,preciseAim,aimCompassRotation,aimDirection,SWEEP_MAX_RAD} from '../src/aiming.js';
 import {calculateShot} from '../src/logic.js';
 import {BaseballGame} from '../src/game.js';
 import {readFileSync} from 'node:fs';
 
-test('la pelota cruza la barra horizontal de lado a lado a velocidad constante',()=>{
+test('la aguja recorre todo el sector angular a velocidad constante',()=>{
  const period=aimSweepPeriod(1);
  assert.equal(aimBarPosition(0),-1);
  assert.ok(Math.abs(aimBarPosition(period/4))<1e-12);
@@ -20,25 +20,22 @@ test('la pelota cruza la barra horizontal de lado a lado a velocidad constante',
  assert.equal(aimDegrees(0),'0°');
 });
 
-test('subir Swing facilita solo la barra: centro mayor y velocidad menor',()=>{
- assert.ok(aimSweetHalf(14,1)>aimSweetHalf(1,1));
+test('Swing slows the compass without granting a privileged direction',()=>{
  assert.ok(aimSweepPeriod(14)>aimSweepPeriod(1));
- assert.ok(aimSweetHalf(10000,1)<=.30);
  assert.ok(aimSweepPeriod(10000)<=3.2);
+ for(const level of [1,14,10000]){
+  const period=aimSweepPeriod(level);
+  for(let i=0;i<=104;i++){
+   const t=period*i/208,expected=SWEEP_MAX_RAD*(1-i/52);
+   assert.ok(Math.abs(preciseAim(t,level)-expected)<1e-12);
+   assert.equal(preciseAim(t,level,10000,132,.25),preciseAim(t,level));
+  }
+ }
+ assert.ok(Math.abs(aimCompassRotation(SWEEP_MAX_RAD)+52)<1e-12);
+ assert.equal(aimDirection(SWEEP_MAX_RAD),'IZQUIERDA');
+ assert.equal(aimDirection(-SWEEP_MAX_RAD),'DERECHA');
+ assert.equal(aimDirection(0),'RECTO');
 });
-
-test('Potencia estrecha el punto dulce; Swing lo amplía y compensa el desafío',()=>{
- const swing=14;
- assert.ok(aimSweetHalf(swing,49)<aimSweetHalf(swing,1));
- assert.ok(aimSweetHalf(swing,100)<aimSweetHalf(swing,49));
- assert.ok(aimSweetHalf(14,49)>aimSweetHalf(1,49),'Swing aumenta el margen con Potencia fija');
- const novice=aimSweetHalf(1,1),highPower=aimSweetHalf(1,49),recovered=aimSweetHalf(14,49);
- assert.ok(highPower<novice,'la potencia no puede ser gratis en términos de precisión');
- assert.ok(recovered>highPower,'Swing tiene que recuperar margen');
- assert.ok(recovered<aimSweetHalf(14,1),'la misma mejora de Swing no cancela toda la dificultad extra');
- assert.ok(aimSweetHalf(1,10000)>=.055,'no se puede dejar una zona imposible');
-});
-
 test('dirección aplica el rumbo sin añadir energía a un golpe',()=>{
  const base=calculateShot({power:15,swing:5,multiplier:7},25);
  const left=redirectShot(base,-.6),right=redirectShot(base,.6);
@@ -63,9 +60,8 @@ test('tocar y mantener congela la calidad; soltar conserva la dirección exacta'
   game.freezeSwing(false);
   const q=game.pendingShot.quality,t=game.pitchElapsed;
   assert.equal(game.state,'aiming');
-  assert.equal(elements.get('aim-sweet-zone').style.width,
-   (aimSweetHalf(14,4)*100).toFixed(2)+'%',
-   'la barra representa la dificultad efectiva de Potencia y Swing');
+  assert.equal(elements.get('aim-direction').textContent,'IZQUIERDA');
+  assert.ok(elements.has('aim-needle'));
   const quarter=aimSweepPeriod(game.save.levels.swing)/4;
   game.aimElapsed=quarter;game.aimAngle=aimSweep(quarter,game.save.levels.swing);
   game.swingBat(false);
@@ -83,19 +79,20 @@ test('no quedan flechas visuales ni indicadores antiguos',()=>{
  const sprites=readFileSync(new URL('../src/sprites.js',import.meta.url),'utf8');
  const world=readFileSync(new URL('../src/world.js',import.meta.url),'utf8');
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
- assert.match(html,/id="aim-meter"/);
- assert.match(html,/id="aim-sweet-zone"/);
- assert.match(html,/id="aim-ball"/);
- assert.match(css,/\.aim-meter\{/);
- assert.match(css,/\.aim-ball\{/);
+ assert.match(html,/id="aim-compass"/);
+ assert.match(html,/id="aim-needle"/);
+ assert.doesNotMatch(html,/id="aim-(?:meter|sweet-zone|ball)"/);
+ assert.match(css,/\.aim-compass\{/);
+ assert.doesNotMatch(css,/\.aim-sweet-zone/);
  assert.doesNotMatch(sprites,/this\.images\['aim-center'\]/);
  assert.doesNotMatch(world,/drawAimArrow\(/);
- assert.doesNotMatch(game,/el\('aim-compass'\)|el\('aim-pointer'\)/);
+ assert.match(game,/el\('aim-needle'\)/);
+ assert.doesNotMatch(game,/aimSweetHalf|PUNTO DULCE/);
  assert.match(game,/setPointerCapture\?\.\(e.pointerId\)/);
  assert.match(game,/window.addEventListener\('pointerup',release\)/);
 });
 
-test('un golpe fuera del punto dulce por Potencia alta no se corrige artificialmente',()=>{
+test('el rumbo elegido no se corrige artificialmente por Potencia',()=>{
  const g=Object.create(BaseballGame.prototype);
  g.state='aiming';g.aimElapsed=0;g.aimAngle=0;
  g.save={levels:{power:49,swing:14,multiplier:7}};
@@ -106,20 +103,20 @@ test('un golpe fuera del punto dulce por Potencia alta no se corrige artificialm
   return elems.get(id);
  }};
  try{
-  const tolerance=aimSweetHalf(14,49),period=aimSweepPeriod(14);
-  const outside=tolerance+.015;
+  const period=aimSweepPeriod(14);
+  const outside=.215;
   g.aimElapsed=(outside+1)*period/4;
   g.aimAngle=aimSweep(g.aimElapsed,14);
   g.swingBat(false);
-  assert.ok(Math.abs(g.pendingShot.direction)>.001,'fuera de la franja no debe disparar recto');
+  assert.ok(Math.abs(g.pendingShot.direction)>.001,'el rumbo lateral debe conservarse');
   assert.equal(g.state,'swinging');
  }finally{
   if(before===undefined)delete globalThis.document;else globalThis.document=before;
  }
 });
 
-test('zona dulce continua: 101 sueltas distintas generan 101 rumbos, sin azar',()=>{
- const period=aimSweepPeriod(1),edge=aimSweetHalf(1,1);
+test('101 sueltas distintas generan 101 rumbos uniformes, sin azar',()=>{
+ const period=aimSweepPeriod(1),edge=.4;
  const headings=Array.from({length:101},(_,i)=>preciseAim((1-edge+2*edge*i/100)*period/4,1,1,0));
  assert.equal(new Set(headings).size,101);
  assert.ok(headings[0]>0&&headings.at(-1)<0);
@@ -127,7 +124,7 @@ test('zona dulce continua: 101 sueltas distintas generan 101 rumbos, sin azar',(
  assert.ok(headings.every((x,i)=>i===0||x<headings[i-1]));
  const t=(1+edge)*period/4;
  assert.ok(Math.abs(preciseAim(t-1e-8)-preciseAim(t+1e-8))<1e-5);
- assert.ok(Math.abs(preciseAim(period/4,1,1,10))>0);
+ assert.ok(Math.abs(preciseAim(period/4,1,1,10))<1e-12);
 });
 test('dentro de PERFECTO cambia suavemente velocidad, elevación y contacto milimétrico',()=>{
  const levels={power:10,swing:1,multiplier:1},a=calculateShot(levels,0),b=calculateShot(levels,30),c=calculateShot(levels,-30);

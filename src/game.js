@@ -1,20 +1,20 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.78';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.78';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.78';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.78';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.78';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.78';
-import {GameAudio} from './audio.js?v=0.77.78';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.78';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.78';
-import {BatterSprites} from './sprites.js?v=0.77.78';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.78';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.78';
-import {pitchBallSpin,initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.78';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.78';
-import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.78';
-import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.78';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.78';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.79';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.79';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.79';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.79';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.79';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.79';
+import {GameAudio} from './audio.js?v=0.77.79';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.79';
+import {preciseAim,redirectShot,aimDegrees,aimCompassRotation,aimDirection} from './aiming.js?v=0.77.79';
+import {BatterSprites} from './sprites.js?v=0.77.79';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.79';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.79';
+import {pitchBallSpin,initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.79';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.79';
+import {advanceFocusTime,focusWindow,focusEnabled,focusSlowEnabled} from './perfect-focus.js?v=0.77.79';
+import {pitcherReactionPlan,PITCH_WINDUP_SECONDS} from './pitcher.js?v=0.77.79';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.79';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -375,7 +375,7 @@ export class BaseballGame{
   if(upgrade(this.save,key)){
    this.audio.cash();this.persist();this.drawUI();
    if(bonusCredits(this.save)>0)this.toast('🎁 ¡BONUS EXTRA DESBLOQUEADO!');
-   else this.toast({power:'¡MÁS POTENCIA!',swing:'¡SWING MÁS RÁPIDO!',multiplier:'¡MÁS MONEDAS POR METRO!'}[key]);
+   else this.toast({power:'¡MÁS POTENCIA!',swing:'¡MÁS CONTROL DE DIRECCIÓN!',multiplier:'¡MÁS MONEDAS POR METRO!'}[key]);
   }else this.toast('TE FALTAN MONEDAS');
  }
  applyBonus(key){if(claimBonus(this.save,key)){this.audio.cash();this.persist();this.drawUI();this.toast('🎁 NIVEL EXTRA POR ANUNCIO')}}
@@ -489,21 +489,24 @@ export class BaseballGame{
   const deltaMs=pitchTimingDeltaMs(sampled,this.pitchDuration);
   this.pendingShot=calculateShot(this.save.levels,auto?999:deltaMs,equipmentBonuses(this.save));
   this.pendingShot.deltaMs=deltaMs;
-  this.state='aiming';this.aimElapsed=-extra;this.aimAngle=preciseAim(0,this.save.levels.swing,this.save.levels.power,deltaMs,equipmentBonuses(this.save).precision);this.swing=.42;
+  this.state='aiming';this.aimElapsed=-extra;this.aimAngle=preciseAim(0,this.save.levels.swing);this.swing=.42;
   el('app').classList.add('aiming');el('aim-feedback').hidden=false;
   el('locked-quality').textContent=qualityNames[this.pendingShot.quality];
-  el('aim-heading').textContent=aimDegrees(this.aimAngle);el('aim-direction').textContent='IZQUIERDA';
-  el('aim-sweet-zone').style.width=(aimSweetHalf(this.save.levels.swing,this.save.levels.power,equipmentBonuses(this.save).precision)*100).toFixed(2)+'%';
-  el('aim-ball').style.left='0%';
+  this.updateAimCompass();
   el('pitch-touch-label').removeAttribute?.('data-timing');
   el('pitch-touch-label').textContent='SUELTA PARA FIJAR DIRECCIÓN';
   el('aim').hidden=true;el('region').textContent='DIRECCIÓN DEL BATAZO';
+ }
+ updateAimCompass(){
+  el('aim-heading').textContent=aimDegrees(this.aimAngle);
+  el('aim-direction').textContent=aimDirection(this.aimAngle);
+  el('aim-needle')?.setAttribute?.('transform','rotate('+aimCompassRotation(this.aimAngle)+' 120 92)');
  }
  swingBat(auto=false,time){
   if(this.state==='pitching')this.freezeSwing(auto,time);
   if(this.state!=='aiming')return;
   const elapsed=Math.max(0,this.aimElapsed+this.inputRemainder(time));
-  this.aimAngle=preciseAim(elapsed,this.save.levels.swing,this.save.levels.power,this.pendingShot.deltaMs,equipmentBonuses(this.save).precision);
+  this.aimAngle=preciseAim(elapsed,this.save.levels.swing);
   this.pendingShot=redirectShot(this.pendingShot,auto?0:this.aimAngle);
   this.state='swinging';el('pitch-surface').hidden=true;el('aim-feedback').hidden=true;
   el('app').classList.remove('aiming');
@@ -841,13 +844,8 @@ export class BaseballGame{
  if(this.state==='aiming'){
    // La calidad y el instante del lanzamiento no cambian hasta que el dedo se suelta.
    this.aimElapsed+=dt;
-   const position=aimBarPosition(Math.max(0,this.aimElapsed),this.save.levels.swing);
-   this.aimAngle=preciseAim(Math.max(0,this.aimElapsed),this.save.levels.swing,this.save.levels.power,this.pendingShot?.deltaMs,equipmentBonuses(this.save).precision);
-   el('aim-ball').style.left=((position+1)*50).toFixed(2)+'%';
-   el('aim-heading').textContent=aimDegrees(this.aimAngle);
-   const value=this.aimAngle*180/Math.PI;
-   // Un único indicador: flecha 3D de origen fijo y texto de rumbo.
-   el('aim-direction').textContent=Math.abs(position)<=aimSweetHalf(this.save.levels.swing,this.save.levels.power,equipmentBonuses(this.save).precision)?'PUNTO DULCE · '+(Math.abs(value)<.05?'RECTO':value>0?'IZQUIERDA':'DERECHA'):value>0?'IZQUIERDA':'DERECHA';
+   this.aimAngle=preciseAim(Math.max(0,this.aimElapsed),this.save.levels.swing);
+   this.updateAimCompass();
  }
  if(this.state==='swinging'){
    this.swingElapsed+=dt;
