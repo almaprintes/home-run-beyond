@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {initialSave,sanitizeSave,calculateShot,coinRewardBreakdown,settleShot,upgradeCost,pitchTimingGuide,pitchTimingDeltaMs} from '../src/logic.js';
 import {BAT_CATALOG,OUTFIT_CATALOG,BALL_CATALOG,RARITY_BONUSES,equipmentBonuses} from '../src/cosmetic-catalog.js';
 import {COLLECTIONS,DISCOVERY_RULES,discoveryRegion,unlockEligible,recordDiscoveryShot,isDiscovered} from '../src/discoveries.js';
-import {aimSweetHalf,preciseAim} from '../src/aiming.js';
+import {preciseAim,aimSweepPeriod} from '../src/aiming.js';
 
 test('all 101 cosmetics have a real region or an explicit long-distance goal',()=>{
  let total=0;
@@ -31,7 +31,11 @@ test('equipped and owned rarity bonuses are independent, not inventory stacking'
  assert.ok(Math.abs(calculateShot(levels,0,b).initialSpeed/base.initialSpeed-1.10)<1e-10);
  assert.equal(calculateShot(levels,55).quality,'excellent');
  assert.equal(calculateShot(levels,55,b).quality,'perfect');
- assert.equal(aimSweetHalf(1,1,b.precision),aimSweetHalf(1,1)*1.25);
+ // Outfit precision still improves batting timing (above), not the selected heading.
+ for(let i=0;i<=104;i++){
+  const t=aimSweepPeriod(levels.swing)*i/208;
+  assert.equal(preciseAim(t,levels.swing,levels.power,55,b.precision),preciseAim(t,levels.swing));
+ }
  const guide=pitchTimingGuide(1,1.3,b.precision);
  assert.equal(guide.quality,calculateShot(levels,pitchTimingDeltaMs(1,1.3),b).quality);
  const reward=settleShot(s,1000);assert.equal(reward.coins,1012);
