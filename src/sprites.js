@@ -1,11 +1,11 @@
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.74';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.74';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.74';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.74';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.74';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.74';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.74';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.74';
+import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.75';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.75';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.75';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.75';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.75';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.75';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.75';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.75';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -24,7 +24,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.74';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.75';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -35,8 +35,8 @@ export function selectPitcherFrame(game={}){
   return phase==='jump'?4:phase==='land'?5:3;
  }
  if(['pitching','aiming','swinging','whiff'].includes(game.state)){
-  const t=(game.pitchElapsed||0)/(game.pitchDuration||1.52);
-  return t<.06?1:t<.25?2:0;
+  const elapsed=game.pitchElapsed||0;
+  return elapsed< -PITCH_ARM_SECONDS?0:elapsed<0?1:elapsed<PITCH_RELEASE_FRAME_SECONDS?2:0;
  }
  return 0;
 }

@@ -1,5 +1,9 @@
 // Purely visual choreography. Never writes to the ball or influences a shot.
 export const PITCHER_Z=21;
+// Negative elapsed is the pre-release choreography; flight timing starts at zero.
+export const PITCH_WINDUP_SECONDS=.60;
+export const PITCH_ARM_SECONDS=.36;
+export const PITCH_RELEASE_FRAME_SECONDS=.34;
 const clamp=(v,lo=0,hi=1)=>Math.max(lo,Math.min(hi,v));
 const ease=v=>{v=clamp(v);return v*v*(3-2*v)};
 export function pitcherReactionPlan(shot){
@@ -27,6 +31,11 @@ export function pitcherPose(game={}){
  const t=clamp((game.pitchElapsed||0)/(game.pitchDuration||1.52));
  const active=['pitching','aiming','swinging','whiff'].includes(game.state);
  if(!active)return {phase:'ready',lift:0,shift:0,lean:0,reach:0,reachHeight:0,side:0,step:0,throw:0,look:0};
+ const elapsed=game.pitchElapsed||0;
+ if(elapsed<0){
+  const arm=ease((elapsed+PITCH_ARM_SECONDS)/PITCH_ARM_SECONDS);
+  return {phase:elapsed< -PITCH_ARM_SECONDS?'ready':'windup',lift:0,shift:0,lean:0,reach:0,reachHeight:0,side:0,step:arm*.85,throw:0,look:0};
+ }
  const wind=Math.sin(Math.PI*clamp(t/.20)),release=ease(t/.17),follow=release*(1-ease((t-.18)/.55));
  return {phase:t<.17?'throw':'follow',lift:0,shift:0,lean:0,reach:0,reachHeight:0,side:0,step:Math.max(0,wind*.85),throw:follow,look:0};
 }

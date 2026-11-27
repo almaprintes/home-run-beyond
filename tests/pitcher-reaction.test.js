@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pitcherPose,pitcherReactionPlan} from '../src/pitcher.js';
+import {pitcherPose,pitcherReactionPlan,PITCH_WINDUP_SECONDS,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from '../src/pitcher.js';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {selectPitcherFrame,PITCHER_ATLAS,PITCHER_FRAMES} from '../src/sprites.js';
@@ -44,7 +44,9 @@ test('six approved sprite frames are loaded from the verified transparent WebP',
  assert.equal(createHash('sha1').update('blob '+asset.length+'\0').update(asset).digest('hex'),'1fb5818e5f0346d4cc84b8f13c4188f4fb061cba');
  assert.equal(PITCHER_FRAMES.length,6);
  assert.equal(selectPitcherFrame({state:'ready'}),0);
- assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.02,pitchDuration:1.52}),1);
+ assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:-.5,pitchDuration:1.52}),0);
+ assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:-.2,pitchDuration:1.52}),1);
+ assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.02,pitchDuration:1.52}),2);
  assert.equal(selectPitcherFrame({state:'pitching',pitchElapsed:.2,pitchDuration:1.52}),2);
  assert.equal(selectPitcherFrame({state:'orbit'}),null);
 });
@@ -57,4 +59,17 @@ test('pitcher reacts only in the normal scene and cannot interrupt the finish',(
  const game=readFileSync(new URL('../src/game.js',import.meta.url),'utf8');
  assert.doesNotMatch(game,/pitcherCut|pitcherCamera/);
  assert.match(game,/const cutToFlight=this.state==='flight'&&!departure&&!!this.launchCamera/);
+});
+
+test('windup has readable preparation and arm frames without changing ball flight',()=>{
+ const frames=[0,0,0],dt=.001;
+ for(let i=0;i<940;i++){
+  const elapsed=-PITCH_WINDUP_SECONDS+i*dt;
+  const frame=selectPitcherFrame({state:'pitching',pitchElapsed:elapsed,pitchDuration:1.52});
+  frames[frame]++;
+  if(elapsed<0)assert.equal(pitcherBallPosition(elapsed/1.52),null);
+ }
+ assert.ok(frames[0]>=239&&frames[1]>=359&&frames[2]>=339);
+ assert.equal(PITCH_ARM_SECONDS,.36);assert.equal(PITCH_RELEASE_FRAME_SECONDS,.34);
+ assert.ok(Math.abs(pitcherBallPosition(.5).z-7.8)<1e-9);
 });
