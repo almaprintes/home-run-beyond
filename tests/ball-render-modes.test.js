@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
 import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
-import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere,shadeRainbowSphere} from '../src/sprites.js';
+import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere,shadeRainbowSphere,shadeBilliardSphere} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
  const baseball=BALL_CATALOG.filter(item=>ballRenderMode(item)==='baseball');
@@ -167,4 +167,21 @@ test('rainbow sphere uses object-space bands and never rotates the flat billboar
   if(i===6)assert.notDeepEqual(frame,first);
  }
  assert.deepEqual(paint(spin,cam),first);
+});
+
+test('billiard 8 has a spherical resin finish, rotating number and stable silhouette',()=>{
+ const sprites=new BatterSprites({getContext(){return null}}),image={width:160,height:160};sprites.getStyledBall=()=>image;
+ let rotations=0;const ctx={rotate(){rotations++},drawImage(i){assert.equal(i,image)}};
+ sprites.drawEquippedBall(ctx,{save:{equippedBall:'billar8'}},32,{orientation:[0,0,0,1],angle:4},[0,0,20],[0,0,0]);
+ assert.equal(rotations,0);assert.equal(sprites.ballSurfaceCache.mode,'billiard');
+ const n=96,out=new Uint8ClampedArray(n*n*4),cam=[0,0,20],target=[0,0,0];
+ const paint=spin=>shadeBilliardSphere(spin,cam,target,out,n).slice();
+ const first=paint({orientation:[0,0,0,1]});
+ const side=paint({orientation:[0,Math.SQRT1_2,0,Math.SQRT1_2]});
+ assert.notDeepEqual(first,side);
+ assert.deepEqual(first.filter((_,i)=>i%4===3),side.filter((_,i)=>i%4===3));
+ assert.deepEqual(paint({orientation:[0,0,0,1],angle:7}),first);
+ assert.equal(first[(48*n+48)*4+3],255);assert.equal(first[3],0);
+ assert.ok(first[(42*n+48)*4]>140);assert.ok(first[(48*n+48)*4]<70);
+ assert.ok(bakedAssetUrl('ball','billar8').endsWith('v=0.77.72'));
 });

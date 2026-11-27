@@ -1,11 +1,11 @@
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.71';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.71';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.71';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.71';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.71';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.71';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.71';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.71';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.72';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.72';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.72';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.72';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.72';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.72';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.72';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.72';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -24,7 +24,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.71';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.72';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -208,6 +208,31 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
     output[k+3]=255*Math.min(1,(1-Math.sqrt(rr))*size*.5);
     continue;
    }
+   if(material==='billiard'){
+    // Two antipodal inlaid ivory number discs. The figure follows object
+    // normals; studio reflections remain fixed to the lighting, not the print.
+    const radial=Math.hypot(ox,oy);
+    const edge=Math.max(0,Math.min(1,(.48-radial)*size*.65+.5));
+    const ellipse=(x,y,rx,ry)=>Math.hypot(x/rx,y/ry);
+    const loop=(cy,rx,ry)=>{
+     const outer=Math.max(0,Math.min(1,(1-ellipse(ox,oy-cy,rx,ry))*size*.06+.5));
+     const hole=Math.max(0,Math.min(1,(1-ellipse(ox,oy-cy,rx*.48,ry*.51))*size*.04+.5));
+     return outer*(1-hole);
+    };
+    const ink=Math.max(loop(.105,.107,.128),loop(-.105,.126,.143));
+    const white=edge*(1-ink);
+    const lit=Math.max(0,-.38*sx+.47*sy+.795*sz);
+    const shine=Math.max(0,-.39*sx+.48*sy+.785*sz);
+    const gloss=185*shine**72+26*shine**9;
+    const rim=27*Math.max(0,1-sz)**2*Math.max(0,.35+.65*sy);
+    const dark=[12,17,24],ivory=[248,246,233];
+    for(let i=0;i<3;i++){
+     const pigment=dark[i]*(1-white)+ivory[i]*white;
+     output[k+i]=Math.min(255,pigment*(.52+.48*lit)+gloss+rim*(i===2?1.2:1));
+    }
+    output[k+3]=255*Math.min(1,(1-Math.sqrt(rr))*size*.5);
+    continue;
+   }
    if(material==='orange'){
     // Small peel pores and the calyx are fixed to the object's 3D normals.
     // Lighting stays outside that rotation, so the fruit never rolls like a coin.
@@ -241,6 +266,7 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
 }
 export function shadeBeachSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'beach')}
 export function shadeRainbowSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'rainbow')}
+export function shadeBilliardSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'billiard')}
 export function shadeOrangeSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'orange')}
 export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null,cache=null){
  const radius=size*.5;
@@ -256,14 +282,15 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
     const outCtx=outCanvas.getContext('2d');
     cache.image=image;cache.loadedMode=cache.mode;
-    const sourceImage=['beach','orange','rainbow'].includes(cache.mode)?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
-    cache.source=['beach','orange','rainbow'].includes(cache.mode)?null:{width:sourceImage.width,height:sourceImage.height,
+    const sourceImage=['beach','orange','rainbow','billiard'].includes(cache.mode)?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.source=['beach','orange','rainbow','billiard'].includes(cache.mode)?null:{width:sourceImage.width,height:sourceImage.height,
      data:cache.leatherColor?neutralizeBaseballLighting(sourceImage.data,sourceImage.width,sourceImage.height,cache.leatherColor):opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
     cache.canvas=outCanvas;cache.context=outCtx;
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
    if(cache.mode==='beach')shadeBeachSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else if(cache.mode==='orange')shadeOrangeSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
+   else if(cache.mode==='billiard')shadeBilliardSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else if(cache.mode==='rainbow')shadeRainbowSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else shadeRollingSurface(cache.source.data,cache.source.width,cache.source.height,
     spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE,!!cache.leatherColor,cache.textureRadius??.47,cache.mode==='snow');
@@ -403,6 +430,13 @@ export class BatterSprites{
    drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
    return;
   }
+  if(item.id==='billar8'&&camera&&target){
+   this.ballSurfaceCache.mode='billiard';
+   this.ballSurfaceCache.leatherColor=null;
+   this.ballSurfaceCache.textureRadius=.47;
+   drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
+   return;
+  }
   if(item.id==='nieve'&&camera&&target){
    // Keep the original snow texture, strip baked shading and rotate its
    // spherical surface about the world axis, including after the first bounce.
@@ -432,7 +466,7 @@ export class BatterSprites{
   }
   // Only the pre-hit pitch has no accumulated spin.
   // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
-  if(item.design!=='baseball'&&item.id!=='nieve')ctx.rotate(spin?.angle||0);
+  if(item.design!=='baseball'&&item.id!=='nieve'&&item.id!=='billar8')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
  }
  resize(){

@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.71';
-import {drawGulls} from './gulls.js?v=0.77.71';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.71';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.71';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.71';
+import {lerp} from './engine.js?v=0.77.72';
+import {drawGulls} from './gulls.js?v=0.77.72';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.72';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.72';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.72';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};

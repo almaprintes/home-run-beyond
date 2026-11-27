@@ -196,10 +196,37 @@ def restored_baseball(item):
     return result
 
 
+def polished_billiard():
+    """Render a resin sphere with ivory number inlay and fixed studio reflections."""
+    img=Image.new("RGBA",(DIAM,DIAM))
+    p=img.load()
+    clamp=lambda v:max(0,min(1,v))
+    for yy in range(19*SCALE,141*SCALE):
+        for xx in range(19*SCALE,141*SCALE):
+            x=(xx/SCALE-80)/61
+            y=(80-yy/SCALE)/61
+            rr=x*x+y*y
+            if rr>=1:continue
+            z=math.sqrt(1-rr)
+            edge=clamp((.48-math.sqrt(rr))*DIAM*.65+.5)
+            def loop(cy,rx,ry):
+                outer=clamp((1-math.hypot(x/rx,(y-cy)/ry))*DIAM*.06+.5)
+                hole=clamp((1-math.hypot(x/(rx*.48),(y-cy)/(ry*.51)))*DIAM*.04+.5)
+                return outer*(1-hole)
+            white=edge*(1-max(loop(.105,.107,.128),loop(-.105,.126,.143)))
+            lit=max(0,-.38*x+.47*y+.795*z)
+            shine=max(0,-.39*x+.48*y+.785*z)
+            gloss=185*shine**72+26*shine**9
+            rim=27*max(0,1-z)**2*max(0,.35+.65*y)
+            p[xx,yy]=tuple(round(min(255,(d*(1-white)+c*white)*(.52+.48*lit)+gloss+rim*(1.2 if i==2 else 1))) for i,(d,c) in enumerate(zip((12,17,24),(248,246,233))))+(255,)
+    return img.resize((SIZE,SIZE),Image.Resampling.LANCZOS)
+
 def draw_ball(item):
     mode=item["design"]
     if mode=="baseball":
         return restored_baseball(item)
+    if mode=="billiard":
+        return polished_billiard()
     color=rgba(item["color"])
     accent=rgba(item["accent"])
     if mode=="dice":
@@ -296,9 +323,6 @@ def draw_ball(item):
         for y in [45,60,74,89,107]:
             d.line([(29,y),(132,y+2)],(243,220,178,95),7)
         d.arc((4,48,156,112),4,175,(247,231,196,255),11)
-    elif mode=="billiard":
-        d.ellipse((50,47,110,110),(255,255,249,255))
-        d.text((80,79),"8",(19,21,28,255),38)
     elif mode=="tennis":
         # Felt and two opposing C-shaped continuous seams. Endpoints lie
         # BEYOND the silhouette, so no disconnected decorative white ends.
@@ -417,6 +441,11 @@ def verify_ball(path, design):
             for x in range(28,133):
                 if (x-80)**2+(y-80)**2<=50**2 and px[x,y][3]!=255:
                     raise ValueError(f"{path}: transparent core at {x},{y}: {px[x,y][3]}")
+    if design=="billiard":
+        if not (px[80,80][0]<70 and px[80,73][0]>140 and px[80,86][0]>140):
+            raise ValueError(f'{path}: billiard number inlay missing')
+        if max(px[x,y][0] for x in range(36,70) for y in range(36,70))<125:
+            raise ValueError(f'{path}: billiard polished reflection missing')
     if design=="tennis":
         # Required visible pale grooves on BOTH halves, not just on the rim.
         left=right=0
