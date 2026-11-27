@@ -69,7 +69,7 @@ test('a near-stationary ball at the top of its arc is still in flight',()=>{
  g.simulateStep(.02);assert.equal(g.state,'flight');assert.equal(g.ball.restTime,0);assert.ok(g.ball.vy<0);
 });
 
-import {buildingAt} from '../src/world.js';
+import {buildingAt,buildingFacade,surfaceBelowBall} from '../src/world.js';
 function roofOf(material){
  for(let j=0;j<=24;j++)for(let i=-5;i<=5;i++){
   const b=buildingAt(i,j);if(b?.roofMaterial===material&&b.w>=16&&b.d>=16)return b;
@@ -100,4 +100,32 @@ test('supported stationary ball finishes on the first simulation step, without w
  const g=testFlight({x:0,y:1.45,z:80,vx:0,vy:0,vz:0,restTime:0});
  g.simulateStep(.016);
  assert.equal(g.state,'rest');assert.equal(g.ball.y,1.45);assert.equal(g.ball.vy,0);
+});
+
+function interiorSample(){
+ for(let j=1;j<=24;j++)for(let i=-4;i<=4;i++){
+  const b=buildingAt(i,j);if(!b)continue;
+  const slab=buildingFacade(b).floors[0];if(slab)return {x:(slab.min[0]+slab.max[0])/2,z:(slab.min[2]+slab.max[2])/2,y:slab.max[1]+1.45};
+ }
+ throw Error('no interior floor');
+}
+test('interior slabs provide real support, hard impacts bounce and eventually settle',()=>{
+ const p=interiorSample();assert.equal(surfaceBelowBall(p).type,'interior-floor');
+ assert.ok(Math.abs(surfaceBelowBall(p).y-(p.y-1.45))<1e-9);
+ for(const dt of [1/60,1/120,1/240]){
+  const g=testFlight({...p,y:p.y+.2,vx:0,vy:-7,vz:.35});g.save={reducedEffects:true};g.emitCollision=()=>{};
+  let rebound=false;
+  for(let k=0;k<Math.ceil(12/dt)&&g.state==='flight';k++){g.simulateStep(dt);if(g.ball.vy>2)rebound=true;}
+  assert.ok(rebound,'real impact must rebound');assert.equal(g.state,'rest','interior microbounces at '+dt);
+  assert.equal(Math.hypot(g.ball.vx,g.ball.vy,g.ball.vz),0);
+  assert.ok(Math.abs(g.ball.y-p.y)<.002);
+  assert.ok(!g.ball.encounters?.roof);
+ }
+});
+test('interior rolling advances without repeated impacts, then rests',()=>{
+ const p=interiorSample(),g=testFlight({...p,y:p.y+.0001,vx:0,vy:0,vz:2});g.save={reducedEffects:true};g.emitCollision=()=>{};
+ for(let k=0;k<12;k++)g.simulateStep(.016);
+ assert.equal(g.state,'flight');assert.ok(g.ball.z-p.z>.2);assert.equal(g.ball.bounces,0);
+ for(let k=0;k<600&&g.state==='flight';k++)g.simulateStep(.016);
+ assert.equal(g.state,'rest');assert.equal(g.ball.bounces,0);
 });

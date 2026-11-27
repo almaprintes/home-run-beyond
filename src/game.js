@@ -1,19 +1,19 @@
-import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.73';
-import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.73';
-import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.73';
-import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.73';
-import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.73';
-import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.73';
-import {GameAudio} from './audio.js?v=0.77.73';
-import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.73';
-import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.73';
-import {BatterSprites} from './sprites.js?v=0.77.73';
-import {bakedAssetUrl} from './baked-assets.js?v=0.77.73';
-import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.73';
-import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.73';
-import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.73';
-import {pitcherReactionPlan} from './pitcher.js?v=0.77.73';
-import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.73';
+import {equipmentBonuses} from './cosmetic-catalog.js?v=0.77.74';
+import {Renderer,CanvasRenderer,lerp} from './engine.js?v=0.77.74';
+import {drawWorld,groundAt,surfaceBelowBall,areaAt,traceBuildingCollision,traceFountainCollision,traceStadiumContainerCollision,traceStadiumFenceCollision} from './world.js?v=0.77.74';
+import {traceSideBoundary,WORLD_CENTER_X,WORLD_HALF_WIDTH} from './biomes.js?v=0.77.74';
+import {CAR_REWARD,GULL_REWARD,SAVE_KEY,sanitizeSave,initialSave,createCatalogTestSave,formatInt,upgradeCost,upgrade,bonusCredits,bonusProgress,BONUS_EVERY,claimBonus,skillMaxLevel,calculateShot,pitchTimingDeltaMs,pitchTimingGuide,settleShot,forwardDistance,coinMultiplier,MILESTONES,COSMETICS,OUTFITS,BALL_STYLES,SHOP_SECTIONS,equipCosmetic,qualityNames,clamp} from './logic.js?v=0.77.74';
+import {recordDiscoveryShot,discoveredCount,nextDiscoveryHint,isDiscovered,discoveryRegion} from './discoveries.js?v=0.77.74';
+import {GameAudio} from './audio.js?v=0.77.74';
+import {hasRewardedAds,showRewardedAd} from './rewarded.js?v=0.77.74';
+import {aimSweep,aimBarPosition,aimSweetHalf,preciseAim,redirectShot,aimDegrees,SWEEP_MAX_RAD} from './aiming.js?v=0.77.74';
+import {BatterSprites} from './sprites.js?v=0.77.74';
+import {bakedAssetUrl} from './baked-assets.js?v=0.77.74';
+import {ImpactEffects,hitStopDuration} from './impact-fx.js?v=0.77.74';
+import {initBallSpin,onSpinImpact,integratePhysicalSpin,advanceVisualSpin,freezeBallSpin} from './ball-spin.js?v=0.77.74';
+import {traceTrafficCollision,trafficDeflection,registerTrafficHit} from './traffic.js?v=0.77.74';
+import {pitcherReactionPlan} from './pitcher.js?v=0.77.74';
+import {traceAirTraffic,gullDeflection} from './gulls.js?v=0.77.74';
 const el=id=>document.getElementById(id);
 // Rozamiento continuo por segundo: una cola de rodadura algo más larga,
 // independiente de los FPS, sin alterar el vuelo ni la pérdida al rebotar.
@@ -640,12 +640,15 @@ export class BaseballGame{
    const n=hit.normal,mat=hit.material||'concrete';
    const sideHit=hit.kind==='side-boundary';
    const roofTop=hit.kind==='roof'&&n.y>.5;
+   const interiorTop=hit.kind==='interior-floor'&&n.y>.5;
    const normalSpeed=b.vx*n.x+b.vy*n.y+b.vz*n.z;
    const inward=Math.max(0,-normalSpeed);
    const roofRolling=roofTop&&inward<=.9;
+   const interiorRolling=interiorTop&&inward<=1.5;
+   const slabRolling=roofRolling||interiorRolling;
    // Rubber roofs remain softer than rigid roofs, but are not adhesive.
-   const restitution=roofTop?(mat==='rubber'?.58:.80):sideHit?.26:mat==='rubber'?.16:mat==='solid'?.80:.71;
-   const tangentRetention=roofRolling?1:roofTop?(mat==='rubber'?.86:.92):sideHit?.64:mat==='rubber'?.48:mat==='solid'?.92:.86;
+   const restitution=roofTop?(mat==='rubber'?.58:.80):interiorTop?.55:sideHit?.26:mat==='rubber'?.16:mat==='solid'?.80:.71;
+   const tangentRetention=slabRolling?1:interiorTop?.78:roofTop?(mat==='rubber'?.86:.92):sideHit?.64:mat==='rubber'?.48:mat==='solid'?.92:.86;
    b.x=hit.point.x+n.x*.075;
    b.y=hit.point.y+n.y*.075;
    b.z=hit.point.z+n.z*.075;
@@ -659,11 +662,11 @@ export class BaseballGame{
     // Corrección de penetración previa: sin inyectar energía en el sólido.
     b.vx*=.84;b.vy*=.84;b.vz*=.84;
    }
-   if(roofRolling){
+   if(slabRolling){
     // Persistent support is not a new impact. Apply friction per second,
     // then consume the remaining horizontal travel without crossing a vent.
     b.vy=0;b.y=hit.point.y+.0001;
-    const drag=Math.exp(-(mat==='rubber'?1.8:1.05)*dt);
+    const drag=Math.exp(-(interiorRolling?2.2:mat==='rubber'?1.8:1.05)*dt);
     b.vx*=drag;b.vz*=drag;
     const remaining=Math.max(0,1-hit.t)*dt;
     const end={x:b.x+b.vx*remaining,y:b.y,z:b.z+b.vz*remaining};
@@ -676,7 +679,7 @@ export class BaseballGame{
     touching=Math.abs(b.y-radius-floor.y)<=.12;
    }else if(!roofTop&&n.y>.5&&inward<1.5){
     // Other surfaces keep their existing contact response.
-    b.vy=0;
+    b.vy=0;b.y=hit.point.y+.0001;
     const rollingDrag=Math.exp(-(mat==='rubber'?4.8:.85)*dt);
     b.vx*=rollingDrag;b.vz*=rollingDrag;
     touching=true;
@@ -689,7 +692,7 @@ export class BaseballGame{
     hit.kind==='interior-floor'?'REBOTE EN SUELO INTERIOR':
     n.y>.5?(mat==='rubber'?'TEJADO DE GOMA':'REBOTE EN TEJADO'):
     hit.kind==='vent'?'CASETA DE AZOTEA':'CHOQUE CON FACHADA';
-   if(inward>(roofTop?.9:1)){
+   if(!slabRolling&&inward>(roofTop?.9:1)){
     if(roofTop)b.bounceVisual=1;
     if(!sideHit&&hit.kind!=='fountain-stone'&&hit.kind!=='interior-floor'&&!hit.kind?.startsWith('stadium-fence-')&&n.y>.5)(b.encounters??={}).roof=true;
     b.impactAge=0;b.impactMaterial=mat;

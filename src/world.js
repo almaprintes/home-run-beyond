@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.73';
-import {drawGulls} from './gulls.js?v=0.77.73';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.73';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.73';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.73';
+import {lerp} from './engine.js?v=0.77.74';
+import {drawGulls} from './gulls.js?v=0.77.74';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.74';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.74';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.74';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -437,10 +437,12 @@ export function surfaceBelowBall(ball){
  const jmin=Math.max(0,Math.floor((z-270)/60)-1),jmax=Math.min(24,Math.ceil((z-270)/60)+1);
  for(let j=jmin;j<=jmax;j++)for(let i=imin;i<=imax;i++){
   const building=buildingAt(i,j);if(!building)continue;
-  for(const box of buildingBoxes(building)){
+  // Hollow facades have real intermediate slabs; their outer bounding box is not a floor.
+  const f=buildingFacade(building);
+  for(const box of [...f.roof,...f.floors]){
    if(x<box.min[0]||x>box.max[0]||z<box.min[2]||z>box.max[2])continue;
    const top=box.max[1];
-   if(top<=y+1.5&&top>floor.y)floor={y:top,type:box.kind==='roof'?'roof':box.kind==='vent'?'concrete':'building'};
+   if(top<=y+1.5&&top>floor.y)floor={y:top,type:box.kind==='interior-floor'?'interior-floor':box.kind==='roof'?'roof':box.kind==='vent'?'concrete':'building'};
   }
  }
  for(const p of FOUNTAIN_PARTS){
