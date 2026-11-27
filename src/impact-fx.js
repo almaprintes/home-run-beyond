@@ -1,5 +1,5 @@
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.72';
-import {groundAt} from './world.js?v=0.77.72';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.73';
+import {groundAt,buildingCore} from './world.js?v=0.77.73';
 export const MAX_GLASS_SHARDS=84;
 
 // FX pequeños, ligados a la posición real del choque; sin texturas adicionales.
@@ -113,7 +113,7 @@ export class ImpactEffects{
  }
  // Each pane's actual exterior face is used even when struck from inside.
  spawnGlassShards(hit,strength=20){
-  const b=hit?.building,parts=hit?.windowId?.split(':');
+  const b=hit?.building?buildingCore(hit.building):null,parts=hit?.windowId?.split(':');
   const axis=parts?.[2],side=Number(parts?.[3]);
   if(!b||!['x','z'].includes(axis)||Math.abs(side)!==1||!hit.point)return;
   const along=axis==='x'?'z':'x',half=axis==='x'?b.w/2:b.d/2,span=axis==='x'?b.d/2:b.w/2;

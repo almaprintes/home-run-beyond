@@ -342,7 +342,7 @@ test('llave inglesa, sartén y guitarra conservan el arte gráfico real en ambos
  const hashes={llave:'99ab2e8698d9646829b361b0cebbec957cd0590c',sarten:'b2e707ccfd6de2de47506cf98c7559d4f7b794a4',guitarra:'5cae050b7ae7459c5b7aa8c4cddc947a3978a13e'};
  for(const [id,hash] of Object.entries(hashes)){
   const uri=bakedAssetUrl('bat',id);
-  assert.ok(uri.endsWith('?v=0.77.72'));
+  assert.ok(uri.endsWith('?v=0.77.73'));
   const bytes=readFileSync(abs(uri.split('?')[0]));
   assert.ok(bytes.length>9000);
   assert.deepEqual(bytes,readFileSync(abs('./assets/approved/bats/'+id+'.webp')));

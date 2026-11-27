@@ -1,8 +1,8 @@
-import {lerp} from './engine.js?v=0.77.72';
-import {drawGulls} from './gulls.js?v=0.77.72';
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.72';
-import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.72';
-import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.72';
+import {lerp} from './engine.js?v=0.77.73';
+import {drawGulls} from './gulls.js?v=0.77.73';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.73';
+import {visibleRoadTraffic,drawProceduralTraffic,ROAD_CENTERS} from './traffic.js?v=0.77.73';
+import {WORLD_CENTER_X,WORLD_HALF_WIDTH,WORLD_WIDTH,biomeAt,biomeTransitionAt,biomeColorAt,mixColors,boundaryProfileAt} from './biomes.js?v=0.77.73';
 // Mundo entero dibujado con primitivas low-poly, sin ningún asset externo.
 const PI=Math.PI;
 export const rand=(a,b=0)=>{let n=Math.sin(a*127.1+b*311.7+26.63)*43758.5453;return n-Math.floor(n)};
@@ -172,7 +172,21 @@ export function groundAt(x,z){
 function buildingData(i,j){
  const n=i*89+j*791,h=10+rand(n+1)*39,w=18+rand(n+2)*15,d=17+rand(n+3)*23;
  const roofMaterial=rand(n+10)<.22?'rubber':'solid';
- return {h,w,d,color:choose(n+4,walls),roof:roofMaterial==='rubber'?'#314f55':choose(n+8,roofs),roofMaterial};
+ const original={h,w,d,color:choose(n+4,walls),roof:roofMaterial==='rubber'?'#314f55':choose(n+8,roofs),roofMaterial};
+ // Keep the stadium approach as a transition; retain the established road-safe lots.
+ if(j<=1)return {...original,family:'residential',lotDepth:d};
+ const families=['house','residential','office','tower','commercial','warehouse','terraced','courtyard'];
+ const weights=j<8?['house','house','residential','commercial','warehouse','terraced','courtyard','office']:
+  j<17?['residential','office','tower','tower','commercial','terraced','courtyard','house']:
+  ['warehouse','commercial','house','residential','office','terraced','courtyard','warehouse'];
+ const family=weights[Math.floor(rand(n,43)*weights.length)];
+ const ranges={house:[7,13,14,22,14,23],residential:[17,35,24,38,19,32],office:[24,47,23,39,21,34],tower:[44,78,15,23,16,24],commercial:[9,17,31,41,19,34],warehouse:[7,12,36,42,22,38],terraced:[20,39,26,39,22,35],courtyard:[13,27,32,42,24,36]};
+ const [h0,h1,w0,w1,d0,d1]=ranges[family];
+ const width=w0+(w1-w0)*rand(n,44),depth=Math.min(d,d0+(d1-d0)*rand(n,45));
+ const height=h0+(h1-h0)*rand(n,46);
+ const palette={house:['#e8d4ad','#f0ded0','#d6bba7','#e2d7b7'],office:['#a5b8c1','#839ea9','#d0d7d6'],tower:['#bac7ce','#cfc5b6','#8ca9b5'],commercial:['#e5bb8d','#dca7a0','#c5c4ac'],warehouse:['#8fa9a8','#b4afa4','#9ba7bd']};
+ return {...original,h:height,w:width,d:depth,lotDepth:d,family,color:choose(n+47,palette[family]||walls),
+ roof:family==='warehouse'?'#68838b':original.roof};
 }
 
 // One deterministic urban plan shared by rendering, physics and World Studio.
@@ -194,16 +208,41 @@ export function buildingAt(i,j){
  if(!Number.isInteger(i)||!Number.isInteger(j)||i< -4||i>4||j<0||j>24)return null;
  const x=i*60,z=270+j*60,n=i*11+j*191;
  const b={x,z,i,j,...buildingData(i,j)};
- if(civicSpace(i,j)||rand(n)<.08||!urbanClear(z,b.d/2+BUILDING_PAVING_MARGIN,ROAD_LOT_GAP))return null;
+ if(civicSpace(i,j)||rand(n)<.08||!urbanClear(z,b.lotDepth/2+BUILDING_PAVING_MARGIN,ROAD_LOT_GAP))return null;
+ // Offset only within each parcel's clearance, so neither roads nor neighbours
+ // can acquire overlapping solid geometry. Fixed seed across all sessions.
+ if(j>1){
+  const ox=Math.max(0,Math.min(8,(60-b.w-18)/2));
+  const oz=Math.max(0,Math.min(7,(b.lotDepth-b.d)/2));
+  b.x+=(rand(n,51)*2-1)*ox;b.z+=(rand(n,52)*2-1)*oz;
+ }
  return b;
 }
+// Main hollow shell plus optional low wing; bounding parcel is unchanged.
+export function buildingCore(b){
+ if(b.family!=='courtyard')return b;
+ const w=b.w*.67;
+ return {...b,x:b.x-(b.w-w)/2,w};
+}
+function volume(kind,material,x,z,w,d,bottom,top,color){
+ return {kind,material,min:[x-w/2,bottom,z-d/2],max:[x+w/2,top,z+d/2],color};
+}
 export function buildingBoxes(b){
- const halfW=b.w/2,halfD=b.d/2;
- return [
-  {kind:'wall',material:'concrete',min:[b.x-halfW,0,b.z-halfD],max:[b.x+halfW,b.h,b.z+halfD]},
-  {kind:'roof',material:b.roofMaterial,min:[b.x-halfW-1,b.h,b.z-halfD-1],max:[b.x+halfW+1,b.h+1.4,b.z+halfD+1]},
-  {kind:'vent',material:'solid',min:[b.x-b.w*.18,b.h+1,b.z-b.d*.125],max:[b.x+b.w*.18,b.h+3,b.z+b.d*.125]}
- ];
+ const c=buildingCore(b),family=b.family;
+ const roof=volume('roof',b.roofMaterial,c.x,c.z,c.w+2,c.d+2,c.h,c.h+1.4,b.roof);
+ const parts=[volume('wall','concrete',c.x,c.z,c.w,c.d,0,c.h,b.color),roof];
+ if(family==='courtyard'){
+  const w=b.w-c.w,d=b.d*.55,x=b.x+b.w/2-w/2,z=b.z+b.d/2-d/2,h=b.h*.43;
+  parts.push(volume('wall','concrete',x,z,w,d,0,h,b.color),volume('roof',b.roofMaterial,x,z,w,d,h,h+1.4,b.roof));
+ }
+ if(family==='terraced'||family==='tower'){
+  const w=c.w*.60,d=c.d*.68;
+  parts.push(volume('vent','solid',c.x,c.z,w,d,c.h+1.4,c.h+5.2,b.color));
+  parts.push(volume('roof',b.roofMaterial,c.x,c.z,w+.5,d+.5,c.h+5.2,c.h+5.8,b.roof));
+ }else if(family!=='house'&&family!=='warehouse'){
+  parts.push(volume('vent','solid',c.x,c.z,c.w*.36,c.d*.25,c.h+1,c.h+3,'#a4d7d4'));
+ }
+ return parts;
 }
 // Residential shells: render and collision share the actual openings.
 const facadeCache=new Map();
@@ -214,23 +253,24 @@ export function windowAppearance(id){
  const colors=category==='cool'?['#578da7','#629cb8','#719fb0','#48778e']:category==='neutral'?['#7c929a','#657b86','#889da3']:['#d6b27e','#e6c786','#c49b68'];
  return {category,color:colors[Math.floor(tone*colors.length)]};
 }
-export function buildingFacade(b){
- const key=b.i+':'+b.j;
+export function buildingFacade(building){
+ const b=buildingCore(building),key=b.i+':'+b.j;
  if(facadeCache.has(key))return facadeCache.get(key);
- const walls=[],windows=[],floors=[],levels=Math.max(1,Math.floor(b.h/7)),height=b.h/levels,thick=.64;
+ const walls=[],windows=[],floors=[],levels=Math.max(1,Math.floor(b.h/(b.family==='warehouse'?12:b.family==='office'?6.2:b.family==='house'?5.5:7))),height=b.h/levels,thick=.64;
  for(const axis of ['z','x'])for(const side of [-1,1]){
   const half=(axis==='z'?b.w:b.d)/2,span=2*half;
   const center=axis==='z'?b.x:b.z,plane=axis==='z'?b.z+side*b.d/2:b.x+side*b.w/2;
   const n0=Math.min(plane,plane-side*thick),n1=Math.max(plane,plane-side*thick);
-  const cols=span>29?4:2,cell=span/cols;
+  const cols=b.family==='warehouse'?1:b.family==='office'?Math.max(2,Math.min(5,Math.floor(span/7))):b.family==='commercial'?Math.max(2,Math.floor(span/10)):span>29?4:2,cell=span/cols;
   const rect=(target,kind,material,u0,y0,u1,y1,extra={})=>{
    const a=center+u0,c=center+u1;
    const [v0,v1]=kind==='glass'?[plane-side*.18-.045,plane-side*.18+.045]:[n0,n1];
    const min=axis==='z'?[a,y0,v0]:[v0,y0,a],max=axis==='z'?[c,y1,v1]:[v1,y1,c];
    target.push({kind,material,min,max,...extra});
   };
+  if(b.family==='courtyard'&&axis==='x'&&side===1){rect(walls,'wall','concrete',-half,0,half,b.h);continue}
   for(let row=0;row<levels;row++){
-   const bottom=row*height,top=(row+1)*height,low=bottom+1.05,high=top-1.1;
+   const bottom=row*height,top=(row+1)*height,low=bottom+(b.family==='commercial'?.75:1.05),high=top-(b.family==='office'?.65:1.1);
    rect(walls,'wall','concrete',-half,bottom,half,low);
    rect(walls,'wall','concrete',-half,high,half,top);
    for(let col=0;col<cols;col++){
@@ -243,7 +283,7 @@ export function buildingFacade(b){
   }
  }
  for(let row=1;row<levels;row++)floors.push({kind:'interior-floor',material:'solid',min:[b.x-b.w/2+thick,row*height-.18,b.z-b.d/2+thick],max:[b.x+b.w/2-thick,row*height+.18,b.z+b.d/2-thick]});
- const result={walls,windows,floors,roof:buildingBoxes(b).slice(1)};
+ const result={walls,windows,floors,roof:buildingBoxes(building).slice(1)};
  facadeCache.set(key,result);return result;
 }
 export function buildingCollisionParts(b,brokenWindows){
@@ -458,6 +498,7 @@ export const GLASS_INTERIOR_DISTANCE=190;
 function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null,cam=null){
  const b=buildingAt(idx,row);if(!b)return;
  if(ghost)r.setLayer?.('ghost');
+ const core=buildingCore(b);x=core.x;z=core.z;
  const paint=b.color;const y=b.h*.5;const col=paint;
  r.setMaterial?.(rand(idx*17,row*13)<.60?'plaster':'brick');
  const f=buildingFacade(b),nearBall=focusBall&&Math.hypot(focusBall.x-x,focusBall.z-z)<75;
@@ -466,11 +507,8 @@ function city(r,x,z,idx,row,lod,ghost=false,brokenWindows=null,focusBall=null,ca
  const detailed=!!(nearBall||damaged||nearCamera); // Real openings wherever glass is transparent.
  const drawPart=(p,color)=>{const [a,c,d]=p.min,[e,g,h]=p.max;r.box((a+e)/2,(c+g)/2,(d+h)/2,e-a,g-c,h-d,color)};
  if(detailed){for(const p of f.walls)drawPart(p,col);for(const p of f.floors)drawPart(p,'#8d8c81')}
- else r.box(x,y,z,b.w,b.h,b.d,col);
- r.setMaterial?.(b.roofMaterial==='rubber'?'rubber':'roof');
- r.box(x,b.h+.7,z,b.w+2,1.4,b.d+2,b.roof);
- r.setMaterial?.('metal');
- r.box(x,b.h+2,z,b.w*.36,2,b.d*.25,'#a4d7d4');
+ else r.box(x,y,z,core.w,b.h,core.d,col);
+ for(const p of f.roof){r.setMaterial?.(p.kind==='roof'?(p.material==='rubber'?'rubber':'roof'):p.kind==='wall'?'plaster':'plain');drawPart(p,p.color||b.roof);}
  r.setMaterial?.('glass');
  if(detailed&&!ghost)r.setLayer?.('glass');
  for(const w of f.windows){
@@ -712,7 +750,7 @@ export function drawTerrain(r,viewZ,viewX=0,viewY=0,time=0,focusBall=null,broken
   if(urbanClear(z,4,2)&&!pavedGroundAt(x,z))drawTree(x,z,8+rand(n+5)*6,n);
   if(urbanClear(z+12,4,2)&&!pavedGroundAt(x+15,z+12))drawTree(x+15,z+12,5+rand(n+7)*6,n+32);
  }
- else city(r,x,z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall,cam);}}}
+ else city(r,b.x,b.z,i,j,lod,buildingObscuresBall(cam,focusBall,b),brokenWindows,focusBall,cam);}}}
  // Charcos y pantanos bajos: misma huella procedural para dibujo y resistencia del terreno.
  for(const patch of WET_PATCHES){
   if(Math.abs(patch.z-viewZ)>700)continue;

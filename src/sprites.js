@@ -1,11 +1,11 @@
-import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.72';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.72';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.72';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.72';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.72';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.72';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.72';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.72';
+import {pitcherPose,PITCHER_Z} from './pitcher.js?v=0.77.73';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.73';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.73';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.73';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision} from './world.js?v=0.77.73';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.73';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.73';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.73';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -24,7 +24,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.72';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.73';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
