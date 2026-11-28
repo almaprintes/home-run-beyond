@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,existsSync,statSync} from 'node:fs';
 import {BALL_CATALOG} from '../src/cosmetic-catalog.js';
 import {BAKED_ASSET_COUNT,OUTFIT_POSES,BASEBALL_SKIN_IDS,ballRenderMode,bakedAssetUrl,equippedAssetPaths} from '../src/baked-assets.js';
-import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere,shadeRainbowSphere,shadeBilliardSphere} from '../src/sprites.js';
+import {BatterSprites,shadeRollingSurface,shadeBeachSphere,shadeOrangeSphere,shadeRainbowSphere,shadeBilliardSphere,shadeTennisSphere} from '../src/sprites.js';
 
 test('ocho pelotas con las costuras originales, 24 especiales sin costuras ajenas',()=>{
  const baseball=BALL_CATALOG.filter(item=>ballRenderMode(item)==='baseball');
@@ -67,7 +67,7 @@ test('misma imagen equipada sale del pitcher y llega al bate',()=>{
   assert.equal(painted.at(-1)[3],32,id);
  }
  assert.equal(painted.length,26);
- assert.equal(rotations.length,14,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
+ assert.equal(rotations.length,12,'las pelotas tipo béisbol no deben girar planas mientras vuelan');
 });
 
 test('dorada es oro pulido con costuras metálicas, no otra pelota amarilla',()=>{
@@ -184,4 +184,31 @@ test('billiard 8 has a spherical resin finish, rotating number and stable silhou
  assert.equal(first[(48*n+48)*4+3],255);assert.equal(first[3],0);
  assert.ok(first[(42*n+48)*4]>140);assert.ok(first[(48*n+48)*4]<70);
  assert.ok(bakedAssetUrl('ball','billar8').endsWith('v=0.77.72'));
+});
+
+
+test('tennis felt and continuous seam rotate on a sphere, not on a flat billboard',()=>{
+ const sprites=new BatterSprites({getContext(){return null}}),image={width:160,height:160};
+ sprites.getStyledBall=()=>image;let flat=0,draws=0;
+ const ctx={rotate(){flat++},drawImage(i){assert.equal(i,image);draws++}};
+ const game={save:{equippedBall:'tenis'}};
+ for(const spin of [null,{orientation:[0,0,0,1],angle:2},{orientation:[0,0,0,1],visualOrientation:[.6,0,0,.8]}]){
+  sprites.drawEquippedBall(ctx,game,32,spin,[0,5,-20],[0,0,0]);
+ }
+ assert.equal(flat,0);assert.equal(draws,3);assert.equal(sprites.ballSurfaceCache.mode,'tennis');
+ const n=96,out=new Uint8ClampedArray(n*n*4),cam=[0,5,-20],target=[0,0,0];
+ const paint=(spin,camera=cam)=>shadeTennisSphere(spin,camera,target,out,n).slice();
+ const spin={orientation:[0,0,0,1]},first=paint(spin);
+ const rotated=paint({...spin,visualOrientation:[.6,0,0,.8]});
+ const alpha=f=>f.filter((_,i)=>i%4===3);
+ assert.notDeepEqual(first,rotated);assert.deepEqual(alpha(first),alpha(rotated));
+ assert.deepEqual(paint({...spin,angle:4}),first);
+ let white=0,felt=0;
+ for(let k=0;k<first.length;k+=4){if(first[k+3]<240)continue;if(first[k+2]>first[k+1]*.72)white++;else if(first[k+1]>first[k+2]*1.7)felt++;}
+ assert.ok(white>100&&felt>2000,'visible white groove and green felt');
+ for(let i=0;i<=24;i++){
+  const t=i*Math.PI/12,frame=paint(spin,[20*Math.sin(t),5,20*Math.cos(t)]);
+  assert.deepEqual(alpha(frame),alpha(first));assert.equal(frame[(48*n+48)*4+3],255);
+ }
+ assert.equal(first[3],0);assert.deepEqual(paint(spin),first);
 });

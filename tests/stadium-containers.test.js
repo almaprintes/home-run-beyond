@@ -116,7 +116,7 @@ test('opaque container parts draw in solid layer and fallback baseball is omitte
  const c=stadiumContainers()[9],cam=fromLocal(c,0,4.2,-19),behind=fromLocal(c,0,4.2,12);
  const calls=[],r={layer:'opaque',begin(){},setLayer(v){this.layer=v},setMaterial(){},field(){},ball(){},cone(){},pole(){},box(...args){calls.push([this.layer,'box',...args])},add(...args){calls.push([this.layer,'add',...args])}};
  drawWorld(r,[cam.x,cam.y,cam.z],{state:'flight',clock:1,ball:behind});
- const parts=calls.filter(a=>a[1]==='box'&&['#315b71','#e6a95c','#264259'].includes(a[8]));
+ const parts=calls.filter(a=>a[1]==='box'&&stadiumContainers().some(c=>Math.abs(a[2]-c.x)<1e-7&&Math.abs(a[4]-c.z)<1e-7&&a[9]===c.yaw)&&stadiumContainerParts().some(p=>a[3]===p.y&&a[5]===p.w&&a[6]===p.h&&a[7]===p.d&&a[8]===p.color));
  assert.equal(parts.length,60);assert.ok(parts.every(a=>a[0]==='solid'));
  assert.equal(calls.filter(a=>a[1]==='add'&&a[2]==='baseball'&&a[0]==='overlay').length,0);
  calls.length=0;

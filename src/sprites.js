@@ -1,13 +1,13 @@
-import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.81';
-import {pitchBallSpin} from './ball-spin.js?v=0.77.81';
-import {drawPerfectFocus} from './perfect-focus.js?v=0.77.81';
-import {drawCinematicAccents} from './impact-fx.js?v=0.77.81';
-import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.81';
-import {lookAt,perspective,mul4} from './engine.js?v=0.77.81';
-import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision,stadiumContainersObscurePoint} from './world.js?v=0.77.81';
-import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.81';
-import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.81';
-import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.81';
+import {pitcherPose,PITCHER_Z,PITCH_ARM_SECONDS,PITCH_RELEASE_FRAME_SECONDS} from './pitcher.js?v=0.77.82';
+import {pitchBallSpin} from './ball-spin.js?v=0.77.82';
+import {drawPerfectFocus} from './perfect-focus.js?v=0.77.82';
+import {drawCinematicAccents} from './impact-fx.js?v=0.77.82';
+import {GULL_ATLAS,GULL_CELL,visibleGulls,gullFrame} from './gulls.js?v=0.77.82';
+import {lookAt,perspective,mul4} from './engine.js?v=0.77.82';
+import {surfaceBelowBall,pitcherBallPosition,traceBuildingCollision,stadiumContainersObscurePoint} from './world.js?v=0.77.82';
+import {ballSpriteDiameter,ballShadowOpacity,ballShadowGeometry,ballGroundedScreenY,ballBounceCompression} from './ball-visuals.js?v=0.77.82';
+import {COSMETICS,OUTFITS,BALL_STYLES} from './logic.js?v=0.77.82';
+import {bakedAssetUrl,equippedAssetPaths,WEAPON_POSES,OUTFIT_WEAPON_POSES} from './baked-assets.js?v=0.77.82';
 
 
 // Recortes 2.5D tomados de las tres láminas aprobadas. No hay re-render ni
@@ -26,7 +26,7 @@ export const BATTER_ASSETS=Object.freeze({
 
 // Six hand-registered, full-body renders from the approved personalized artwork.
 // 512px cells; anchors are measured at the planted shoe (or lowest airborne shoe).
-export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.81';
+export const PITCHER_ATLAS='./assets/pitcher/personal-atlas.webp?v=0.77.82';
 export const PITCHER_FRAMES=Object.freeze([
  {x:266,y:500},{x:244,y:494},{x:276,y:501},{x:261,y:489},{x:202,y:459},{x:218,y:492}
 ]);
@@ -235,6 +235,30 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
     output[k+3]=255*Math.min(1,(1-Math.sqrt(rr))*size*.5);
     continue;
    }
+   if(material==='tennis'){
+    // A single closed, undulating seam around the sphere in object space.
+    // The groove joins smoothly at every longitude, including the far side.
+    // Rotate the pattern's axis slightly so the characteristic opposing
+    // curved arcs are legible from the rear batting camera.
+    const tx=.8660254*ox+.5*oy,ty=-.5*ox+.8660254*oy;
+    const longitude=Math.atan2(oz,ty);
+    const wave=.56*Math.cos(2*longitude);
+    const distance=Math.abs(tx-wave)/Math.sqrt(1+1.2544*Math.sin(2*longitude)**2);
+    const groove=Math.max(0,Math.min(1,(.061-distance)*size*.85+.5));
+    const edge=Math.exp(-Math.pow((distance-.070)/.026,2));
+    // Fine, deterministic felt fibers move with the shell; matte lighting
+    // is evaluated in view space, never baked into the rotating texture.
+    const grain=Math.sin(ox*93+Math.sin(oy*67))*Math.sin(oy*109+oz*41)*Math.sin(oz*103+ox*29);
+    const fuzz=.045*grain+.018*Math.sin(ox*31+oy*23+oz*17);
+    const diffuse=.55+.45*Math.max(0,-.40*sx+.55*sy+.73*sz);
+    const felt=[201,230,78],white=[249,250,232];
+    for(let i=0;i<3;i++){
+     const pigment=felt[i]*(1-groove)*(1+fuzz-.11*edge)+white[i]*groove;
+     output[k+i]=Math.min(255,pigment*diffuse);
+    }
+    output[k+3]=255*Math.min(1,(1-Math.sqrt(rr))*size*.5);
+    continue;
+   }
    if(material==='orange'){
     // Small peel pores and the calyx are fixed to the object's 3D normals.
     // Lighting stays outside that rotation, so the fruit never rolls like a coin.
@@ -269,6 +293,7 @@ export function shadeRollingSurface(source,w,h,spin,camera,target,output,size=BA
 export function shadeBeachSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'beach')}
 export function shadeRainbowSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'rainbow')}
 export function shadeBilliardSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'billiard')}
+export function shadeTennisSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'tennis')}
 export function shadeOrangeSphere(spin,camera,target,output,size=BALL_SURFACE_SIZE){return shadeRoundMaterial(spin,camera,target,output,size,'orange')}
 export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null,cache=null){
  const radius=size*.5;
@@ -284,13 +309,14 @@ export function drawSpinningBaseball(ctx,image,size,spin,camera=null,target=null
     outCanvas.width=BALL_SURFACE_SIZE;outCanvas.height=BALL_SURFACE_SIZE;
     const outCtx=outCanvas.getContext('2d');
     cache.image=image;cache.loadedMode=cache.mode;
-    const sourceImage=['beach','orange','rainbow','billiard'].includes(cache.mode)?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
-    cache.source=['beach','orange','rainbow','billiard'].includes(cache.mode)?null:{width:sourceImage.width,height:sourceImage.height,
+    const sourceImage=['beach','orange','rainbow','billiard','tennis'].includes(cache.mode)?null:srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+    cache.source=['beach','orange','rainbow','billiard','tennis'].includes(cache.mode)?null:{width:sourceImage.width,height:sourceImage.height,
      data:cache.leatherColor?neutralizeBaseballLighting(sourceImage.data,sourceImage.width,sourceImage.height,cache.leatherColor):opaqueBaseballPixels(sourceImage.data,sourceImage.width,sourceImage.height)};
     cache.canvas=outCanvas;cache.context=outCtx;
     cache.frame=outCtx.createImageData(BALL_SURFACE_SIZE,BALL_SURFACE_SIZE);
    }
    if(cache.mode==='beach')shadeBeachSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
+   else if(cache.mode==='tennis')shadeTennisSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else if(cache.mode==='orange')shadeOrangeSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else if(cache.mode==='billiard')shadeBilliardSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
    else if(cache.mode==='rainbow')shadeRainbowSphere(spin,camera,target,cache.frame.data,BALL_SURFACE_SIZE);
@@ -425,6 +451,13 @@ export class BatterSprites{
    drawSpinningBaseball(ctx,image,size,spin||{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
    return;
   }
+  if(item.id==='tenis'&&camera&&target){
+   this.ballSurfaceCache.mode='tennis';
+   this.ballSurfaceCache.leatherColor=null;
+   this.ballSurfaceCache.textureRadius=.47;
+   drawSpinningBaseball(ctx,image,size,spin?.orientation?spin:{orientation:[0,0,0,1]},camera,target,this.ballSurfaceCache);
+   return;
+  }
   if(item.id==='naranja'&&camera&&target){
    this.ballSurfaceCache.mode='orange';
    this.ballSurfaceCache.leatherColor=null;
@@ -468,7 +501,7 @@ export class BatterSprites{
   }
   // Other themed balls use their existing sprite rotation fallback.
   // Las pelotas temáticas siguen girando íntegras sin costuras extrañas.
-  if(item.design!=='baseball'&&item.id!=='nieve'&&item.id!=='billar8')ctx.rotate(spin?.angle||0);
+  if(item.design!=='baseball'&&item.id!=='nieve'&&item.id!=='billar8'&&item.id!=='tenis')ctx.rotate(spin?.angle||0);
   ctx.drawImage(image,-size*.5,-size*.5,size,size);
  }
  resize(){
@@ -607,7 +640,7 @@ export class BatterSprites{
     const bounce=ballBounceCompression(item.id,b.bounceVisual||0,game.state);
     // The special-ball artwork has a slight transparent rim; the projected
     // baseball sphere fills its canvas. Correct only near actual support.
-    const visibleRadius=item.design==='baseball'||['playa','naranja','arcoiris'].includes(item.id)?.5:.47;
+    const visibleRadius=item.design==='baseball'||['playa','naranja','arcoiris','tenis'].includes(item.id)?.5:.47;
     const support=clearance>=-.18&&clearance<2.9
      ?projectToScreen(camera,target,[b.x,Math.max(surface.y,b.y-1.45),b.z],width,height,zoom):null;
     const visualY=support?ballGroundedScreenY(p.y,support.y,size,clearance,bounce,visibleRadius):p.y;
